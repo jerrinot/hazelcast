@@ -46,6 +46,7 @@ import java.io.StringWriter;
 import java.lang.management.*;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.Future;
@@ -437,6 +438,7 @@ public class ManagementCenterService implements LifecycleListener, MembershipLis
             createMemberState(memberState);
             GroupConfig groupConfig = instance.getConfig().getGroupConfig();
             TimedMemberState timedMemberState = new TimedMemberState();
+            timedMemberState.setCompany(managementCenterConfig.getCompany());
             timedMemberState.setMaster(instance.node.isMaster());
             if (timedMemberState.getMaster()) {
                 timedMemberState.setMemberList(new ArrayList<String>());
@@ -570,8 +572,8 @@ public class ManagementCenterService implements LifecycleListener, MembershipLis
                         versionMismatch = false;
                     }
                     try {
-                        URL url = new URL(webServerUrl + "getTask.do?member=" + address.getHost()
-                                + ":" + address.getPort() + "&cluster=" + groupConfig.getName());
+                        URL url = createUrl(address, groupConfig);
+
                         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                         connection.setRequestProperty("Connection", "keep-alive");
                         InputStream inputStream = connection.getInputStream();
@@ -598,6 +600,16 @@ public class ManagementCenterService implements LifecycleListener, MembershipLis
                 }
                 logger.finest( "Problem on management center while polling task.", throwable);
             }
+        }
+
+        private URL createUrl(Address address, GroupConfig groupConfig) throws MalformedURLException {
+            String company = managementCenterConfig.getCompany();
+            String urlString = webServerUrl + "getTask.do?member=" + address.getHost()
+                    + ":" + address.getPort() + "&cluster=" + groupConfig.getName();
+            if (company != null) {
+                urlString += "&company=" + company;
+            }
+            return new URL(urlString);
         }
     }
 }

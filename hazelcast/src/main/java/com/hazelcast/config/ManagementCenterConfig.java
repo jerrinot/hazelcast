@@ -24,12 +24,22 @@ public class ManagementCenterConfig {
     
     private int updateInterval = 5;
 
+    private String company;
+
     public ManagementCenterConfig() {
     }
 
     public ManagementCenterConfig(final String url, final int dataUpdateInterval) {
         this.url = url;
         this.updateInterval = dataUpdateInterval;
+    }
+
+    public String getCompany() {
+        return company;
+    }
+
+    public void setCompany(String company) {
+        this.company = company;
     }
 
     public boolean isEnabled() {
@@ -66,6 +76,7 @@ public class ManagementCenterConfig {
         sb.append("{enabled=").append(enabled);
         sb.append(", url='").append(url).append('\'');
         sb.append(", updateInterval=").append(updateInterval);
+        sb.append(", company='").append(company).append('\'');
         sb.append('}');
         return sb.toString();
     }
