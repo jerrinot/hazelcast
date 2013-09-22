@@ -24,7 +24,7 @@ public class ManagementCenterConfig {
     
     private int updateInterval = 5;
 
-    private String clusterId;
+    private String projectId;
 
     public ManagementCenterConfig() {
     }
@@ -34,12 +34,12 @@ public class ManagementCenterConfig {
         this.updateInterval = dataUpdateInterval;
     }
 
-    public String getClusterId() {
-        return clusterId;
+    public String getProjectId() {
+        return projectId;
     }
 
-    public void setClusterId(String clusterId) {
-        this.clusterId = clusterId;
+    public void setProjectId(String projectId) {
+        this.projectId = projectId;
     }
 
     public boolean isEnabled() {
@@ -76,7 +76,7 @@ public class ManagementCenterConfig {
         sb.append("{enabled=").append(enabled);
         sb.append(", url='").append(url).append('\'');
         sb.append(", updateInterval=").append(updateInterval);
-        sb.append(", clusterId='").append(clusterId).append('\'');
+        sb.append(", projectId='").append(projectId).append('\'');
         sb.append('}');
         return sb.toString();
     }

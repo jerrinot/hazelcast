@@ -34,7 +34,7 @@ public class TimedMemberState implements DataSerializable, Cloneable {
     List<String> memberList;
     Boolean master;
     String clusterName;
-    String clusterId;
+    String projectId;
 
     public TimedMemberState clone() {
         TimedMemberState st = new TimedMemberState();
@@ -66,7 +66,7 @@ public class TimedMemberState implements DataSerializable, Cloneable {
                 out.writeUTF(address);
             }
         }
-        out.writeUTF(clusterId);
+        out.writeUTF(projectId);
     }
 
     public void readData(ObjectDataInput in) throws IOException {
@@ -85,15 +85,15 @@ public class TimedMemberState implements DataSerializable, Cloneable {
         for (int i = 0; i < memberCount; i++) {
             memberList.add(in.readUTF());
         }
-        this.clusterId = in.readUTF();
+        this.projectId = in.readUTF();
     }
 
-    public void setClusterId(String clusterId) {
-        this.clusterId = clusterId;
+    public void setProjectId(String projectId) {
+        this.projectId = projectId;
     }
 
-    public String getClusterId() {
-        return clusterId;
+    public String getProjectId() {
+        return projectId;
     }
 
     public List<String> getMemberList() {
