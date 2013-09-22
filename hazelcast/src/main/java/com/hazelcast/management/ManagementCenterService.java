@@ -438,7 +438,7 @@ public class ManagementCenterService implements LifecycleListener, MembershipLis
             createMemberState(memberState);
             GroupConfig groupConfig = instance.getConfig().getGroupConfig();
             TimedMemberState timedMemberState = new TimedMemberState();
-            timedMemberState.setCompany(managementCenterConfig.getCompany());
+            timedMemberState.setClusterId(managementCenterConfig.getClusterId());
             timedMemberState.setMaster(instance.node.isMaster());
             if (timedMemberState.getMaster()) {
                 timedMemberState.setMemberList(new ArrayList<String>());
@@ -603,11 +603,11 @@ public class ManagementCenterService implements LifecycleListener, MembershipLis
         }
 
         private URL createUrl(Address address, GroupConfig groupConfig) throws MalformedURLException {
-            String company = managementCenterConfig.getCompany();
+            String clusterId = managementCenterConfig.getClusterId();
             String urlString = webServerUrl + "getTask.do?member=" + address.getHost()
                     + ":" + address.getPort() + "&cluster=" + groupConfig.getName();
-            if (company != null) {
-                urlString += "&company=" + company;
+            if (clusterId != null) {
+                urlString += "&clusterId=" + clusterId;
             }
             return new URL(urlString);
         }
