@@ -64,6 +64,7 @@ public class ManagementCenterService implements LifecycleListener, MembershipLis
     private final ManagementCenterConfig managementCenterConfig;
     private final SerializationService serializationService;
     private final ManagementCenterIdentifier identifier;
+    private final String projectId;
     private AtomicBoolean running = new AtomicBoolean(false);
     private volatile String webServerUrl;
     private volatile boolean urlChanged = false;
@@ -76,8 +77,32 @@ public class ManagementCenterService implements LifecycleListener, MembershipLis
         if (managementCenterConfig == null) {
             throw new IllegalStateException("ManagementCenterConfig should not be null!");
         }
+
+
         this.instance.getLifecycleService().addLifecycleListener(this);
         this.instance.getCluster().addMembershipListener(this);
+
+        String projectId = managementCenterConfig.getProjectId();
+        if(projectId == null){
+            IAtomicLong clusterIdAtomicLong = instance.getAtomicLong("___idGenerator");
+            long id = clusterIdAtomicLong.get();
+            if(id ==0){
+                id = Math.abs(new Random().nextLong());
+                if(!clusterIdAtomicLong.compareAndSet(0,id)){
+                    id = clusterIdAtomicLong.get();
+                }
+            }
+            projectId = ""+id;
+
+            logger.info("======================================================");
+            logger.info("You can access your Hazelcast instance at:");
+            logger.info(managementCenterConfig.getUrl());
+            logger.info("A new projectid is generated: "+id);
+            logger.info("======================================================");
+
+        }
+        this.projectId = projectId;
+
         maxVisibleInstanceCount = this.instance.node.groupProperties.MC_MAX_INSTANCE_COUNT.getInteger();
         commandHandler = new ConsoleCommandHandler(this.instance);
         String tmpWebServerUrl = managementCenterConfig.getUrl();
@@ -438,7 +463,7 @@ public class ManagementCenterService implements LifecycleListener, MembershipLis
             createMemberState(memberState);
             GroupConfig groupConfig = instance.getConfig().getGroupConfig();
             TimedMemberState timedMemberState = new TimedMemberState();
-            timedMemberState.setProjectId(managementCenterConfig.getProjectId());
+            timedMemberState.setProjectId(projectId);
             timedMemberState.setMaster(instance.node.isMaster());
             if (timedMemberState.getMaster()) {
                 timedMemberState.setMemberList(new ArrayList<String>());
@@ -603,8 +628,7 @@ public class ManagementCenterService implements LifecycleListener, MembershipLis
         }
 
         private URL createUrl(Address address, GroupConfig groupConfig) throws MalformedURLException {
-            String projectId = managementCenterConfig.getProjectId();
-            String urlString = webServerUrl + "getTask.do?member=" + address.getHost()
+             String urlString = webServerUrl + "getTask.do?member=" + address.getHost()
                     + ":" + address.getPort() + "&cluster=" + groupConfig.getName();
             if (projectId != null) {
                 urlString += "&projectId=" + projectId;

@@ -18,9 +18,9 @@ package com.hazelcast.config;
 
 public class ManagementCenterConfig {
 
-    private boolean enabled = false;
+    private boolean enabled = true;
     
-    private String url;
+    private String url = "http://mancenter-lb-321763326.us-east-1.elb.amazonaws.com:8080/mancenter-3.2-SNAPSHOT";
     
     private int updateInterval = 5;
 
