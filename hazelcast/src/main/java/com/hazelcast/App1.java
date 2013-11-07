@@ -9,6 +9,7 @@ public class App1 {
 
     public static void main(String[] args) throws InterruptedException {
         Config config = new Config();
+        config.getManagementCenterConfig().setUrl("http://localhost:8085/mancenter");
         //we need to set a group to prevent forming a cluster with app1
         config.getGroupConfig().setName("app1");
         HazelcastInstance hz1 = Hazelcast.newHazelcastInstance(config);
