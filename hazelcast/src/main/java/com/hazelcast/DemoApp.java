@@ -26,7 +26,9 @@ public class DemoApp {
         new ExecutorThread("Executor1Thread", hz1.getExecutorService("executor1")).start();
         new ExecutorThread("Executor2Thread", hz1.getExecutorService("executor2")).start();
         new TopicThread("Topic1Thread", hz1.getTopic("topic1")).start();
-        new TopicThread("Topic1Thread", hz1.getTopic("topic2")).start();
+        new TopicThread("Topic2Thread", hz1.getTopic("topic2")).start();
+        new MultiMapThread("MultiMap1Thread", hz1.getMultiMap("multimap1")).start();
+        new MultiMapThread("MultiMap2Thread", hz1.getMultiMap("multimap2")).start();
 
         Thread.sleep(1000000000);
     }
@@ -61,6 +63,36 @@ public class DemoApp {
         }
     }
 
+
+    private static class MultiMapThread extends Thread{
+        private final MultiMap map;
+
+        private MultiMapThread(String name, MultiMap map) {
+            super(name);
+            this.map = map;
+        }
+
+        public void run(){
+            int count = 100000;
+            for(int k=0;k< count;k++){
+                map.put(k,k);
+            }
+
+            Random random = new Random();
+            for(;;){
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+
+                int key = random.nextInt(count);
+                map.put(key,random.nextInt(10));
+                map.get(key);
+            }
+        }
+    }
+
     private static class QueueThread extends Thread{
         private final IQueue queue;
 
@@ -83,7 +115,6 @@ public class DemoApp {
                     e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
                 }
 
-                int key = random.nextInt(count);
                 queue.offer(random.nextInt());
                 try {
                     queue.take();
