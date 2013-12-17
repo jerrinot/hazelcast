@@ -133,6 +133,11 @@ public final class HazelcastClientProxy implements HazelcastInstance {
         return getClient().getSemaphore(name);
     }
 
+    @Override
+    public ILongMaxUpdater getLongMaxUpdater(String name) {
+        return getClient().getLongMaxUpdater(name);
+    }
+
     public Collection<DistributedObject> getDistributedObjects() {
         return getClient().getDistributedObjects();
     }

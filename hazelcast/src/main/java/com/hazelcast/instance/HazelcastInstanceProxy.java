@@ -121,6 +121,11 @@ public final class HazelcastInstanceProxy implements HazelcastInstance {
         return getOriginal().getSemaphore(name);
     }
 
+    @Override
+    public ILongMaxUpdater getLongMaxUpdater(String name) {
+        return getOriginal().getLongMaxUpdater(name);
+    }
+
     public Cluster getCluster() {
         return getOriginal().getCluster();
     }

@@ -18,13 +18,13 @@ package com.hazelcast.instance;
 
 import com.hazelcast.collection.list.ListService;
 import com.hazelcast.collection.set.SetService;
-import com.hazelcast.concurrent.atomicreference.AtomicReferenceService;
-import com.hazelcast.concurrent.lock.proxy.LockProxy;
-import com.hazelcast.multimap.MultiMapService;
 import com.hazelcast.concurrent.atomiclong.AtomicLongService;
+import com.hazelcast.concurrent.atomicreference.AtomicReferenceService;
 import com.hazelcast.concurrent.countdownlatch.CountDownLatchService;
 import com.hazelcast.concurrent.idgen.IdGeneratorService;
 import com.hazelcast.concurrent.lock.LockService;
+import com.hazelcast.concurrent.lock.proxy.LockProxy;
+import com.hazelcast.concurrent.longmaxupdater.LongMaxUpdaterService;
 import com.hazelcast.concurrent.semaphore.SemaphoreService;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.*;
@@ -34,6 +34,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingService;
 import com.hazelcast.management.ThreadMonitoringService;
 import com.hazelcast.map.MapService;
+import com.hazelcast.multimap.MultiMapService;
 import com.hazelcast.nio.serialization.SerializationService;
 import com.hazelcast.queue.QueueService;
 import com.hazelcast.replicatedmap.ReplicatedMapService;
@@ -248,6 +249,14 @@ public final class HazelcastInstanceImpl implements HazelcastInstance {
             throw new NullPointerException("Retrieving a semaphore instance with a null name is not allowed!");
         }
         return getDistributedObject(SemaphoreService.SERVICE_NAME, name);
+    }
+
+    @Override
+    public ILongMaxUpdater getLongMaxUpdater(String name) {
+        if (name == null) {
+            throw new NullPointerException("Retrieving a long-max-updater instance with a null name is not allowed!");
+        }
+        return getDistributedObject(LongMaxUpdaterService.SERVICE_NAME, name);
     }
 
     public Cluster getCluster() {

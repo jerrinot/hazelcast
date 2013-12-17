@@ -32,21 +32,22 @@ import com.hazelcast.client.txn.TransactionContextProxy;
 import com.hazelcast.client.util.RoundRobinLB;
 import com.hazelcast.collection.list.ListService;
 import com.hazelcast.collection.set.SetService;
-import com.hazelcast.concurrent.atomicreference.AtomicReferenceService;
-import com.hazelcast.concurrent.lock.proxy.LockProxy;
-import com.hazelcast.instance.GroupProperties;
-import com.hazelcast.multimap.MultiMapService;
 import com.hazelcast.concurrent.atomiclong.AtomicLongService;
+import com.hazelcast.concurrent.atomicreference.AtomicReferenceService;
 import com.hazelcast.concurrent.countdownlatch.CountDownLatchService;
 import com.hazelcast.concurrent.idgen.IdGeneratorService;
 import com.hazelcast.concurrent.lock.LockServiceImpl;
+import com.hazelcast.concurrent.lock.proxy.LockProxy;
+import com.hazelcast.concurrent.longmaxupdater.LongMaxUpdaterService;
 import com.hazelcast.concurrent.semaphore.SemaphoreService;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.GroupConfig;
 import com.hazelcast.core.*;
 import com.hazelcast.executor.DistributedExecutorService;
+import com.hazelcast.instance.GroupProperties;
 import com.hazelcast.logging.LoggingService;
 import com.hazelcast.map.MapService;
+import com.hazelcast.multimap.MultiMapService;
 import com.hazelcast.nio.ClassLoaderUtil;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.SerializationService;
@@ -320,6 +321,11 @@ public final class HazelcastClient implements HazelcastInstance {
     @Override
     public ISemaphore getSemaphore(String name) {
         return getDistributedObject(SemaphoreService.SERVICE_NAME, name);
+    }
+
+    @Override
+    public ILongMaxUpdater getLongMaxUpdater(String name) {
+        return getDistributedObject(LongMaxUpdaterService.SERVICE_NAME, name);
     }
 
     @Override

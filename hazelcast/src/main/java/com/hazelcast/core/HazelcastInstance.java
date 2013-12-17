@@ -259,6 +259,16 @@ public interface HazelcastInstance {
     ISemaphore getSemaphore(String name);
 
     /**
+     *
+     * Creates cluster-wide LongMaxUpdater. Hazelcast ILongMaxUpdater is distributed
+     * implementation of <tt>java.util.concurrent.atomic.LongMaxUpdater</tt>
+     *
+     * @param name name of the ILongMaxUpdater proxy
+     * @return ILongMaxUpdater proxy for the given name
+     */
+    ILongMaxUpdater getLongMaxUpdater(String name);
+
+    /**
      * Returns all {@link DistributedObject}'s such as; queue, map, set, list, topic, lock, multimap.
      *
      * @return the collection of instances created by Hazelcast.
