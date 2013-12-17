@@ -13,7 +13,6 @@ import org.junit.runner.RunWith;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 
@@ -49,20 +48,23 @@ public class LongMaxUpdaterTest extends HazelcastTestSupport {
         final CountDownLatch countDownLatch = new CountDownLatch(noOfThreads);
         final Random random = new Random();
         for (int i =0; i < noOfThreads; i++) {
-            final AtomicInteger threadId = new AtomicInteger(i);
             new Thread() {
+                private int id;
+                Thread setId(int id) {
+                    this.id = id;
+                    return this;
+                }
+                @Override
                 public void run() {
                     ILongMaxUpdater updater = instance.getLongMaxUpdater(updaterName);
                     for (int j = 0; j < 1000; j++) {
                         long value = random.nextLong();
                         updater.update(value);
-                        if (value > maxArray[threadId.get()]) {
-                            maxArray[threadId.get()] = value;
-                        }
+                        maxArray[id] = Math.max(maxArray[id], value);
                     }
                     countDownLatch.countDown();
                 }
-            }.start();
+            }.setId(i).start();
         }
         countDownLatch.await(50, TimeUnit.SECONDS);
 
