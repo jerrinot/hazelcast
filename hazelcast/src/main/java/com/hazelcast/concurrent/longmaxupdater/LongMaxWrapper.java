@@ -14,16 +14,21 @@ public class LongMaxWrapper {
         return value;
     }
 
-    void update(long x) {
+    long update(long x) {
         if (x > value) {
             value = x;
         }
+        return value;
     }
 
     long maxThenReset() {
         long max = value;
         reset();
         return max;
+    }
+
+    void set(long x) {
+        value = x;
     }
 
     final void reset() {

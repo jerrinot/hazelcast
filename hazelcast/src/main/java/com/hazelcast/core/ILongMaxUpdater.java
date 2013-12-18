@@ -8,4 +8,6 @@ public interface ILongMaxUpdater extends DistributedObject{
 
     long maxThenReset();
 
+    void reset();
+
 }

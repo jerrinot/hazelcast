@@ -1,9 +1,6 @@
 package com.hazelcast.concurrent.longmaxupdater.proxy;
 
-import com.hazelcast.concurrent.longmaxupdater.LongMaxUpdaterService;
-import com.hazelcast.concurrent.longmaxupdater.MaxOperation;
-import com.hazelcast.concurrent.longmaxupdater.MaxThenResetOperation;
-import com.hazelcast.concurrent.longmaxupdater.UpdateOperation;
+import com.hazelcast.concurrent.longmaxupdater.*;
 import com.hazelcast.core.ILongMaxUpdater;
 import com.hazelcast.spi.AbstractDistributedObject;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -46,6 +43,12 @@ public class LongMaxUpdaterProxy extends AbstractDistributedObject<LongMaxUpdate
     public long maxThenReset() {
         Operation operation = new MaxThenResetOperation(name);
         return (Long) asyncInvoke(operation).getSafely();
+    }
+
+    @Override
+    public void reset() {
+        Operation operation = new ResetOperation(name);
+        asyncInvoke(operation).getSafely();
     }
 
     @Override

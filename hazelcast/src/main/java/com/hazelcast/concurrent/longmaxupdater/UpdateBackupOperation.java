@@ -2,25 +2,19 @@ package com.hazelcast.concurrent.longmaxupdater;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.spi.Operation;
 
 import java.io.IOException;
 
-public class UpdateOperation extends LongMaxUpdaterBackupAwareOperation {
+public class UpdateBackupOperation extends LongMaxUpdaterBaseOperation {
+
     private long x;
 
-    public UpdateOperation() {
-
+    public UpdateBackupOperation() {
     }
 
-    public UpdateOperation(String name, long x) {
+    public UpdateBackupOperation(String name, long x) {
         super(name);
         this.x = x;
-    }
-
-    @Override
-    public void run() throws Exception {
-        shouldBackup = (getNumber().update(x) == x);
     }
 
     @Override
@@ -36,7 +30,7 @@ public class UpdateOperation extends LongMaxUpdaterBackupAwareOperation {
     }
 
     @Override
-    public Operation getBackupOperation() {
-        return new UpdateBackupOperation(name, x);
+    public void run() throws Exception {
+        getNumber().set(x);
     }
 }

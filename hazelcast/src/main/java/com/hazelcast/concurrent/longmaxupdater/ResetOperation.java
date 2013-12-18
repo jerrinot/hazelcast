@@ -2,24 +2,24 @@ package com.hazelcast.concurrent.longmaxupdater;
 
 import com.hazelcast.spi.Operation;
 
-public class MaxThenResetOperation extends LongMaxUpdaterBackupAwareOperation {
+public class ResetOperation extends LongMaxUpdaterBackupAwareOperation {
 
-    public MaxThenResetOperation() {
-
+    public ResetOperation() {
     }
 
-    public MaxThenResetOperation(String name) {
+    public ResetOperation(String name) {
         super(name);
     }
 
     @Override
     public void run() throws Exception {
         LongMaxWrapper number = getNumber();
-        returnValue = number.maxThenReset();
+        number.reset();
     }
 
     @Override
     public Operation getBackupOperation() {
         return new ResetBackupOperation(name);
     }
+
 }
