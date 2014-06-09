@@ -63,11 +63,11 @@ public class ClientNearCache<K> {
     final ClientContext context;
     final AtomicBoolean canCleanUp;
     final AtomicBoolean canEvict;
-    final ConcurrentMap<K, CacheRecord<K>> cache;
+    final ConcurrentMap<K, CacheRecord> cache;
 
     final NearCacheStatsImpl clientNearCacheStats;
-    private final Comparator<CacheRecord<K>> comparator = new Comparator<CacheRecord<K>>() {
-        public int compare(CacheRecord<K> o1, CacheRecord<K> o2) {
+    private final Comparator<CacheRecord> comparator = new Comparator<CacheRecord>() {
+        public int compare(CacheRecord o1, CacheRecord o2) {
             if (EvictionPolicy.LRU.equals(evictionPolicy)) {
                 return ((Long) o1.lastAccessTime).compareTo((o2.lastAccessTime));
             } else if (EvictionPolicy.LFU.equals(evictionPolicy)) {
@@ -90,7 +90,7 @@ public class ClientNearCache<K> {
         timeToLiveMillis = nearCacheConfig.getTimeToLiveSeconds() * 1000;
         invalidateOnChange = nearCacheConfig.isInvalidateOnChange();
         evictionPolicy = EvictionPolicy.valueOf(nearCacheConfig.getEvictionPolicy());
-        cache = new ConcurrentHashMap<K, CacheRecord<K>>();
+        cache = new ConcurrentHashMap<K, CacheRecord>();
         canCleanUp = new AtomicBoolean(true);
         canEvict = new AtomicBoolean(true);
         lastCleanup = Clock.currentTimeMillis();
@@ -146,7 +146,7 @@ public class ClientNearCache<K> {
         } else {
             value = inMemoryFormat.equals(InMemoryFormat.BINARY) ? context.getSerializationService().toData(object) : object;
         }
-        cache.put(key, new CacheRecord<K>(key, value));
+        cache.put(key, new CacheRecord(key, value));
     }
 
     private void fireEvictCache() {
@@ -155,11 +155,11 @@ public class ClientNearCache<K> {
                 context.getExecutionService().execute(new Runnable() {
                     public void run() {
                         try {
-                            TreeSet<CacheRecord<K>> records = new TreeSet<CacheRecord<K>>(comparator);
+                            TreeSet<CacheRecord> records = new TreeSet<CacheRecord>(comparator);
                             records.addAll(cache.values());
                             int evictSize = cache.size() * EVICTION_PERCENTAGE / 100;
                             int i = 0;
-                            for (CacheRecord<K> record : records) {
+                            for (CacheRecord record : records) {
                                 cache.remove(record.key);
                                 if (++i > evictSize) {
                                     break;
@@ -189,7 +189,7 @@ public class ClientNearCache<K> {
                     public void run() {
                         try {
                             lastCleanup = Clock.currentTimeMillis();
-                            for (Map.Entry<K, CacheRecord<K>> entry : cache.entrySet()) {
+                            for (Map.Entry<K, CacheRecord> entry : cache.entrySet()) {
                                 if (entry.getValue().expired()) {
                                     cache.remove(entry.getKey());
                                 }
@@ -213,7 +213,7 @@ public class ClientNearCache<K> {
 
     public Object get(K key) {
         fireTtlCleanup();
-        CacheRecord<K> record = cache.get(key);
+        CacheRecord record = cache.get(key);
         if (record != null) {
             if (record.expired()) {
                 cache.remove(key);
@@ -262,7 +262,7 @@ public class ClientNearCache<K> {
     }
 
 
-    class CacheRecord<K> {
+    class CacheRecord {
         final K key;
         final Object value;
         volatile long lastAccessTime;
