@@ -54,6 +54,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -183,7 +184,7 @@ public class EntryProcessorTest extends HazelcastTestSupport {
         map.executeOnKeys(map.keySet(), new DeleteEntryProcessor());
         // Now the entry has been removed from the primary store but not the backup.
         // Let's kill the primary and execute the logging processor again...
-        String a_member_uiid = instance1.getPartitionService().getPartition("a").getOwner().getUuid();
+        UUID a_member_uiid = instance1.getPartitionService().getPartition("a").getOwner().getUuid();
 
         if (a_member_uiid.equals(instance1.getCluster().getLocalMember().getUuid())) {
             instance1.shutdown();
@@ -217,7 +218,7 @@ public class EntryProcessorTest extends HazelcastTestSupport {
         map.executeOnKeys(map.keySet(), new DeleteEntryProcessor());
         // Now the entry has been removed from the primary store but not the backup.
         // Let's kill the primary and execute the logging processor again...
-        String a_member_uiid = instance1.getPartitionService().getPartition("a").getOwner().getUuid();
+        UUID a_member_uiid = instance1.getPartitionService().getPartition("a").getOwner().getUuid();
         if (a_member_uiid.equals(instance1.getCluster().getLocalMember().getUuid())) {
             instance1.shutdown();
             newPrimary = instance2;
@@ -245,7 +246,7 @@ public class EntryProcessorTest extends HazelcastTestSupport {
             map.executeOnEntries(new DeleteEntryProcessor(), Predicates.equal("attr1", "foo"));
             // Now the entry has been removed from the primary store but not the backup.
             // Let's kill the primary and execute the logging processor again...
-            String a_member_uiid = instance1.getPartitionService().getPartition("a").getOwner().getUuid();
+            UUID a_member_uiid = instance1.getPartitionService().getPartition("a").getOwner().getUuid();
             HazelcastInstance newPrimary;
             if (a_member_uiid.equals(instance1.getCluster().getLocalMember().getUuid())) {
                 instance1.shutdown();
@@ -276,7 +277,7 @@ public class EntryProcessorTest extends HazelcastTestSupport {
             map.executeOnKey("a", new DeleteEntryProcessor());
             // Now the entry has been removed from the primary store but not the backup.
             // Let's kill the primary and execute the logging processor again...
-            String a_member_uiid = instance1.getPartitionService().getPartition("a").getOwner().getUuid();
+            UUID a_member_uiid = instance1.getPartitionService().getPartition("a").getOwner().getUuid();
             HazelcastInstance newPrimary;
             if (a_member_uiid.equals(instance1.getCluster().getLocalMember().getUuid())) {
                 instance1.shutdown();

@@ -26,6 +26,7 @@ import com.hazelcast.nio.serialization.PortableReader;
 import com.hazelcast.nio.serialization.PortableWriter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class PortableEntryEvent implements Portable {
 
@@ -33,12 +34,12 @@ public class PortableEntryEvent implements Portable {
     private Data value;
     private Data oldValue;
     private EntryEventType eventType;
-    private String uuid;
+    private UUID uuid;
 
     public PortableEntryEvent() {
     }
 
-    public PortableEntryEvent(Data key, Data value, Data oldValue, EntryEventType eventType, String uuid) {
+    public PortableEntryEvent(Data key, Data value, Data oldValue, EntryEventType eventType, UUID uuid) {
         this.key = key;
         this.value = value;
         this.oldValue = oldValue;
@@ -62,7 +63,7 @@ public class PortableEntryEvent implements Portable {
         return eventType;
     }
 
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 
@@ -79,7 +80,8 @@ public class PortableEntryEvent implements Portable {
     @Override
     public void writePortable(PortableWriter writer) throws IOException {
         writer.writeInt("e", eventType.getType());
-        writer.writeUTF("u", uuid);
+        writer.writeLong("u-least", uuid.getLeastSignificantBits());
+        writer.writeLong("u-most", uuid.getMostSignificantBits());
         final ObjectDataOutput out = writer.getRawDataOutput();
         key.writeData(out);
         IOUtil.writeNullableData(out, value);
@@ -89,7 +91,9 @@ public class PortableEntryEvent implements Portable {
     @Override
     public void readPortable(PortableReader reader) throws IOException {
         eventType = EntryEventType.getByType(reader.readInt("e"));
-        uuid = reader.readUTF("u");
+        long leastSig = reader.readLong("u-least");
+        long mostSig = reader.readLong("u-most");
+        uuid = new UUID(mostSig, leastSig);
         final ObjectDataInput in = reader.getRawDataInput();
         key = new Data();
         key.readData(in);

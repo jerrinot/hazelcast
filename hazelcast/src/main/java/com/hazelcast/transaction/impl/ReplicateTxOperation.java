@@ -26,11 +26,12 @@ import com.hazelcast.spi.exception.TargetNotMemberException;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 
 public final class ReplicateTxOperation extends Operation {
 
     private final List<TransactionLog> txLogs = new LinkedList<TransactionLog>();
-    private String callerUuid;
+    private UUID callerUuid;
     private String txnId;
     private long timeoutMillis;
     private long startTime;
@@ -38,7 +39,7 @@ public final class ReplicateTxOperation extends Operation {
     public ReplicateTxOperation() {
     }
 
-    public ReplicateTxOperation(List<TransactionLog> logs, String callerUuid, String txnId,
+    public ReplicateTxOperation(List<TransactionLog> logs, UUID callerUuid, String txnId,
                                 long timeoutMillis, long startTime) {
         txLogs.addAll(logs);
         this.callerUuid = callerUuid;
@@ -81,7 +82,8 @@ public final class ReplicateTxOperation extends Operation {
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
-        out.writeUTF(callerUuid);
+        out.writeLong(callerUuid.getLeastSignificantBits());
+        out.writeLong(callerUuid.getMostSignificantBits());
         out.writeUTF(txnId);
         out.writeLong(timeoutMillis);
         out.writeLong(startTime);
@@ -96,7 +98,9 @@ public final class ReplicateTxOperation extends Operation {
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
-        callerUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        callerUuid = new UUID(mostSig, leastSig);
         txnId = in.readUTF();
         timeoutMillis = in.readLong();
         startTime = in.readLong();

@@ -20,6 +20,7 @@ import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.ObjectNamespace;
 
 import java.util.Set;
+import java.util.UUID;
 
 public final class LockStoreProxy implements LockStore {
 
@@ -32,25 +33,25 @@ public final class LockStoreProxy implements LockStore {
     }
 
     @Override
-    public boolean lock(Data key, String caller, long threadId, long ttl) {
+    public boolean lock(Data key, UUID caller, long threadId, long ttl) {
         LockStore lockStore = getLockStore();
         return lockStore.lock(key, caller, threadId, ttl);
     }
 
     @Override
-    public boolean txnLock(Data key, String caller, long threadId, long ttl) {
+    public boolean txnLock(Data key, UUID caller, long threadId, long ttl) {
         LockStore lockStore = getLockStore();
         return lockStore.txnLock(key, caller, threadId, ttl);
     }
 
     @Override
-    public boolean extendLeaseTime(Data key, String caller, long threadId, long ttl) {
+    public boolean extendLeaseTime(Data key, UUID caller, long threadId, long ttl) {
         LockStore lockStore = getLockStore();
         return lockStore.extendLeaseTime(key, caller, threadId, ttl);
     }
 
     @Override
-    public boolean unlock(Data key, String caller, long threadId) {
+    public boolean unlock(Data key, UUID caller, long threadId) {
         LockStore lockStore = getLockStore();
         return lockStore.unlock(key, caller, threadId);
     }
@@ -62,7 +63,7 @@ public final class LockStoreProxy implements LockStore {
     }
 
     @Override
-    public boolean isLockedBy(Data key, String caller, long threadId) {
+    public boolean isLockedBy(Data key, UUID caller, long threadId) {
         LockStore lockStore = getLockStore();
         return lockStore.isLockedBy(key, caller, threadId);
     }
@@ -80,7 +81,7 @@ public final class LockStoreProxy implements LockStore {
     }
 
     @Override
-    public boolean canAcquireLock(Data key, String caller, long threadId) {
+    public boolean canAcquireLock(Data key, UUID caller, long threadId) {
         LockStore lockStore = getLockStore();
         return lockStore.canAcquireLock(key, caller, threadId);
     }

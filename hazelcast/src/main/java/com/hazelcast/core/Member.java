@@ -20,6 +20,7 @@ import com.hazelcast.nio.serialization.DataSerializable;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Cluster member interface. The default implementation
@@ -61,7 +62,7 @@ public interface Member extends DataSerializable, Endpoint {
      *
      * @return UUID of this member.
      */
-    String getUuid();
+    UUID getUuid();
 
     /**
      * Returns configured attributes for this member.<br/>

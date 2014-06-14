@@ -22,6 +22,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MigrationInfo implements DataSerializable {
@@ -30,7 +31,7 @@ public class MigrationInfo implements DataSerializable {
     private Address source;
     private Address destination;
     private Address master;
-    private String masterUuid;
+    private UUID masterUuid;
 
     private final AtomicBoolean processing = new AtomicBoolean(false);
     private volatile boolean valid = true;
@@ -56,11 +57,11 @@ public class MigrationInfo implements DataSerializable {
         return partitionId;
     }
 
-    public void setMasterUuid(String uuid) {
+    public void setMasterUuid(UUID uuid) {
         masterUuid = uuid;
     }
 
-    public String getMasterUuid() {
+    public UUID getMasterUuid() {
         return masterUuid;
     }
 
@@ -102,7 +103,8 @@ public class MigrationInfo implements DataSerializable {
         }
         destination.writeData(out);
 
-        out.writeUTF(masterUuid);
+        out.writeLong(masterUuid.getLeastSignificantBits());
+        out.writeLong(masterUuid.getMostSignificantBits());
         boolean b = master != null;
         out.writeBoolean(b);
         if (b) {
@@ -121,7 +123,9 @@ public class MigrationInfo implements DataSerializable {
         destination = new Address();
         destination.readData(in);
 
-        masterUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        masterUuid = new UUID(mostSig, leastSig);
         if (in.readBoolean()) {
             master = new Address();
             master.readData(in);

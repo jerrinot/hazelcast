@@ -21,6 +21,7 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.exception.TargetNotMemberException;
 
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 public final class MemberCallableTaskOperation extends BaseCallableTaskOperation
@@ -29,7 +30,7 @@ public final class MemberCallableTaskOperation extends BaseCallableTaskOperation
     public MemberCallableTaskOperation() {
     }
 
-    public MemberCallableTaskOperation(String name, String uuid, Callable callable) {
+    public MemberCallableTaskOperation(String name, UUID uuid, Callable callable) {
         super(name, uuid, callable);
     }
 

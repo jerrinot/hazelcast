@@ -23,6 +23,7 @@ import com.hazelcast.nio.serialization.DataSerializable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 final class ConditionInfo implements DataSerializable {
 
@@ -36,12 +37,12 @@ final class ConditionInfo implements DataSerializable {
         this.conditionId = conditionId;
     }
 
-    public boolean addWaiter(String caller, long threadId) {
+    public boolean addWaiter(UUID caller, long threadId) {
         ConditionWaiter waiter = new ConditionWaiter(caller, threadId);
         return waiters.put(waiter, waiter) == null;
     }
 
-    public boolean removeWaiter(String caller, long threadId) {
+    public boolean removeWaiter(UUID caller, long threadId) {
         ConditionWaiter waiter = new ConditionWaiter(caller, threadId);
         return waiters.remove(waiter) != null;
     }
@@ -54,7 +55,7 @@ final class ConditionInfo implements DataSerializable {
         return waiters.size();
     }
 
-    public boolean startWaiter(String caller, long threadId) {
+    public boolean startWaiter(UUID caller, long threadId) {
         ConditionWaiter key = new ConditionWaiter(caller, threadId);
         ConditionWaiter waiter = waiters.get(key);
         if (waiter == null) {
@@ -76,7 +77,8 @@ final class ConditionInfo implements DataSerializable {
         out.writeInt(len);
         if (len > 0) {
             for (ConditionWaiter w : waiters.values()) {
-                out.writeUTF(w.caller);
+                out.writeLong(w.caller.getLeastSignificantBits());
+                out.writeLong(w.caller.getMostSignificantBits());
                 out.writeLong(w.threadId);
             }
         }
@@ -88,18 +90,21 @@ final class ConditionInfo implements DataSerializable {
         int len = in.readInt();
         if (len > 0) {
             for (int i = 0; i < len; i++) {
-                ConditionWaiter waiter = new ConditionWaiter(in.readUTF(), in.readLong());
+                long leastSig = in.readLong();
+                long mostSig = in.readLong();
+                UUID uuid = new UUID(mostSig, leastSig);
+                ConditionWaiter waiter = new ConditionWaiter(uuid, in.readLong());
                 waiters.put(waiter, waiter);
             }
         }
     }
 
     private static class ConditionWaiter {
-        private final String caller;
+        private final UUID caller;
         private final long threadId;
         private transient boolean started;
 
-        ConditionWaiter(String caller, long threadId) {
+        ConditionWaiter(UUID caller, long threadId) {
             this.caller = caller;
             this.threadId = threadId;
         }

@@ -25,6 +25,7 @@ import com.hazelcast.security.Credentials;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class JoinRequest extends JoinMessage implements DataSerializable {
 
@@ -35,7 +36,7 @@ public class JoinRequest extends JoinMessage implements DataSerializable {
     public JoinRequest() {
     }
 
-    public JoinRequest(byte packetVersion, int buildNumber, Address address, String uuid, ConfigCheck config,
+    public JoinRequest(byte packetVersion, int buildNumber, Address address, UUID uuid, ConfigCheck config,
                        Credentials credentials, int memberCount, int tryCount, Map<String, Object> attributes) {
         super(packetVersion, buildNumber, address, uuid, config, memberCount);
         this.credentials = credentials;

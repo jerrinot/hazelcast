@@ -30,6 +30,7 @@ import com.hazelcast.spi.Operation;
 
 import java.io.IOException;
 import java.security.Permission;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 /**
@@ -38,14 +39,14 @@ import java.util.concurrent.Callable;
 public final class TargetCallableRequest extends TargetClientRequest {
 
     private String name;
-    private String uuid;
+    private UUID uuid;
     private Callable callable;
     private Address target;
 
     public TargetCallableRequest() {
     }
 
-    public TargetCallableRequest(String name, String uuid, Callable callable, Address target) {
+    public TargetCallableRequest(String name, UUID uuid, Callable callable, Address target) {
         this.name = name;
         this.uuid = uuid;
         this.callable = callable;
@@ -85,7 +86,8 @@ public final class TargetCallableRequest extends TargetClientRequest {
     @Override
     public void write(PortableWriter writer) throws IOException {
         writer.writeUTF("n", name);
-        writer.writeUTF("u", uuid);
+        writer.writeLong("u-l", uuid.getLeastSignificantBits());
+        writer.writeLong("u-m", uuid.getMostSignificantBits());
         ObjectDataOutput rawDataOutput = writer.getRawDataOutput();
         rawDataOutput.writeObject(callable);
         target.writeData(rawDataOutput);
@@ -94,7 +96,9 @@ public final class TargetCallableRequest extends TargetClientRequest {
     @Override
     public void read(PortableReader reader) throws IOException {
         name = reader.readUTF("n");
-        uuid = reader.readUTF("u");
+        long leastSig = reader.readLong("u-l");
+        long mostSig = reader.readLong("u-m");
+        uuid = new UUID(mostSig, leastSig);
         ObjectDataInput rawDataInput = reader.getRawDataInput();
         callable = rawDataInput.readObject();
         target = new Address();

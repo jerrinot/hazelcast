@@ -58,12 +58,7 @@ import com.hazelcast.util.executor.ExecutorType;
 
 import javax.security.auth.login.LoginException;
 import java.security.Permission;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
@@ -220,7 +215,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
         return node.getLogger(className);
     }
 
-    Set<ClientEndpoint> getEndpoints(String uuid) {
+    Set<ClientEndpoint> getEndpoints(UUID uuid) {
         Set<ClientEndpoint> endpointSet = new HashSet<ClientEndpoint>();
         for (ClientEndpoint endpoint : endpoints.values()) {
             if (uuid.equals(endpoint.getUuid())) {
@@ -240,7 +235,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
             return null;
         }
 
-        String clientUuid = UuidUtil.createClientUuid(conn.getEndPoint());
+        UUID clientUuid = UuidUtil.createClientUuid(conn.getEndPoint());
         ClientEndpoint endpoint = new ClientEndpoint(ClientEngineImpl.this, conn, clientUuid);
         if (endpoints.putIfAbsent(conn, endpoint) != null) {
             logger.severe("An endpoint already exists for connection:" + conn);
@@ -333,7 +328,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
             return;
         }
 
-        final String uuid = event.getMember().getUuid();
+        final UUID uuid = event.getMember().getUuid();
         try {
             nodeEngine.getExecutionService().schedule(new Runnable() {
                 @Override
@@ -341,7 +336,7 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
                     Iterator<ClientEndpoint> iterator = endpoints.values().iterator();
                     while (iterator.hasNext()) {
                         ClientEndpoint endpoint = iterator.next();
-                        String ownerUuid = endpoint.getPrincipal().getOwnerUuid();
+                        UUID ownerUuid = endpoint.getPrincipal().getOwnerUuid();
                         if (uuid.equals(ownerUuid)) {
                             iterator.remove();
                             destroyEndpoint(endpoint, true);
@@ -553,8 +548,8 @@ public class ClientEngineImpl implements ClientEngine, CoreService,
                     return;
                 }
 
-                String localMemberUuid = node.getLocalMember().getUuid();
-                String ownerUuid = endpoint.getPrincipal().getOwnerUuid();
+                UUID localMemberUuid = node.getLocalMember().getUuid();
+                UUID ownerUuid = endpoint.getPrincipal().getOwnerUuid();
                 if (localMemberUuid.equals(ownerUuid)) {
                     doRemoveEndpoint(connection, endpoint);
                 }

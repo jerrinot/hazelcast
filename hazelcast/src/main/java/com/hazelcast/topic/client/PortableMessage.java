@@ -23,17 +23,18 @@ import com.hazelcast.nio.serialization.PortableWriter;
 import com.hazelcast.topic.TopicPortableHook;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class PortableMessage implements Portable {
 
     private Data message;
     private long publishTime;
-    private String uuid;
+    private UUID uuid;
 
     public PortableMessage() {
     }
 
-    public PortableMessage(Data message, long publishTime, String uuid) {
+    public PortableMessage(Data message, long publishTime, UUID uuid) {
         this.message = message;
         this.publishTime = publishTime;
         this.uuid = uuid;
@@ -47,7 +48,7 @@ public class PortableMessage implements Portable {
         return publishTime;
     }
 
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 
@@ -64,14 +65,17 @@ public class PortableMessage implements Portable {
     @Override
     public void writePortable(PortableWriter writer) throws IOException {
         writer.writeLong("pt", publishTime);
-        writer.writeUTF("u", uuid);
+        writer.writeLong("u-l", uuid.getLeastSignificantBits());
+        writer.writeLong("u-m", uuid.getMostSignificantBits());
         message.writeData(writer.getRawDataOutput());
     }
 
     @Override
     public void readPortable(PortableReader reader) throws IOException {
         publishTime = reader.readLong("pt");
-        uuid = reader.readUTF("u");
+        long leastSig = reader.readLong("u-l");
+        long mostSig = reader.readLong("u-m");
+        uuid = new UUID(mostSig, leastSig);
         message = new Data();
         message.readData(reader.getRawDataInput());
     }

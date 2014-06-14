@@ -43,6 +43,7 @@ import com.hazelcast.util.scheduler.ScheduleType;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -173,7 +174,7 @@ public final class LockServiceImpl implements LockService, ManagedService, Remot
     @Override
     public void memberRemoved(MembershipServiceEvent event) {
         final MemberImpl member = event.getMember();
-        final String uuid = member.getUuid();
+        final UUID uuid = member.getUuid();
         releaseLocksOf(uuid);
     }
 
@@ -181,7 +182,7 @@ public final class LockServiceImpl implements LockService, ManagedService, Remot
     public void memberAttributeChanged(MemberAttributeServiceEvent event) {
     }
 
-    private void releaseLocksOf(String uuid) {
+    private void releaseLocksOf(UUID uuid) {
         for (LockStoreContainer container : containers) {
             for (LockStoreImpl lockStore : container.getLockStores()) {
                 releaseLock(uuid, container, lockStore);
@@ -189,7 +190,7 @@ public final class LockServiceImpl implements LockService, ManagedService, Remot
         }
     }
 
-    private void releaseLock(String uuid, LockStoreContainer container, LockStoreImpl lockStore) {
+    private void releaseLock(UUID uuid, LockStoreContainer container, LockStoreImpl lockStore) {
         Collection<LockResource> locks = lockStore.getLocks();
         for (LockResource lock : locks) {
             Data key = lock.getKey();
@@ -280,7 +281,7 @@ public final class LockServiceImpl implements LockService, ManagedService, Remot
     }
 
     @Override
-    public void clientDisconnected(String clientUuid) {
+    public void clientDisconnected(UUID clientUuid) {
         releaseLocksOf(clientUuid);
     }
 

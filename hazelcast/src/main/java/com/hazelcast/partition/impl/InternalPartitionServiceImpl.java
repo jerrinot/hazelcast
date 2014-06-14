@@ -55,17 +55,7 @@ import com.hazelcast.util.scheduler.ScheduleType;
 import com.hazelcast.util.scheduler.ScheduledEntry;
 import com.hazelcast.util.scheduler.ScheduledEntryProcessor;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -348,7 +338,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         }
     }
 
-    private void rollbackActiveMigrationsFromPreviousMaster(final String currentMasterUuid) {
+    private void rollbackActiveMigrationsFromPreviousMaster(final UUID currentMasterUuid) {
         lock.lock();
         try {
             if (!activeMigrations.isEmpty()) {
@@ -605,7 +595,7 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                 MigrationInfo oldMigration;
                 MigrationInfo newMigration;
                 MemberImpl masterMember = getMasterMember();
-                String master = masterMember.getUuid();
+                UUID master = masterMember.getUuid();
                 //todo: 2 different branches with the same content.
                 if (!master.equals(currentMigrationInfo.getMasterUuid())) {
                     // master changed

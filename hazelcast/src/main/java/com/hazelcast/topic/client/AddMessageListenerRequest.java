@@ -32,6 +32,7 @@ import com.hazelcast.topic.TopicService;
 
 import java.io.IOException;
 import java.security.Permission;
+import java.util.UUID;
 
 public class AddMessageListenerRequest extends CallableClientRequest implements RetryableRequest {
 
@@ -103,7 +104,7 @@ public class AddMessageListenerRequest extends CallableClientRequest implements 
             }
 
             Data messageData = clientEngine.toData(message.getMessageObject());
-            String publisherUuid = message.getPublishingMember().getUuid();
+            UUID publisherUuid = message.getPublishingMember().getUuid();
             PortableMessage portableMessage = new PortableMessage(messageData, message.getPublishTime(), publisherUuid);
             endpoint.sendEvent(portableMessage, callId);
         }

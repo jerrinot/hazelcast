@@ -24,18 +24,12 @@ import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.util.Clock;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 final class LockResourceImpl implements DataSerializable, LockResource {
 
     private Data key;
-    private String owner;
+    private UUID owner;
     private long threadId;
     private int lockCount;
     private long expirationTime = -1;
@@ -65,15 +59,15 @@ final class LockResourceImpl implements DataSerializable, LockResource {
     }
 
     @Override
-    public boolean isLockedBy(String owner, long threadId) {
+    public boolean isLockedBy(UUID owner, long threadId) {
         return (this.threadId == threadId && owner != null && owner.equals(this.owner));
     }
 
-    boolean lock(String owner, long threadId, long leaseTime) {
+    boolean lock(UUID owner, long threadId, long leaseTime) {
         return lock(owner, threadId, leaseTime, false);
     }
 
-    boolean lock(String owner, long threadId, long leaseTime, boolean transactional) {
+    boolean lock(UUID owner, long threadId, long leaseTime, boolean transactional) {
         if (lockCount == 0) {
             this.owner = owner;
             this.threadId = threadId;
@@ -92,7 +86,7 @@ final class LockResourceImpl implements DataSerializable, LockResource {
         return false;
     }
 
-    boolean extendLeaseTime(String caller, long threadId, long leaseTime) {
+    boolean extendLeaseTime(UUID caller, long threadId, long leaseTime) {
         if (!isLockedBy(caller, threadId)) {
             return false;
         }
@@ -117,7 +111,7 @@ final class LockResourceImpl implements DataSerializable, LockResource {
         }
     }
 
-    boolean unlock(String owner, long threadId) {
+    boolean unlock(UUID owner, long threadId) {
         if (lockCount == 0) {
             return false;
         }
@@ -133,11 +127,11 @@ final class LockResourceImpl implements DataSerializable, LockResource {
         return true;
     }
 
-    boolean canAcquireLock(String caller, long threadId) {
+    boolean canAcquireLock(UUID caller, long threadId) {
         return lockCount == 0 || getThreadId() == threadId && getOwner().equals(caller);
     }
 
-    boolean addAwait(String conditionId, String caller, long threadId) {
+    boolean addAwait(String conditionId, UUID caller, long threadId) {
         if (conditions == null) {
             conditions = new HashMap<String, ConditionInfo>(2);
         }
@@ -150,7 +144,7 @@ final class LockResourceImpl implements DataSerializable, LockResource {
         return condition.addWaiter(caller, threadId);
     }
 
-    boolean removeAwait(String conditionId, String caller, long threadId) {
+    boolean removeAwait(String conditionId, UUID caller, long threadId) {
         if (conditions == null) {
             return false;
         }
@@ -167,7 +161,7 @@ final class LockResourceImpl implements DataSerializable, LockResource {
         return ok;
     }
 
-    boolean startAwaiting(String conditionId, String caller, long threadId) {
+    boolean startAwaiting(String conditionId, UUID caller, long threadId) {
         if (conditions == null) {
             return false;
         }
@@ -254,7 +248,7 @@ final class LockResourceImpl implements DataSerializable, LockResource {
     }
 
     @Override
-    public String getOwner() {
+    public UUID getOwner() {
         return owner;
     }
 
@@ -294,7 +288,8 @@ final class LockResourceImpl implements DataSerializable, LockResource {
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         key.writeData(out);
-        out.writeUTF(owner);
+        out.writeLong(owner.getLeastSignificantBits());
+        out.writeLong(owner.getMostSignificantBits());
         out.writeLong(threadId);
         out.writeInt(lockCount);
         out.writeLong(expirationTime);
@@ -341,7 +336,9 @@ final class LockResourceImpl implements DataSerializable, LockResource {
     public void readData(ObjectDataInput in) throws IOException {
         key = new Data();
         key.readData(in);
-        owner = in.readUTF();
+        long uuidLeastSignificant = in.readLong();
+        long uuidMostSignificant = in.readLong();
+        owner = new UUID(uuidLeastSignificant, uuidMostSignificant);
         threadId = in.readLong();
         lockCount = in.readInt();
         expirationTime = in.readLong();

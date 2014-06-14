@@ -37,6 +37,7 @@ import com.hazelcast.security.permission.MultiMapPermission;
 import com.hazelcast.spi.impl.PortableEntryEvent;
 import java.io.IOException;
 import java.security.Permission;
+import java.util.UUID;
 
 public class AddEntryListenerRequest extends CallableClientRequest implements RetryableRequest {
 
@@ -69,7 +70,7 @@ public class AddEntryListenerRequest extends CallableClientRequest implements Re
                     Data value = clientEngine.toData(event.getValue());
                     Data oldValue = clientEngine.toData(event.getOldValue());
                     final EntryEventType type = event.getEventType();
-                    final String uuid = event.getMember().getUuid();
+                    final UUID uuid = event.getMember().getUuid();
                     PortableEntryEvent portableEntryEvent = new PortableEntryEvent(key, value, oldValue, type, uuid);
                     endpoint.sendEvent(portableEntryEvent, getCallId());
                 }

@@ -5,16 +5,17 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.spi.AbstractOperation;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class TraceableIsStillExecutingOperation extends AbstractOperation {
 
     private String serviceName;
-    private Object identifier;
+    private UUID identifier;
 
     TraceableIsStillExecutingOperation() {
     }
 
-    public TraceableIsStillExecutingOperation(String serviceName, Object identifier) {
+    public TraceableIsStillExecutingOperation(String serviceName, UUID identifier) {
         this.serviceName = serviceName;
         this.identifier = identifier;
     }
@@ -37,13 +38,16 @@ public class TraceableIsStillExecutingOperation extends AbstractOperation {
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         serviceName = in.readUTF();
-        identifier = in.readObject();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        identifier = new UUID(mostSig, leastSig);
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeUTF(serviceName);
-        out.writeObject(identifier);
+        out.writeLong(identifier.getLeastSignificantBits());
+        out.writeLong(identifier.getMostSignificantBits());
     }
 }

@@ -25,10 +25,11 @@ import com.hazelcast.nio.serialization.DataSerializable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class MemberInfo implements DataSerializable {
     Address address;
-    String uuid;
+    UUID uuid;
     Map<String, Object> attributes;
 
     public MemberInfo() {
@@ -39,7 +40,7 @@ public class MemberInfo implements DataSerializable {
         this.address = address;
     }
 
-    public MemberInfo(Address address, String uuid, Map<String, Object> attributes) {
+    public MemberInfo(Address address, UUID uuid, Map<String, Object> attributes) {
         super();
         this.address = address;
         this.uuid = uuid;
@@ -55,7 +56,9 @@ public class MemberInfo implements DataSerializable {
         address = new Address();
         address.readData(in);
         if (in.readBoolean()) {
-            uuid = in.readUTF();
+            long leastSig = in.readLong();
+            long mostSig = in.readLong();
+            uuid = new UUID(mostSig, leastSig);
         }
         int size = in.readInt();
         if (size > 0) {
@@ -74,7 +77,8 @@ public class MemberInfo implements DataSerializable {
         boolean hasUuid = uuid != null;
         out.writeBoolean(hasUuid);
         if (hasUuid) {
-            out.writeUTF(uuid);
+            out.writeLong(uuid.getLeastSignificantBits());
+            out.writeLong(uuid.getMostSignificantBits());
         }
         out.writeInt(attributes == null ? 0 : attributes.size());
         if (attributes != null) {

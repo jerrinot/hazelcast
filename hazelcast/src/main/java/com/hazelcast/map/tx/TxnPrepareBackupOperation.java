@@ -24,13 +24,14 @@ import com.hazelcast.spi.BackupOperation;
 import com.hazelcast.transaction.TransactionException;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class TxnPrepareBackupOperation extends KeyBasedMapOperation implements BackupOperation {
 
-    private String lockOwner;
+    private UUID lockOwner;
     private long lockThreadId;
 
-    protected TxnPrepareBackupOperation(String name, Data dataKey, String lockOwner, long lockThreadId) {
+    protected TxnPrepareBackupOperation(String name, Data dataKey, UUID lockOwner, long lockThreadId) {
         super(name, dataKey);
         this.lockOwner = lockOwner;
         this.lockThreadId = lockThreadId;
@@ -54,14 +55,17 @@ public class TxnPrepareBackupOperation extends KeyBasedMapOperation implements B
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(lockOwner);
+        out.writeLong(lockOwner.getLeastSignificantBits());
+        out.writeLong(lockOwner.getMostSignificantBits());
         out.writeLong(lockThreadId);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        lockOwner = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        lockOwner = new UUID(mostSig, leastSig);
         lockThreadId = in.readLong();
     }
 }

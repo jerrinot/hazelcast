@@ -19,26 +19,27 @@ package com.hazelcast.concurrent.lock;
 import com.hazelcast.nio.serialization.Data;
 
 import java.util.Set;
+import java.util.UUID;
 
 public interface LockStore {
 
-    boolean lock(Data key, String caller, long threadId, long ttl);
+    boolean lock(Data key, UUID caller, long threadId, long ttl);
 
-    boolean txnLock(Data key, String caller, long threadId, long ttl);
+    boolean txnLock(Data key, UUID caller, long threadId, long ttl);
 
-    boolean extendLeaseTime(Data key, String caller, long threadId, long ttl);
+    boolean extendLeaseTime(Data key, UUID caller, long threadId, long ttl);
 
-    boolean unlock(Data key, String caller, long threadId);
+    boolean unlock(Data key, UUID caller, long threadId);
 
     boolean isLocked(Data key);
 
-    boolean isLockedBy(Data key, String caller, long threadId);
+    boolean isLockedBy(Data key, UUID caller, long threadId);
 
     int getLockCount(Data key);
 
     long getRemainingLeaseTime(Data key);
 
-    boolean canAcquireLock(Data key, String caller, long threadId);
+    boolean canAcquireLock(Data key, UUID caller, long threadId);
 
     Set<Data> getLockedKeys();
 

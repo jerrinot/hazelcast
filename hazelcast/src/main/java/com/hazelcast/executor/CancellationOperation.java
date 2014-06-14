@@ -21,17 +21,18 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.spi.Operation;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public final class CancellationOperation extends Operation {
 
-    private String uuid;
+    private UUID uuid;
     private boolean interrupt;
     private boolean response;
 
     public CancellationOperation() {
     }
 
-    public CancellationOperation(String uuid, boolean interrupt) {
+    public CancellationOperation(UUID uuid, boolean interrupt) {
         this.uuid = uuid;
         this.interrupt = interrupt;
     }
@@ -62,13 +63,16 @@ public final class CancellationOperation extends Operation {
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
-        out.writeUTF(uuid);
+        out.writeLong(uuid.getLeastSignificantBits());
+        out.writeLong(uuid.getMostSignificantBits());
         out.writeBoolean(interrupt);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
-        uuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        uuid = new UUID(mostSig, leastSig);
         interrupt = in.readBoolean();
     }
 }

@@ -53,6 +53,7 @@ import com.hazelcast.wan.WanReplicationService;
 
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class NodeEngineImpl
@@ -333,7 +334,7 @@ public class NodeEngineImpl
     }
 
     @PrivateApi
-    public void onClientDisconnected(String clientUuid) {
+    public void onClientDisconnected(UUID clientUuid) {
         waitNotifyService.onClientDisconnected(clientUuid);
     }
 

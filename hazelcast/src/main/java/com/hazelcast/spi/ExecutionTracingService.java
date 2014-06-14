@@ -18,11 +18,13 @@ package com.hazelcast.spi;
 
 import com.hazelcast.nio.Address;
 
+import java.util.UUID;
+
 /**
  * Service that keeps registry of operations' execution/lifecycle.
  */
 public interface ExecutionTracingService {
 
-    boolean isOperationExecuting(Address callerAddress, String callerUuid, Object identifier);
+    boolean isOperationExecuting(Address callerAddress, UUID callerUuid, Object identifier);
 
 }

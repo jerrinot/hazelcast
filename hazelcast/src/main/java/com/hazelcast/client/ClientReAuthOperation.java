@@ -23,16 +23,17 @@ import com.hazelcast.spi.UrgentSystemOperation;
 
 import java.io.IOException;
 import java.util.Set;
+import java.util.UUID;
 
 public class ClientReAuthOperation extends AbstractOperation implements UrgentSystemOperation {
 
-    private String clientUuid;
+    private UUID clientUuid;
     private boolean firstConnection;
 
     public ClientReAuthOperation() {
     }
 
-    public ClientReAuthOperation(String clientUuid, boolean firstConnection) {
+    public ClientReAuthOperation(UUID clientUuid, boolean firstConnection) {
         this.clientUuid = clientUuid;
         this.firstConnection = firstConnection;
     }
@@ -64,14 +65,17 @@ public class ClientReAuthOperation extends AbstractOperation implements UrgentSy
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(clientUuid);
+        out.writeLong(clientUuid.getLeastSignificantBits());
+        out.writeLong(clientUuid.getMostSignificantBits());
         out.writeBoolean(firstConnection);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        clientUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        clientUuid = new UUID(mostSig, leastSig);
         firstConnection = in.readBoolean();
     }
 }

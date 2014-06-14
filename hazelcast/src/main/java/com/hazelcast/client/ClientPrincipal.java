@@ -21,25 +21,26 @@ import com.hazelcast.nio.serialization.PortableReader;
 import com.hazelcast.nio.serialization.PortableWriter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public final class ClientPrincipal implements Portable {
 
-    private String uuid;
-    private String ownerUuid;
+    private UUID uuid;
+    private UUID ownerUuid;
 
     public ClientPrincipal() {
     }
 
-    public ClientPrincipal(String uuid, String ownerUuid) {
+    public ClientPrincipal(UUID uuid, UUID ownerUuid) {
         this.uuid = uuid;
         this.ownerUuid = ownerUuid;
     }
 
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 
-    public String getOwnerUuid() {
+    public UUID getOwnerUuid() {
         return ownerUuid;
     }
 
@@ -55,14 +56,20 @@ public final class ClientPrincipal implements Portable {
 
     @Override
     public void writePortable(PortableWriter writer) throws IOException {
-        writer.writeUTF("uuid", uuid);
-        writer.writeUTF("ownerUuid", ownerUuid);
+        writer.writeLong("uuid-least", uuid.getLeastSignificantBits());
+        writer.writeLong("uuid-most", uuid.getMostSignificantBits());
+        writer.writeLong("ownerUuid-least", ownerUuid.getLeastSignificantBits());
+        writer.writeLong("ownerUuid-most", ownerUuid.getMostSignificantBits());
     }
 
     @Override
     public void readPortable(PortableReader reader) throws IOException {
-        uuid = reader.readUTF("uuid");
-        ownerUuid = reader.readUTF("ownerUuid");
+        long leastSig = reader.readLong("uuid-least");
+        long mostSig = reader.readLong("uuid-most");
+        uuid = new UUID(mostSig, leastSig);
+        leastSig = reader.readLong("ownerUuid-least");
+        mostSig = reader.readLong("ownerUuid-most");
+        ownerUuid = new UUID(mostSig, leastSig);
     }
 
     @Override

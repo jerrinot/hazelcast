@@ -31,6 +31,7 @@ import com.hazelcast.spi.InvocationBuilder;
 
 import java.io.IOException;
 import java.security.Permission;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 public class CancellationRequest extends InvocationClientRequest {
@@ -38,7 +39,7 @@ public class CancellationRequest extends InvocationClientRequest {
     static final int CANCEL_TRY_COUNT = 50;
     static final int CANCEL_TRY_PAUSE_MILLIS = 250;
 
-    private String uuid;
+    private UUID uuid;
     private Address target;
     private int partitionId = -1;
     private boolean interrupt;
@@ -46,13 +47,13 @@ public class CancellationRequest extends InvocationClientRequest {
     public CancellationRequest() {
     }
 
-    public CancellationRequest(String uuid, Address target, boolean interrupt) {
+    public CancellationRequest(UUID uuid, Address target, boolean interrupt) {
         this.uuid = uuid;
         this.target = target;
         this.interrupt = interrupt;
     }
 
-    public CancellationRequest(String uuid, int partitionId, boolean interrupt) {
+    public CancellationRequest(UUID uuid, int partitionId, boolean interrupt) {
         this.uuid = uuid;
         this.partitionId = partitionId;
         this.interrupt = interrupt;
@@ -102,7 +103,8 @@ public class CancellationRequest extends InvocationClientRequest {
 
     @Override
     public void write(PortableWriter writer) throws IOException {
-        writer.writeUTF("u", uuid);
+        writer.writeLong("u-l", uuid.getLeastSignificantBits());
+        writer.writeLong("u-m", uuid.getMostSignificantBits());
         writer.writeInt("p", partitionId);
         writer.writeBoolean("i", interrupt);
         ObjectDataOutput rawDataOutput = writer.getRawDataOutput();
@@ -111,7 +113,9 @@ public class CancellationRequest extends InvocationClientRequest {
 
     @Override
     public void read(PortableReader reader) throws IOException {
-        uuid = reader.readUTF("u");
+        long leastSig = reader.readLong("u-l");
+        long mostSig = reader.readLong("u-m");
+        uuid = new UUID(mostSig, leastSig);
         partitionId = reader.readInt("p");
         interrupt = reader.readBoolean("i");
         ObjectDataInput rawDataInput = reader.getRawDataInput();

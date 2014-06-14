@@ -34,16 +34,10 @@ import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.Clock;
+import com.hazelcast.util.UuidUtil;
 import com.hazelcast.util.executor.CompletedFuture;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -186,7 +180,7 @@ public class ExecutorServiceProxy
 
         Callable<T> callable = createRunnableAdapter(task);
         NodeEngine nodeEngine = getNodeEngine();
-        String uuid = buildRandomUuidString();
+        UUID uuid = UuidUtil.buildRandomUUID();
         int partitionId = getTaskPartitionId(callable);
 
         CallableTaskOperation op = new CallableTaskOperation(name, uuid, callable);
@@ -223,7 +217,7 @@ public class ExecutorServiceProxy
             throw new RejectedExecutionException(getRejectionMessage());
         }
         NodeEngine nodeEngine = getNodeEngine();
-        String uuid = buildRandomUuidString();
+        UUID uuid = UuidUtil.buildRandomUUID();
 
         boolean sync = !preventSync && checkSync();
         CallableTaskOperation op = new CallableTaskOperation(name, uuid, task);
@@ -283,7 +277,7 @@ public class ExecutorServiceProxy
             throw new RejectedExecutionException(getRejectionMessage());
         }
         NodeEngine nodeEngine = getNodeEngine();
-        String uuid = buildRandomUuidString();
+        UUID uuid = UuidUtil.buildRandomUUID();
         Address target = ((MemberImpl) member).getAddress();
 
         boolean sync = checkSync();

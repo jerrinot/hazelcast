@@ -37,6 +37,7 @@ import com.hazelcast.transaction.TransactionalObject;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 final class TransactionContextImpl implements TransactionContext {
@@ -49,7 +50,7 @@ final class TransactionContextImpl implements TransactionContext {
     private XAResourceImpl xaResource;
 
     TransactionContextImpl(TransactionManagerServiceImpl transactionManagerService, NodeEngineImpl nodeEngine,
-                           TransactionOptions options, String ownerUuid) {
+                           TransactionOptions options, UUID ownerUuid) {
         this.transactionManager = transactionManagerService;
         this.nodeEngine = nodeEngine;
         this.transaction = new TransactionImpl(transactionManagerService, nodeEngine, options, ownerUuid);

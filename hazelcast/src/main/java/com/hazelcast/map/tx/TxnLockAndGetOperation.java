@@ -26,16 +26,17 @@ import com.hazelcast.spi.ResponseHandler;
 import com.hazelcast.transaction.TransactionException;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class TxnLockAndGetOperation extends LockAwareOperation {
 
     private VersionedValue response;
-    private String ownerUuid;
+    private UUID ownerUuid;
 
     public TxnLockAndGetOperation() {
     }
 
-    public TxnLockAndGetOperation(String name, Data dataKey, long timeout, long ttl, String ownerUuid) {
+    public TxnLockAndGetOperation(String name, Data dataKey, long timeout, long ttl, UUID ownerUuid) {
         super(name, dataKey, ttl);
         this.ownerUuid = ownerUuid;
         setWaitTimeout(timeout);
@@ -69,13 +70,16 @@ public class TxnLockAndGetOperation extends LockAwareOperation {
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(ownerUuid);
+        out.writeLong(ownerUuid.getLeastSignificantBits());
+        out.writeLong(ownerUuid.getMostSignificantBits());
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        ownerUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        ownerUuid = new UUID(mostSig, leastSig);
     }
 
 

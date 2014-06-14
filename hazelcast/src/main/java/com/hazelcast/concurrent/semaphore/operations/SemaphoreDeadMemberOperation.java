@@ -27,16 +27,17 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.WaitNotifyKey;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class SemaphoreDeadMemberOperation extends SemaphoreBackupAwareOperation
         implements Notifier, IdentifiedDataSerializable {
 
-    private String firstCaller;
+    private UUID firstCaller;
 
     public SemaphoreDeadMemberOperation() {
     }
 
-    public SemaphoreDeadMemberOperation(String name, String firstCaller) {
+    public SemaphoreDeadMemberOperation(String name, UUID firstCaller) {
         super(name, -1);
         this.firstCaller = firstCaller;
     }
@@ -65,13 +66,16 @@ public class SemaphoreDeadMemberOperation extends SemaphoreBackupAwareOperation
     @Override
     public void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(firstCaller);
+        out.writeLong(firstCaller.getLeastSignificantBits());
+        out.writeLong(firstCaller.getMostSignificantBits());
     }
 
     @Override
     public void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        firstCaller = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        firstCaller = new UUID(mostSig, leastSig);
     }
 
     @Override

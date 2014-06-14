@@ -23,6 +23,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.executor.DelegatingFuture;
 
+import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.Future;
 
@@ -34,12 +35,12 @@ final class CancellableDelegatingFuture<V> extends DelegatingFuture<V> {
     public static final int CANCEL_TRY_PAUSE_MILLIS = 250;
 
     private final NodeEngine nodeEngine;
-    private final String uuid;
+    private final UUID uuid;
     private final int partitionId;
     private final Address target;
     private volatile boolean cancelled;
 
-    CancellableDelegatingFuture(ICompletableFuture future, NodeEngine nodeEngine, String uuid, int partitionId) {
+    CancellableDelegatingFuture(ICompletableFuture future, NodeEngine nodeEngine, UUID uuid, int partitionId) {
         super(future, nodeEngine.getSerializationService());
         this.nodeEngine = nodeEngine;
         this.uuid = uuid;
@@ -47,7 +48,7 @@ final class CancellableDelegatingFuture<V> extends DelegatingFuture<V> {
         this.target = null;
     }
 
-    CancellableDelegatingFuture(ICompletableFuture future, NodeEngine nodeEngine, String uuid, Address target) {
+    CancellableDelegatingFuture(ICompletableFuture future, NodeEngine nodeEngine, UUID uuid, Address target) {
         super(future, nodeEngine.getSerializationService());
         this.nodeEngine = nodeEngine;
         this.uuid = uuid;
@@ -56,7 +57,7 @@ final class CancellableDelegatingFuture<V> extends DelegatingFuture<V> {
     }
 
     CancellableDelegatingFuture(ICompletableFuture future, V defaultValue, NodeEngine nodeEngine,
-                                String uuid, int partitionId) {
+                                UUID uuid, int partitionId) {
         super(future, nodeEngine.getSerializationService(), defaultValue);
         this.nodeEngine = nodeEngine;
         this.uuid = uuid;

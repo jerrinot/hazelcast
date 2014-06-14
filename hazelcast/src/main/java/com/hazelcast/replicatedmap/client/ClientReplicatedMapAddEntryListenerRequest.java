@@ -34,6 +34,7 @@ import com.hazelcast.security.permission.ReplicatedMapPermission;
 
 import java.io.IOException;
 import java.security.Permission;
+import java.util.UUID;
 
 /**
  * Client request class for {@link com.hazelcast.core.ReplicatedMap#addEntryListener(com.hazelcast.core.EntryListener)}
@@ -82,7 +83,7 @@ public class ClientReplicatedMapAddEntryListenerRequest
                 Object value = event.getValue();
                 Object oldValue = event.getOldValue();
                 EntryEventType eventType = event.getEventType();
-                String uuid = event.getMember().getUuid();
+                UUID uuid = event.getMember().getUuid();
                 Portable portableEntryEvent = new ReplicatedMapPortableEntryEvent(key, value, oldValue, eventType, uuid);
                 endpoint.sendEvent(portableEntryEvent, getCallId());
             }

@@ -23,12 +23,13 @@ import com.hazelcast.nio.serialization.DataSerializable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class RecoveredTransaction implements DataSerializable {
 
     private List<TransactionLog> txLogs;
     private SerializableXID xid;
-    private String callerUuid;
+    private UUID callerUuid;
     private String txnId;
     private long timeoutMillis;
     private long startTime;
@@ -52,11 +53,11 @@ public class RecoveredTransaction implements DataSerializable {
         this.xid = xid;
     }
 
-    public String getCallerUuid() {
+    public UUID getCallerUuid() {
         return callerUuid;
     }
 
-    public void setCallerUuid(String callerUuid) {
+    public void setCallerUuid(UUID callerUuid) {
         this.callerUuid = callerUuid;
     }
 
@@ -87,7 +88,8 @@ public class RecoveredTransaction implements DataSerializable {
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(xid);
-        out.writeUTF(callerUuid);
+        out.writeLong(callerUuid.getLeastSignificantBits());
+        out.writeLong(callerUuid.getMostSignificantBits());
         out.writeUTF(txnId);
         out.writeLong(timeoutMillis);
         out.writeLong(startTime);
@@ -100,7 +102,9 @@ public class RecoveredTransaction implements DataSerializable {
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         xid = in.readObject();
-        callerUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        callerUuid = new UUID(mostSig, leastSig);
         txnId = in.readUTF();
         timeoutMillis = in.readLong();
         startTime = in.readLong();

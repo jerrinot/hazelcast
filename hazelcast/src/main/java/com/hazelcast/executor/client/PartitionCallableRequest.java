@@ -29,6 +29,7 @@ import com.hazelcast.spi.Operation;
 
 import java.io.IOException;
 import java.security.Permission;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 /**
@@ -37,14 +38,14 @@ import java.util.concurrent.Callable;
 public class PartitionCallableRequest extends PartitionClientRequest {
 
     private String name;
-    private String uuid;
+    private UUID uuid;
     private Callable callable;
     private int partitionId;
 
     public PartitionCallableRequest() {
     }
 
-    public PartitionCallableRequest(String name, String uuid, Callable callable, int partitionId) {
+    public PartitionCallableRequest(String name, UUID uuid, Callable callable, int partitionId) {
         this.name = name;
         this.uuid = uuid;
         this.callable = callable;
@@ -88,7 +89,8 @@ public class PartitionCallableRequest extends PartitionClientRequest {
     @Override
     public void write(PortableWriter writer) throws IOException {
         writer.writeUTF("n", name);
-        writer.writeUTF("u", uuid);
+        writer.writeLong("u-l", uuid.getLeastSignificantBits());
+        writer.writeLong("u-m", uuid.getMostSignificantBits());
         writer.writeInt("p", partitionId);
         ObjectDataOutput rawDataOutput = writer.getRawDataOutput();
         rawDataOutput.writeObject(callable);
@@ -97,7 +99,9 @@ public class PartitionCallableRequest extends PartitionClientRequest {
     @Override
     public void read(PortableReader reader) throws IOException {
         name = reader.readUTF("n");
-        uuid = reader.readUTF("u");
+        long leastSig = reader.readLong("u-l");
+        long mostSig = reader.readLong("u-m");
+        uuid = new UUID(mostSig, leastSig);
         partitionId = reader.readInt("p");
         ObjectDataInput rawDataInput = reader.getRawDataInput();
         callable = rawDataInput.readObject();

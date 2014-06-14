@@ -24,17 +24,18 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.exception.TargetNotMemberException;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public final class BeginTxBackupOperation extends Operation {
 
-    private String callerUuid;
+    private UUID callerUuid;
     private String txnId;
     private SerializableXID xid;
 
     public BeginTxBackupOperation() {
     }
 
-    public BeginTxBackupOperation(String callerUuid, String txnId, SerializableXID xid) {
+    public BeginTxBackupOperation(UUID callerUuid, String txnId, SerializableXID xid) {
         this.callerUuid = callerUuid;
         this.txnId = txnId;
         this.xid = xid;
@@ -74,14 +75,17 @@ public final class BeginTxBackupOperation extends Operation {
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
-        out.writeUTF(callerUuid);
+        out.writeLong(callerUuid.getLeastSignificantBits());
+        out.writeLong(callerUuid.getMostSignificantBits());
         out.writeUTF(txnId);
         out.writeObject(xid);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
-        callerUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        callerUuid = new UUID(mostSig, leastSig);
         txnId = in.readUTF();
         xid = in.readObject();
     }

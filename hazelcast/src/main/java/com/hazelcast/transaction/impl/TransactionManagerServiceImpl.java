@@ -39,6 +39,8 @@ import com.hazelcast.transaction.TransactionManagerService;
 import com.hazelcast.transaction.TransactionOptions;
 import com.hazelcast.transaction.TransactionalTask;
 import com.hazelcast.util.ExceptionUtil;
+
+import javax.transaction.xa.Xid;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -48,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -115,7 +118,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerService,
     }
 
     @Override
-    public TransactionContext newClientTransactionContext(TransactionOptions options, String clientUuid) {
+    public TransactionContext newClientTransactionContext(TransactionOptions options, UUID clientUuid) {
         return new TransactionContextImpl(this, nodeEngine, options, clientUuid);
     }
 
@@ -166,7 +169,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerService,
     @Override
     public void memberRemoved(MembershipServiceEvent event) {
         final MemberImpl member = event.getMember();
-        String uuid = member.getUuid();
+        UUID uuid = member.getUuid();
         finalizeTransactionsOf(uuid);
     }
 
@@ -193,13 +196,13 @@ public class TransactionManagerServiceImpl implements TransactionManagerService,
         managedTransactions.remove(sXid);
     }
 
-    private void finalizeTransactionsOf(String uuid) {
+    private void finalizeTransactionsOf(UUID uuid) {
         for (Map.Entry<String, TxBackupLog> entry : txBackupLogs.entrySet()) {
             finalize(uuid, entry.getKey(), entry.getValue());
         }
     }
 
-    private void finalize(String uuid, String txnId, TxBackupLog log) {
+    private void finalize(UUID uuid, String txnId, TxBackupLog log) {
         OperationService operationService = nodeEngine.getOperationService();
         if (!uuid.equals(log.callerUuid)) {
             return;
@@ -247,7 +250,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerService,
     }
 
     @Override
-    public void clientDisconnected(String clientUuid) {
+    public void clientDisconnected(UUID clientUuid) {
         finalizeTransactionsOf(clientUuid);
     }
 
@@ -266,7 +269,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerService,
 
     public void addTxBackupLogForClientRecovery(Transaction transaction) {
         TransactionImpl txnImpl = (TransactionImpl) transaction;
-        final String callerUuid = txnImpl.getOwnerUuid();
+        final UUID callerUuid = txnImpl.getOwnerUuid();
         final SerializableXID xid = txnImpl.getXid();
         final List<TransactionLog> txLogs = txnImpl.getTxLogs();
         final long timeoutMillis = txnImpl.getTimeoutMillis();
@@ -275,7 +278,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerService,
         txBackupLogs.put(txnImpl.getTxnId(), log);
     }
 
-    void beginTxBackupLog(String callerUuid, String txnId, SerializableXID xid) {
+    void beginTxBackupLog(UUID callerUuid, String txnId, SerializableXID xid) {
         TxBackupLog log
                 = new TxBackupLog(Collections.<TransactionLog>emptyList(), callerUuid, State.ACTIVE, -1, -1, xid);
         if (txBackupLogs.putIfAbsent(txnId, log) != null) {
@@ -283,7 +286,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerService,
         }
     }
 
-    void prepareTxBackupLog(List<TransactionLog> txLogs, String callerUuid, String txnId,
+    void prepareTxBackupLog(List<TransactionLog> txLogs, UUID callerUuid, String txnId,
                             long timeoutMillis, long startTime) {
         TxBackupLog beginLog = txBackupLogs.get(txnId);
         if (beginLog == null) {
@@ -396,13 +399,13 @@ public class TransactionManagerServiceImpl implements TransactionManagerService,
 
     private static final class TxBackupLog {
         private final List<TransactionLog> txLogs;
-        private final String callerUuid;
+        private final UUID callerUuid;
         private final long timeoutMillis;
         private final long startTime;
         private final SerializableXID xid;
         private volatile State state;
 
-        private TxBackupLog(List<TransactionLog> txLogs, String callerUuid, State state, long timeoutMillis,
+        private TxBackupLog(List<TransactionLog> txLogs, UUID callerUuid, State state, long timeoutMillis,
                             long startTime, SerializableXID xid) {
             this.txLogs = txLogs;
             this.callerUuid = callerUuid;

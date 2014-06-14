@@ -20,13 +20,15 @@ import com.hazelcast.concurrent.semaphore.Permit;
 import com.hazelcast.concurrent.semaphore.SemaphoreDataSerializerHook;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
+import java.util.UUID;
+
 public class DeadMemberBackupOperation extends SemaphoreBackupOperation
         implements IdentifiedDataSerializable {
 
     public DeadMemberBackupOperation() {
     }
 
-    public DeadMemberBackupOperation(String name, String firstCaller) {
+    public DeadMemberBackupOperation(String name, UUID firstCaller) {
         super(name, -1, firstCaller);
     }
 

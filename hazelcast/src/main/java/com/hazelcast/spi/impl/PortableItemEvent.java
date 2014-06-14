@@ -24,17 +24,18 @@ import com.hazelcast.nio.serialization.PortableReader;
 import com.hazelcast.nio.serialization.PortableWriter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class PortableItemEvent implements Portable {
 
     private Data item;
     private ItemEventType eventType;
-    private String uuid;
+    private UUID uuid;
 
     public PortableItemEvent() {
     }
 
-    public PortableItemEvent(Data item, ItemEventType eventType, String uuid) {
+    public PortableItemEvent(Data item, ItemEventType eventType, UUID uuid) {
         this.item = item;
         this.eventType = eventType;
         this.uuid = uuid;
@@ -48,7 +49,7 @@ public class PortableItemEvent implements Portable {
         return eventType;
     }
 
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 
@@ -65,7 +66,8 @@ public class PortableItemEvent implements Portable {
     @Override
     public void writePortable(PortableWriter writer) throws IOException {
         writer.writeInt("e", eventType.getType());
-        writer.writeUTF("u", uuid);
+        writer.writeLong("u-least", uuid.getLeastSignificantBits());
+        writer.writeLong("u-most", uuid.getMostSignificantBits());
         IOUtil.writeNullableData(writer.getRawDataOutput(), item);
 
     }
@@ -73,7 +75,9 @@ public class PortableItemEvent implements Portable {
     @Override
     public void readPortable(PortableReader reader) throws IOException {
         eventType = ItemEventType.getByType(reader.readInt("e"));
-        uuid = reader.readUTF("u");
+        long leastSig = reader.readLong("u-least");
+        long mostSig = reader.readLong("u-most");
+        uuid = new UUID(mostSig, leastSig);
         item = IOUtil.readNullableData(reader.getRawDataInput());
     }
 }

@@ -28,12 +28,7 @@ import com.hazelcast.util.Clock;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.UuidUtil;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -64,7 +59,7 @@ final class TransactionImpl implements Transaction, TransactionSupport {
     private long timeoutMillis;
     private final int durability;
     private final TransactionType transactionType;
-    private final String txOwnerUuid;
+    private final UUID txOwnerUuid;
     private final boolean checkThreadAccess;
     private State state = NO_TXN;
     private long startTime;
@@ -72,7 +67,7 @@ final class TransactionImpl implements Transaction, TransactionSupport {
     private SerializableXID xid;
 
     public TransactionImpl(TransactionManagerServiceImpl transactionManagerService, NodeEngine nodeEngine,
-                           TransactionOptions options, String txOwnerUuid) {
+                           TransactionOptions options, UUID txOwnerUuid) {
         this.transactionManagerService = transactionManagerService;
         this.nodeEngine = nodeEngine;
         this.txnId = UuidUtil.buildRandomUuidString();
@@ -85,7 +80,7 @@ final class TransactionImpl implements Transaction, TransactionSupport {
 
     // used by tx backups
     TransactionImpl(TransactionManagerServiceImpl transactionManagerService, NodeEngine nodeEngine,
-                    String txnId, List<TransactionLog> txLogs, long timeoutMillis, long startTime, String txOwnerUuid) {
+                    String txnId, List<TransactionLog> txLogs, long timeoutMillis, long startTime, UUID txOwnerUuid) {
         this.transactionManagerService = transactionManagerService;
         this.nodeEngine = nodeEngine;
         this.txnId = txnId;
@@ -386,7 +381,7 @@ final class TransactionImpl implements Transaction, TransactionSupport {
         return startTime;
     }
 
-    public String getOwnerUuid() {
+    public UUID getOwnerUuid() {
         return txOwnerUuid;
     }
 

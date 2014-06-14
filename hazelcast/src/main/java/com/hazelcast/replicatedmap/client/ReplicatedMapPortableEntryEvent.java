@@ -24,6 +24,7 @@ import com.hazelcast.nio.serialization.PortableReader;
 import com.hazelcast.nio.serialization.PortableWriter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * Class to redirect entry listener events on the members to the listening client
@@ -35,12 +36,12 @@ public class ReplicatedMapPortableEntryEvent
     private Object value;
     private Object oldValue;
     private EntryEventType eventType;
-    private String uuid;
+    private UUID uuid;
 
     ReplicatedMapPortableEntryEvent() {
     }
 
-    ReplicatedMapPortableEntryEvent(Object key, Object value, Object oldValue, EntryEventType eventType, String uuid) {
+    ReplicatedMapPortableEntryEvent(Object key, Object value, Object oldValue, EntryEventType eventType, UUID uuid) {
         this.key = key;
         this.value = value;
         this.oldValue = oldValue;
@@ -64,14 +65,15 @@ public class ReplicatedMapPortableEntryEvent
         return eventType;
     }
 
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 
     public void writePortable(PortableWriter writer)
             throws IOException {
         writer.writeInt("e", eventType.getType());
-        writer.writeUTF("u", uuid);
+        writer.writeLong("u-l", uuid.getLeastSignificantBits());
+        writer.writeLong("u-m", uuid.getMostSignificantBits());
         final ObjectDataOutput out = writer.getRawDataOutput();
         out.writeObject(key);
         out.writeObject(value);
@@ -81,7 +83,9 @@ public class ReplicatedMapPortableEntryEvent
     public void readPortable(PortableReader reader)
             throws IOException {
         eventType = EntryEventType.getByType(reader.readInt("e"));
-        uuid = reader.readUTF("u");
+        long leastSig = reader.readLong("u-l");
+        long mostSig = reader.readLong("u-m");
+        uuid = new UUID(mostSig, leastSig);
         final ObjectDataInput in = reader.getRawDataInput();
         key = in.readObject();
         value = in.readObject();

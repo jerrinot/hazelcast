@@ -25,17 +25,18 @@ import com.hazelcast.spi.BackupOperation;
 import com.hazelcast.spi.ObjectNamespace;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class UnlockBackupOperation extends BaseLockOperation implements BackupOperation {
 
     private boolean force;
-    private String originalCallerUuid;
+    private UUID originalCallerUuid;
 
     public UnlockBackupOperation() {
     }
 
     public UnlockBackupOperation(
-            ObjectNamespace namespace, Data key, long threadId, String originalCallerUuid, boolean force) {
+            ObjectNamespace namespace, Data key, long threadId, UUID originalCallerUuid, boolean force) {
         super(namespace, key, threadId);
         this.force = force;
         this.originalCallerUuid = originalCallerUuid;
@@ -60,14 +61,17 @@ public class UnlockBackupOperation extends BaseLockOperation implements BackupOp
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(originalCallerUuid);
+        out.writeLong(originalCallerUuid.getLeastSignificantBits());
+        out.writeLong(originalCallerUuid.getMostSignificantBits());
         out.writeBoolean(force);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        originalCallerUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        originalCallerUuid = new UUID(mostSig, leastSig);
         force = in.readBoolean();
     }
 }

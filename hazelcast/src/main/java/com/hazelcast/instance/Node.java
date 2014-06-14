@@ -69,11 +69,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.nio.channels.ServerSocketChannel;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -452,7 +448,7 @@ public class Node {
     public void onRestart() {
         joined.set(false);
         joiner.reset();
-        final String uuid = UuidUtil.createMemberUuid(address);
+        final UUID uuid = UuidUtil.createMemberUuid(address);
         if (logger.isFinestEnabled()) {
             logger.finest("Generated new UUID for local member: " + uuid);
         }

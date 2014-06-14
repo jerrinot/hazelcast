@@ -24,13 +24,7 @@ import com.hazelcast.spi.DefaultObjectNamespace;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.util.Clock;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -80,7 +74,7 @@ public class MultiMapContainer {
         this.creationTime = Clock.currentTimeMillis();
     }
 
-    public boolean canAcquireLock(Data dataKey, String caller, long threadId) {
+    public boolean canAcquireLock(Data dataKey, UUID caller, long threadId) {
         return lockStore != null && lockStore.canAcquireLock(dataKey, caller, threadId);
     }
 
@@ -88,11 +82,11 @@ public class MultiMapContainer {
         return lockStore != null && lockStore.isLocked(dataKey);
     }
 
-    public boolean txnLock(Data key, String caller, long threadId, long ttl) {
+    public boolean txnLock(Data key, UUID caller, long threadId, long ttl) {
         return lockStore != null && lockStore.txnLock(key, caller, threadId, ttl);
     }
 
-    public boolean unlock(Data key, String caller, long threadId) {
+    public boolean unlock(Data key, UUID caller, long threadId) {
         return lockStore != null && lockStore.unlock(key, caller, threadId);
     }
 
@@ -100,7 +94,7 @@ public class MultiMapContainer {
         return lockStore != null && lockStore.forceUnlock(key);
     }
 
-    public boolean extendLock(Data key, String caller, long threadId, long ttl) {
+    public boolean extendLock(Data key, UUID caller, long threadId, long ttl) {
         return lockStore != null && lockStore.extendLeaseTime(key, caller, threadId, ttl);
     }
 

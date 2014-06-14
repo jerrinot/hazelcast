@@ -25,15 +25,16 @@ import com.hazelcast.spi.BackupOperation;
 import com.hazelcast.spi.ObjectNamespace;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class LockBackupOperation extends BaseLockOperation implements BackupOperation {
 
-    private String originalCallerUuid;
+    private UUID originalCallerUuid;
 
     public LockBackupOperation() {
     }
 
-    public LockBackupOperation(ObjectNamespace namespace, Data key, long threadId, String originalCallerUuid) {
+    public LockBackupOperation(ObjectNamespace namespace, Data key, long threadId, UUID originalCallerUuid) {
         super(namespace, key, threadId);
         this.originalCallerUuid = originalCallerUuid;
     }
@@ -52,12 +53,15 @@ public class LockBackupOperation extends BaseLockOperation implements BackupOper
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(originalCallerUuid);
+        out.writeLong(originalCallerUuid.getLeastSignificantBits());
+        out.writeLong(originalCallerUuid.getMostSignificantBits());
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        originalCallerUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        originalCallerUuid = new UUID(mostSig, leastSig);
     }
 }

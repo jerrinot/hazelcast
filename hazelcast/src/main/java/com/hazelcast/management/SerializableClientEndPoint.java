@@ -3,6 +3,8 @@ package com.hazelcast.management;
 import com.eclipsesource.json.JsonObject;
 import com.hazelcast.core.Client;
 
+import java.util.UUID;
+
 import static com.hazelcast.util.JsonUtil.getString;
 
 /**
@@ -10,7 +12,7 @@ import static com.hazelcast.util.JsonUtil.getString;
  */
 public class SerializableClientEndPoint implements JsonSerializable {
 
-    String uuid;
+    UUID uuid;
     String address;
     String clientType;
 
@@ -23,11 +25,11 @@ public class SerializableClientEndPoint implements JsonSerializable {
         this.clientType = client.getClientType().toString();
     }
 
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 
-    public void setUuid(String uuid) {
+    public void setUuid(UUID uuid) {
         this.uuid = uuid;
     }
 
@@ -50,7 +52,7 @@ public class SerializableClientEndPoint implements JsonSerializable {
     @Override
     public JsonObject toJson() {
         final JsonObject root = new JsonObject();
-        root.add("uuid", uuid);
+        root.add("uuid", uuid.toString());
         root.add("address", address);
         root.add("clientType", clientType);
         return root;
@@ -58,7 +60,8 @@ public class SerializableClientEndPoint implements JsonSerializable {
 
     @Override
     public void fromJson(JsonObject json) {
-        uuid = getString(json, "uuid");
+        String uuidString = getString(json, "uuid");
+        uuid = UUID.fromString(uuidString);
         address = getString(json, "address");
         clientType = getString(json, "clientType");
     }

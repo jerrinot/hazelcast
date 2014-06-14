@@ -27,15 +27,16 @@ import com.hazelcast.spi.impl.NodeEngineImpl;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
+import java.util.UUID;
 
 public class ClientDisconnectionOperation extends AbstractOperation implements UrgentSystemOperation {
 
-    private String clientUuid;
+    private UUID clientUuid;
 
     public ClientDisconnectionOperation() {
     }
 
-    public ClientDisconnectionOperation(String clientUuid) {
+    public ClientDisconnectionOperation(UUID clientUuid) {
         this.clientUuid = clientUuid;
     }
 
@@ -64,12 +65,15 @@ public class ClientDisconnectionOperation extends AbstractOperation implements U
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(clientUuid);
+        out.writeLong(clientUuid.getLeastSignificantBits());
+        out.writeLong(clientUuid.getMostSignificantBits());
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        clientUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        clientUuid = new UUID(mostSig, leastSig);
     }
 }

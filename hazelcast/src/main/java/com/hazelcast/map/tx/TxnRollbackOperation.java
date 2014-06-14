@@ -30,12 +30,13 @@ import com.hazelcast.spi.WaitNotifyKey;
 import com.hazelcast.transaction.TransactionException;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class TxnRollbackOperation extends KeyBasedMapOperation implements BackupAwareOperation, Notifier {
 
-    String ownerUuid;
+    UUID ownerUuid;
 
-    protected TxnRollbackOperation(String name, Data dataKey, String ownerUuid) {
+    protected TxnRollbackOperation(String name, Data dataKey, UUID ownerUuid) {
         super(name, dataKey);
         this.ownerUuid = ownerUuid;
     }
@@ -84,12 +85,15 @@ public class TxnRollbackOperation extends KeyBasedMapOperation implements Backup
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(ownerUuid);
+        out.writeLong(ownerUuid.getLeastSignificantBits());
+        out.writeLong(ownerUuid.getMostSignificantBits());
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        ownerUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        ownerUuid = new UUID(mostSig, leastSig);
     }
 }

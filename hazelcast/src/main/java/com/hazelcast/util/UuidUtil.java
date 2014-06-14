@@ -55,12 +55,12 @@ public final class UuidUtil {
         }
     }
 
-    public static String createMemberUuid(Address endpoint) {
-        return buildRandomUUID().toString();
+    public static UUID createMemberUuid(Address endpoint) {
+        return buildRandomUUID();
     }
 
-    public static String createClientUuid(Address endpoint) {
-        return buildRandomUUID().toString();
+    public static UUID createClientUuid(Address endpoint) {
+        return buildRandomUUID();
     }
 
     public static String buildRandomUuidString() {

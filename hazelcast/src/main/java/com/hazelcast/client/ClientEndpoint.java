@@ -38,6 +38,7 @@ import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -52,13 +53,13 @@ public final class ClientEndpoint implements Client {
     private final List<Runnable> removeListenerActions = Collections.synchronizedList(new LinkedList<Runnable>());
     private final SocketAddress socketAddress;
 
-    private String uuid;
+    private UUID uuid;
     private LoginContext loginContext;
     private ClientPrincipal principal;
     private boolean firstConnection;
     private volatile boolean authenticated;
 
-    ClientEndpoint(ClientEngineImpl clientEngine, Connection conn, String uuid) {
+    ClientEndpoint(ClientEngineImpl clientEngine, Connection conn, UUID uuid) {
         this.clientEngine = clientEngine;
         this.conn = conn;
         if (conn instanceof TcpIpConnection) {
@@ -75,7 +76,7 @@ public final class ClientEndpoint implements Client {
     }
 
     @Override
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 

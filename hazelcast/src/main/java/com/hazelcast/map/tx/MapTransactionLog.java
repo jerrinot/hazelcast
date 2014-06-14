@@ -29,6 +29,7 @@ import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.ThreadUtil;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.concurrent.Future;
 
 public class MapTransactionLog implements KeyAwareTransactionLog {
@@ -36,13 +37,13 @@ public class MapTransactionLog implements KeyAwareTransactionLog {
     String name;
     Data key;
     long threadId = ThreadUtil.getThreadId();
-    String ownerUuid;
+    UUID ownerUuid;
     Operation op;
 
     public MapTransactionLog() {
     }
 
-    public MapTransactionLog(String name, Data key, Operation op, long version, String ownerUuid) {
+    public MapTransactionLog(String name, Data key, Operation op, long version, UUID ownerUuid) {
         this.name = name;
         this.key = key;
         if (!(op instanceof MapTxnOperation)) {
@@ -97,7 +98,8 @@ public class MapTransactionLog implements KeyAwareTransactionLog {
             key.writeData(out);
         }
         out.writeLong(threadId);
-        out.writeUTF(ownerUuid);
+        out.writeLong(ownerUuid.getLeastSignificantBits());
+        out.writeLong(ownerUuid.getMostSignificantBits());
         out.writeObject(op);
     }
 
@@ -110,7 +112,9 @@ public class MapTransactionLog implements KeyAwareTransactionLog {
             key.readData(in);
         }
         threadId = in.readLong();
-        ownerUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        ownerUuid = new UUID(mostSig, leastSig);
         op = in.readObject();
     }
 

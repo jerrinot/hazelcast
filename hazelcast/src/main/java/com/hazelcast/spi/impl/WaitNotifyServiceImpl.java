@@ -39,6 +39,7 @@ import com.hazelcast.util.executor.SingleExecutorThreadFactory;
 
 import java.util.Iterator;
 import java.util.Queue;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -140,11 +141,11 @@ class WaitNotifyServiceImpl implements WaitNotifyService {
         invalidateWaitingOps(leftMember.getUuid());
     }
 
-    void onClientDisconnected(String clientUuid) {
+    void onClientDisconnected(UUID clientUuid) {
         invalidateWaitingOps(clientUuid);
     }
 
-    private void invalidateWaitingOps(String callerUuid) {
+    private void invalidateWaitingOps(UUID callerUuid) {
         for (Queue<WaitingOp> q : mapWaitingOps.values()) {
             for (WaitingOp waitingOp : q) {
                 if (waitingOp.isValid()) {

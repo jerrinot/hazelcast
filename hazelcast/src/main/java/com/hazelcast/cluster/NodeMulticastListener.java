@@ -22,6 +22,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 
 import java.util.Set;
+import java.util.UUID;
 
 import static com.hazelcast.util.AddressUtil.matchAnyInterface;
 import static java.lang.String.format;
@@ -146,7 +147,7 @@ public class NodeMulticastListener implements MulticastListener {
         return address.equals(node.getMasterAddress());
     }
 
-    private boolean checkMasterUuid(String uuid) {
+    private boolean checkMasterUuid(UUID uuid) {
         Member masterMember = getMasterMember(node.getClusterService().getMembers());
         return masterMember == null || masterMember.getUuid().equals(uuid);
     }

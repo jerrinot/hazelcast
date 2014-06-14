@@ -41,6 +41,7 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.hazelcast.cluster.MemberAttributeOperationType.PUT;
@@ -52,7 +53,7 @@ public final class MemberImpl implements Member, HazelcastInstanceAware, Identif
     private final Map<String, Object> attributes = new ConcurrentHashMap<String, Object>();
     private boolean localMember;
     private Address address;
-    private String uuid;
+    private UUID uuid;
     private volatile HazelcastInstanceImpl instance;
     private volatile long lastRead;
     private volatile long lastWrite;
@@ -66,11 +67,11 @@ public final class MemberImpl implements Member, HazelcastInstanceAware, Identif
         this(address, localMember, null, null);
     }
 
-    public MemberImpl(Address address, boolean localMember, String uuid, HazelcastInstanceImpl instance) {
+    public MemberImpl(Address address, boolean localMember, UUID uuid, HazelcastInstanceImpl instance) {
         this(address, localMember, uuid, instance, null);
     }
 
-    public MemberImpl(Address address, boolean localMember, String uuid, HazelcastInstanceImpl instance,
+    public MemberImpl(Address address, boolean localMember, UUID uuid, HazelcastInstanceImpl instance,
                       Map<String, Object> attributes) {
         this.localMember = localMember;
         this.address = address;
@@ -164,12 +165,12 @@ public final class MemberImpl implements Member, HazelcastInstanceAware, Identif
         return lastWrite;
     }
 
-    void setUuid(String uuid) {
+    void setUuid(UUID uuid) {
         this.uuid = uuid;
     }
 
     @Override
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 
@@ -316,7 +317,7 @@ public final class MemberImpl implements Member, HazelcastInstanceAware, Identif
     private void invokeOnAllMembers(Operation operation) {
         NodeEngineImpl nodeEngine = instance.node.nodeEngine;
         OperationService os = nodeEngine.getOperationService();
-        String uuid = nodeEngine.getLocalMember().getUuid();
+        UUID uuid = nodeEngine.getLocalMember().getUuid();
         operation.setCallerUuid(uuid).setNodeEngine(nodeEngine);
         try {
             for (MemberImpl member : nodeEngine.getClusterService().getMemberList()) {
@@ -335,7 +336,9 @@ public final class MemberImpl implements Member, HazelcastInstanceAware, Identif
     public void readData(ObjectDataInput in) throws IOException {
         address = new Address();
         address.readData(in);
-        uuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        uuid = new UUID(mostSig, leastSig);
         int size = in.readInt();
         for (int i = 0; i < size; i++) {
             String key = in.readUTF();
@@ -347,7 +350,8 @@ public final class MemberImpl implements Member, HazelcastInstanceAware, Identif
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         address.writeData(out);
-        out.writeUTF(uuid);
+        out.writeLong(uuid.getMostSignificantBits());
+        out.writeLong(uuid.getLeastSignificantBits());
         Map<String, Object> attributes = new HashMap<String, Object>(this.attributes);
         out.writeInt(attributes.size());
         for (Map.Entry<String, Object> entry : attributes.entrySet()) {

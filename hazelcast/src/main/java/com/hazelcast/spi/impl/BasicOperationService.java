@@ -53,13 +53,7 @@ import com.hazelcast.spi.exception.WrongTargetException;
 import com.hazelcast.spi.impl.PartitionIteratingOperation.PartitionResponse;
 import com.hazelcast.util.Clock;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
@@ -669,12 +663,12 @@ final class BasicOperationService implements InternalOperationService {
     }
 
     @PrivateApi
-    boolean isOperationExecuting(Address callerAddress, String callerUuid, long operationCallId) {
+    boolean isOperationExecuting(Address callerAddress, UUID callerUuid, long operationCallId) {
         return executingCalls.containsKey(new RemoteCallKey(callerAddress, callerUuid, operationCallId));
     }
 
     @PrivateApi
-    boolean isOperationExecuting(Address callerAddress, String callerUuid, String serviceName, Object identifier) {
+    boolean isOperationExecuting(Address callerAddress, UUID callerUuid, String serviceName, Object identifier) {
         Object service = nodeEngine.getService(serviceName);
         if (service == null) {
             logger.severe("Not able to find operation execution info. Invalid service: " + serviceName);
@@ -758,10 +752,10 @@ final class BasicOperationService implements InternalOperationService {
         private final long time = Clock.currentTimeMillis();
         // human readable caller
         private final Address callerAddress;
-        private final String callerUuid;
+        private final UUID callerUuid;
         private final long callId;
 
-        private RemoteCallKey(Address callerAddress, String callerUuid, long callId) {
+        private RemoteCallKey(Address callerAddress, UUID callerUuid, long callId) {
             if (callerUuid == null) {
                 throw new IllegalArgumentException("Caller UUID is required!");
             }

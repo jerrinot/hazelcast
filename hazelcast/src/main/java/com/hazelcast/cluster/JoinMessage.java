@@ -22,20 +22,21 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class JoinMessage implements DataSerializable {
 
     protected byte packetVersion;
     protected int buildNumber;
     protected Address address;
-    protected String uuid;
+    protected UUID uuid;
     protected ConfigCheck configCheck;
     protected int memberCount;
 
     public JoinMessage() {
     }
 
-    public JoinMessage(byte packetVersion, int buildNumber, Address address, String uuid, ConfigCheck configCheck,
+    public JoinMessage(byte packetVersion, int buildNumber, Address address, UUID uuid, ConfigCheck configCheck,
                        int memberCount) {
         this.packetVersion = packetVersion;
         this.buildNumber = buildNumber;
@@ -57,7 +58,7 @@ public class JoinMessage implements DataSerializable {
         return address;
     }
 
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 
@@ -75,7 +76,9 @@ public class JoinMessage implements DataSerializable {
         buildNumber = in.readInt();
         address = new Address();
         address.readData(in);
-        uuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        uuid = new UUID(mostSig, leastSig);
         configCheck = new ConfigCheck();
         configCheck.readData(in);
         memberCount = in.readInt();
@@ -86,7 +89,8 @@ public class JoinMessage implements DataSerializable {
         out.writeByte(packetVersion);
         out.writeInt(buildNumber);
         address.writeData(out);
-        out.writeUTF(uuid);
+        out.writeLong(uuid.getLeastSignificantBits());
+        out.writeLong(uuid.getMostSignificantBits());
         configCheck.writeData(out);
         out.writeInt(memberCount);
     }

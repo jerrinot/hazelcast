@@ -30,6 +30,6 @@ public interface TransactionSupport {
 
     Transaction.State getState();
 
-    String getOwnerUuid();
+    java.util.UUID getOwnerUuid();
 
 }

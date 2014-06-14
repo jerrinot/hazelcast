@@ -26,6 +26,7 @@ import com.hazelcast.nio.serialization.Data;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public interface RecordStore {
 
@@ -93,17 +94,17 @@ public interface RecordStore {
 
     int size();
 
-    boolean lock(Data key, String caller, long threadId, long ttl);
+    boolean lock(Data key, UUID caller, long threadId, long ttl);
 
-    boolean txnLock(Data key, String caller, long threadId, long ttl);
+    boolean txnLock(Data key, UUID caller, long threadId, long ttl);
 
-    boolean extendLock(Data key, String caller, long threadId, long ttl);
+    boolean extendLock(Data key, UUID caller, long threadId, long ttl);
 
-    boolean unlock(Data key, String caller, long threadId);
+    boolean unlock(Data key, UUID caller, long threadId);
 
     boolean isLocked(Data key);
 
-    boolean canAcquireLock(Data key, String caller, long threadId);
+    boolean canAcquireLock(Data key, UUID caller, long threadId);
 
     String getLockOwnerInfo(Data key);
 

@@ -18,6 +18,8 @@ package com.hazelcast.map.tx;
 
 import com.hazelcast.spi.Notifier;
 
+import java.util.UUID;
+
 /**
  * @author mdogan 3/25/13
  */
@@ -29,6 +31,6 @@ public interface MapTxnOperation extends Notifier {
 
     void setThreadId(long threadId);
 
-    void setOwnerUuid(String ownerUuid);
+    void setOwnerUuid(UUID ownerUuid);
 
 }

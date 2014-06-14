@@ -32,6 +32,7 @@ import com.hazelcast.util.ConstructorFunction;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,8 +52,8 @@ public class DistributedExecutorService implements ManagedService, RemoteService
 
     private NodeEngine nodeEngine;
     private ExecutionService executionService;
-    private final ConcurrentMap<String, CallableProcessor> submittedTasks
-            = new ConcurrentHashMap<String, CallableProcessor>(100);
+    private final ConcurrentMap<UUID, CallableProcessor> submittedTasks
+            = new ConcurrentHashMap<UUID, CallableProcessor>(100);
     private final Set<String> shutdownExecutors
             = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
     private final ConcurrentHashMap<String, LocalExecutorStatsImpl> statsMap
@@ -84,7 +85,7 @@ public class DistributedExecutorService implements ManagedService, RemoteService
         reset();
     }
 
-    public void execute(String name, String uuid, Callable callable, ResponseHandler responseHandler) {
+    public void execute(String name, UUID uuid, Callable callable, ResponseHandler responseHandler) {
         startPending(name);
         CallableProcessor processor = new CallableProcessor(name, uuid, callable, responseHandler);
         if (uuid != null) {
@@ -103,7 +104,7 @@ public class DistributedExecutorService implements ManagedService, RemoteService
         }
     }
 
-    public boolean cancel(String uuid, boolean interrupt) {
+    public boolean cancel(UUID uuid, boolean interrupt) {
         CallableProcessor processor = submittedTasks.remove(uuid);
         if (processor != null && processor.cancel(interrupt)) {
             processor.sendResponse(new CancellationException());
@@ -154,7 +155,7 @@ public class DistributedExecutorService implements ManagedService, RemoteService
     }
 
     @Override
-    public boolean isOperationExecuting(Address callerAddress, String callerUuid, Object identifier) {
+    public boolean isOperationExecuting(Address callerAddress, UUID callerUuid, Object identifier) {
         String uuid = String.valueOf(identifier);
         return submittedTasks.containsKey(uuid);
     }
@@ -164,12 +165,12 @@ public class DistributedExecutorService implements ManagedService, RemoteService
         volatile Boolean responseFlag = Boolean.FALSE;
 
         private final String name;
-        private final String uuid;
+        private final UUID uuid;
         private final ResponseHandler responseHandler;
         private final String callableToString;
         private final long creationTime = Clock.currentTimeMillis();
 
-        private CallableProcessor(String name, String uuid, Callable callable, ResponseHandler responseHandler) {
+        private CallableProcessor(String name, UUID uuid, Callable callable, ResponseHandler responseHandler) {
             //noinspection unchecked
             super(callable);
             this.name = name;

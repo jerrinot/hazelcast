@@ -20,12 +20,14 @@ import com.hazelcast.concurrent.semaphore.Permit;
 import com.hazelcast.concurrent.semaphore.SemaphoreDataSerializerHook;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
+import java.util.UUID;
+
 public class DrainBackupOperation extends SemaphoreBackupOperation implements IdentifiedDataSerializable {
 
     public DrainBackupOperation() {
     }
 
-    public DrainBackupOperation(String name, int permitCount, String firstCaller) {
+    public DrainBackupOperation(String name, int permitCount, UUID firstCaller) {
         super(name, permitCount, firstCaller);
     }
 

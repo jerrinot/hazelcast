@@ -30,6 +30,7 @@ import com.hazelcast.spi.exception.RetryableHazelcastException;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.logging.Level;
 
 import static com.hazelcast.util.EmptyStatement.ignore;
@@ -49,7 +50,7 @@ public abstract class Operation implements DataSerializable {
     private long invocationTime = -1;
     private long callTimeout = Long.MAX_VALUE;
     private long waitTimeout = -1;
-    private String callerUuid;
+    private UUID callerUuid;
     private String executorName;
 
     // injected
@@ -238,11 +239,11 @@ public abstract class Operation implements DataSerializable {
                 ? ExceptionAction.RETRY_INVOCATION : ExceptionAction.THROW_EXCEPTION;
     }
 
-    public String getCallerUuid() {
+    public UUID getCallerUuid() {
         return callerUuid;
     }
 
-    public Operation setCallerUuid(String callerUuid) {
+    public Operation setCallerUuid(UUID callerUuid) {
         this.callerUuid = callerUuid;
         return this;
     }
@@ -283,7 +284,11 @@ public abstract class Operation implements DataSerializable {
         out.writeLong(invocationTime);
         out.writeLong(callTimeout);
         out.writeLong(waitTimeout);
-        out.writeUTF(callerUuid);
+        out.writeBoolean(callerUuid != null);
+        if (callerUuid != null) {
+            out.writeLong(callerUuid.getLeastSignificantBits());
+            out.writeLong(callerUuid.getMostSignificantBits());
+        }
         out.writeUTF(executorName);
         writeInternal(out);
     }
@@ -298,7 +303,12 @@ public abstract class Operation implements DataSerializable {
         invocationTime = in.readLong();
         callTimeout = in.readLong();
         waitTimeout = in.readLong();
-        callerUuid = in.readUTF();
+        boolean hasCallerUuid = in.readBoolean();
+        if (hasCallerUuid == true) {
+            long uuidLeastSignificantBits = in.readLong();
+            long uuidMostSignificantBits = in.readLong();
+            callerUuid = new UUID(uuidMostSignificantBits, uuidLeastSignificantBits);
+        }
         executorName = in.readUTF();
         readInternal(in);
     }

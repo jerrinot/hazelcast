@@ -23,12 +23,13 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
 
 import java.io.IOException;
+import java.util.UUID;
 
 import static com.hazelcast.cluster.MemberAttributeOperationType.PUT;
 
 public class MemberAttributeChange implements DataSerializable {
 
-    private String uuid;
+    private UUID uuid;
     private MemberAttributeOperationType operationType;
     private String key;
     private Object value;
@@ -36,14 +37,14 @@ public class MemberAttributeChange implements DataSerializable {
     public MemberAttributeChange() {
     }
 
-    public MemberAttributeChange(String uuid, MemberAttributeOperationType operationType, String key, Object value) {
+    public MemberAttributeChange(UUID uuid, MemberAttributeOperationType operationType, String key, Object value) {
         this.uuid = uuid;
         this.operationType = operationType;
         this.key = key;
         this.value = value;
     }
 
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 
@@ -61,7 +62,8 @@ public class MemberAttributeChange implements DataSerializable {
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeUTF(uuid);
+        out.writeLong(uuid.getLeastSignificantBits());
+        out.writeLong(uuid.getMostSignificantBits());
         out.writeUTF(key);
         out.writeByte(operationType.getId());
         if (operationType == PUT) {
@@ -71,7 +73,9 @@ public class MemberAttributeChange implements DataSerializable {
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        uuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        uuid = new UUID(mostSig, leastSig);
         key = in.readUTF();
         operationType = MemberAttributeOperationType.getValue(in.readByte());
         if (operationType == PUT) {

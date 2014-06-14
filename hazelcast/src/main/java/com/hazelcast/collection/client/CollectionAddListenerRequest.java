@@ -38,6 +38,7 @@ import com.hazelcast.spi.EventService;
 import com.hazelcast.spi.impl.PortableItemEvent;
 import java.io.IOException;
 import java.security.Permission;
+import java.util.UUID;
 
 /**
  * this class is used to attach a listener to node for collections
@@ -78,7 +79,7 @@ public class CollectionAddListenerRequest extends CallableClientRequest implemen
                 if (endpoint.live()) {
                     Data item = clientEngine.toData(event.getItem());
                     final ItemEventType eventType = event.getEventType();
-                    final String uuid = event.getMember().getUuid();
+                    final UUID uuid = event.getMember().getUuid();
                     PortableItemEvent portableItemEvent = new PortableItemEvent(item, eventType, uuid);
                     endpoint.sendEvent(portableItemEvent, getCallId());
                 }

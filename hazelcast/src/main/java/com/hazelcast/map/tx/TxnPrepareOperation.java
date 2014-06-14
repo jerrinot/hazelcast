@@ -26,12 +26,13 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.transaction.TransactionException;
 
 import java.io.IOException;
+import java.util.UUID;
 
 public class TxnPrepareOperation extends KeyBasedMapOperation implements BackupAwareOperation {
 
-    String ownerUuid;
+    UUID ownerUuid;
 
-    protected TxnPrepareOperation(String name, Data dataKey, String ownerUuid) {
+    protected TxnPrepareOperation(String name, Data dataKey, UUID ownerUuid) {
         super(name, dataKey);
         this.ownerUuid = ownerUuid;
     }
@@ -71,12 +72,15 @@ public class TxnPrepareOperation extends KeyBasedMapOperation implements BackupA
 
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeUTF(ownerUuid);
+        out.writeLong(ownerUuid.getLeastSignificantBits());
+        out.writeLong(ownerUuid.getMostSignificantBits());
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        ownerUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        ownerUuid = new UUID(mostSig, leastSig);
     }
 }

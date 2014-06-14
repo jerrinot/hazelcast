@@ -55,18 +55,7 @@ import com.hazelcast.util.executor.ExecutorType;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 import java.net.ConnectException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -815,7 +804,7 @@ public final class ClusterServiceImpl implements ClusterService, ConnectionListe
         }
     }
 
-    public void updateMemberAttribute(String uuid, MemberAttributeOperationType operationType, String key, Object value) {
+    public void updateMemberAttribute(UUID uuid, MemberAttributeOperationType operationType, String key, Object value) {
         lock.lock();
         try {
             Map<Address, MemberImpl> memberMap = membersMapRef.get();
@@ -997,7 +986,7 @@ public final class ClusterServiceImpl implements ClusterService, ConnectionListe
         }
     }
 
-    protected MemberImpl createMember(Address address, String nodeUuid, String ipV6ScopeId, Map<String, Object> attributes) {
+    protected MemberImpl createMember(Address address, UUID nodeUuid, String ipV6ScopeId, Map<String, Object> attributes) {
         address.setScopeId(ipV6ScopeId);
         return new MemberImpl(address, thisAddress.equals(address), nodeUuid,
                 (HazelcastInstanceImpl) nodeEngine.getHazelcastInstance(), attributes);

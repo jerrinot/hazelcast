@@ -17,6 +17,7 @@
 package com.hazelcast.core;
 
 import java.net.InetSocketAddress;
+import java.util.UUID;
 
 /**
  * Client interface allows to get information about
@@ -32,7 +33,7 @@ public interface Client extends Endpoint {
      *
      * @return unique uuid for this client
      */
-    String getUuid();
+    UUID getUuid();
 
     /**
      * Returns socket address of this client

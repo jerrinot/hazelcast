@@ -27,6 +27,7 @@ import com.hazelcast.spi.ResponseHandler;
 import com.hazelcast.spi.WaitNotifyKey;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * @author mdogan 3/25/13
@@ -35,7 +36,7 @@ public class TxnDeleteOperation extends BaseRemoveOperation implements MapTxnOpe
 
     private long version;
     private boolean successful = false;
-    private String ownerUuid;
+    private UUID ownerUuid;
 
     public TxnDeleteOperation() {
     }
@@ -93,7 +94,7 @@ public class TxnDeleteOperation extends BaseRemoveOperation implements MapTxnOpe
     }
 
     @Override
-    public void setOwnerUuid(String ownerUuid) {
+    public void setOwnerUuid(UUID ownerUuid) {
         this.ownerUuid = ownerUuid;
     }
 
@@ -110,13 +111,16 @@ public class TxnDeleteOperation extends BaseRemoveOperation implements MapTxnOpe
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
         out.writeLong(version);
-        out.writeUTF(ownerUuid);
+        out.writeLong(ownerUuid.getLeastSignificantBits());
+        out.writeLong(ownerUuid.getMostSignificantBits());
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
         version = in.readLong();
-        ownerUuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        ownerUuid = new UUID(mostSig, leastSig);
     }
 }

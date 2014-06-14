@@ -33,6 +33,7 @@ import com.hazelcast.spi.impl.SerializableCollection;
 import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.UUID;
 
 public final class AddMembershipListenerRequest extends CallableClientRequest implements RetryableRequest {
 
@@ -64,7 +65,7 @@ public final class AddMembershipListenerRequest extends CallableClientRequest im
             public void memberAttributeChanged(MemberAttributeEvent memberAttributeEvent) {
                 if (endpoint.live()) {
                     final MemberImpl member = (MemberImpl) memberAttributeEvent.getMember();
-                    final String uuid = member.getUuid();
+                    final UUID uuid = member.getUuid();
                     final MemberAttributeOperationType op = memberAttributeEvent.getOperationType();
                     final String key = memberAttributeEvent.getKey();
                     final Object value = memberAttributeEvent.getValue();

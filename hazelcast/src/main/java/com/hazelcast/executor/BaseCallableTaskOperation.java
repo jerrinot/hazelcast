@@ -25,18 +25,19 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.TraceableOperation;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 abstract class BaseCallableTaskOperation extends Operation implements TraceableOperation {
 
     protected String name;
-    protected String uuid;
+    protected UUID uuid;
     protected Callable callable;
 
     public BaseCallableTaskOperation() {
     }
 
-    public BaseCallableTaskOperation(String name, String uuid, Callable callable) {
+    public BaseCallableTaskOperation(String name, UUID uuid, Callable callable) {
         this.name = name;
         this.uuid = uuid;
         this.callable = callable;
@@ -83,21 +84,24 @@ abstract class BaseCallableTaskOperation extends Operation implements TraceableO
     }
 
     @Override
-    public Object getTraceIdentifier() {
+    public UUID getTraceIdentifier() {
         return uuid;
     }
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
-        out.writeUTF(uuid);
+        out.writeLong(uuid.getLeastSignificantBits());
+        out.writeLong(uuid.getMostSignificantBits());
         out.writeObject(callable);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         name = in.readUTF();
-        uuid = in.readUTF();
+        long leastSig = in.readLong();
+        long mostSig = in.readLong();
+        uuid = new UUID(mostSig, leastSig);
         callable = in.readObject();
     }
 }

@@ -16,10 +16,12 @@
 
 package com.hazelcast.spi;
 
+import java.util.UUID;
+
 /**
  * Operation which has a traceable identifier
  */
 public interface TraceableOperation {
 
-    Object getTraceIdentifier();
+    UUID getTraceIdentifier();
 }
