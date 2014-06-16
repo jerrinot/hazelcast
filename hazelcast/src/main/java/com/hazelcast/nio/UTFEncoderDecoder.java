@@ -18,10 +18,7 @@ package com.hazelcast.nio;
 
 import com.hazelcast.util.QuickMath;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.io.UTFDataFormatException;
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
@@ -94,21 +91,22 @@ public final class UTFEncoderDecoder {
         int c = 0;
         int count = 0;
             /* use charAt instead of copying String to char array */
-        for (int i = beginIndex; i < endIndex; i++) {
-            c = str.charAt(i);
-            if ((c >= 0x0001) && (c <= 0x007F)) {
-                utfLength++;
-            } else if (c > 0x07FF) {
-                utfLength += 3;
-            } else {
-                utfLength += 2;
-            }
-        }
-        if (utfLength > 65535) {
-            throw new UTFDataFormatException("encoded string too long:"
-                    + utfLength + " bytes");
-        }
-        out.writeShort(utfLength);
+//        for (int i = beginIndex; i < endIndex; i++) {
+//            c = str.charAt(i);
+//            if ((c >= 0x0001) && (c <= 0x007F)) {
+//                utfLength++;
+//            } else if (c > 0x07FF) {
+//                utfLength += 3;
+//            } else {
+//                utfLength += 2;
+//            }
+//        }
+//        if (utfLength > 65535) {
+//            throw new UTFDataFormatException("encoded string too long:"
+//                    + utfLength + " bytes");
+//        }
+        int lenPos = ((BufferObjectDataOutput) out).position();
+        out.writeShort(1);
         int i;
         for (i = beginIndex; i < endIndex; i++) {
             c = str.charAt(i);
@@ -116,22 +114,27 @@ public final class UTFEncoderDecoder {
                 break;
             }
             buffering(buffer, count++, (byte) c, out);
+            utfLength++;
         }
         for (; i < endIndex; i++) {
             c = str.charAt(i);
             if ((c >= 0x0001) && (c <= 0x007F)) {
                 buffering(buffer, count++, (byte) c, out);
+                utfLength++;
             } else if (c > 0x07FF) {
                 buffering(buffer, count++, (byte) (0xE0 | ((c >> 12) & 0x0F)), out);
                 buffering(buffer, count++, (byte) (0x80 | ((c >> 6) & 0x3F)), out);
                 buffering(buffer, count++, (byte) (0x80 | ((c) & 0x3F)), out);
+                utfLength+=3;
             } else {
                 buffering(buffer, count++, (byte) (0xC0 | ((c >> 6) & 0x1F)), out);
                 buffering(buffer, count++, (byte) (0x80 | ((c) & 0x3F)), out);
+                utfLength+=2;
             }
         }
         int length = count % buffer.length;
         out.write(buffer, 0, length == 0 ? buffer.length : length);
+        ((BufferObjectDataOutput) out).writeShort(lenPos, utfLength);
     }
 
     public String readUTF0(final DataInput in, byte[] buffer) throws IOException {
