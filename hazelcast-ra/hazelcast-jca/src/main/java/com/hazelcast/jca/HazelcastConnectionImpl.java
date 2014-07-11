@@ -16,16 +16,22 @@
 
 package com.hazelcast.jca;
 
+import com.hazelcast.core.Cluster;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
+import com.hazelcast.core.IAtomicReference;
 import com.hazelcast.core.ICountDownLatch;
+import com.hazelcast.core.IExecutorService;
 import com.hazelcast.core.IList;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.IQueue;
 import com.hazelcast.core.ISemaphore;
 import com.hazelcast.core.ISet;
 import com.hazelcast.core.ITopic;
+import com.hazelcast.core.IdGenerator;
 import com.hazelcast.core.MultiMap;
+import com.hazelcast.core.ReplicatedMap;
 import com.hazelcast.core.TransactionalList;
 import com.hazelcast.core.TransactionalMap;
 import com.hazelcast.core.TransactionalMultiMap;
@@ -155,10 +161,15 @@ public class HazelcastConnectionImpl implements HazelcastConnection {
         return getHazelcastInstance().getMultiMap(name);
     }
 
+    @Override
+    public Cluster getCluster() {
+        return getHazelcastInstance().getCluster();
+    }
+
     /* (non-Javadoc)
      * @see com.hazelcast.jca.HazelcastConnection#getExecutorService(java.lang.String)
      */
-    public ExecutorService getExecutorService(String name) {
+    public IExecutorService getExecutorService(String name) {
         return getHazelcastInstance().getExecutorService(name);
     }
 
@@ -222,6 +233,26 @@ public class HazelcastConnectionImpl implements HazelcastConnection {
             throw new IllegalStateException("Transaction is not active");
         }
         return txContext.getSet(name);
+    }
+
+    @Override
+    public Endpoint getLocalEndpoint() {
+        return getHazelcastInstance().getLocalEndpoint();
+    }
+
+    @Override
+    public <K, V> ReplicatedMap<K, V> getReplicatedMap(String name) {
+        return getHazelcastInstance().getReplicatedMap(name);
+    }
+
+    @Override
+    public IdGenerator getIdGenerator(String name) {
+        return getHazelcastInstance().getIdGenerator(name);
+    }
+
+    @Override
+    public <E> IAtomicReference<E> getAtomicReference(String name) {
+        return getHazelcastInstance().getAtomicReference(name);
     }
 
 }

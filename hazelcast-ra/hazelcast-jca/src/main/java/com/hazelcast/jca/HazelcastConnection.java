@@ -20,15 +20,21 @@ import java.util.concurrent.ExecutorService;
 
 import javax.resource.cci.Connection;
 
+import com.hazelcast.core.Cluster;
+import com.hazelcast.core.Endpoint;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IAtomicReference;
+import com.hazelcast.core.IExecutorService;
 import com.hazelcast.core.IQueue;
 import com.hazelcast.core.ISet;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.IList;
 import com.hazelcast.core.IMap;
+import com.hazelcast.core.IdGenerator;
 import com.hazelcast.core.MultiMap;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.ICountDownLatch;
+import com.hazelcast.core.ReplicatedMap;
 import com.hazelcast.core.TransactionalMap;
 import com.hazelcast.core.TransactionalMultiMap;
 import com.hazelcast.core.TransactionalQueue;
@@ -74,11 +80,16 @@ public interface HazelcastConnection extends Connection {
      */
     <K, V> MultiMap<K, V> getMultiMap(String name);
 
+    /**
+     * @see com.hazelcast.core.HazelcastInstance#getCluster()
+     */
+    Cluster getCluster();
+
 
     /**
      * @see HazelcastInstance#getExecutorService(String)
      */
-    ExecutorService getExecutorService(String name);
+    IExecutorService getExecutorService(String name);
 
     /**
      * @see HazelcastInstance#getAtomicLong(String)
@@ -122,5 +133,25 @@ public interface HazelcastConnection extends Connection {
      * @see TransactionalTaskContext#getSet(String)
      */
     <E> TransactionalSet<E> getTransactionalSet(String name);
+
+    /**
+     * @see com.hazelcast.core.HazelcastInstance#getLocalEndpoint()
+     */
+    Endpoint getLocalEndpoint();
+
+    /**
+     * @see com.hazelcast.core.HazelcastInstance#getReplicatedMap(String)
+     */
+    <K, V> ReplicatedMap<K, V> getReplicatedMap(String name);
+
+    /**
+     * @see com.hazelcast.core.HazelcastInstance#getIdGenerator(String)
+     */
+    IdGenerator getIdGenerator(String name);
+
+    /**
+     * @see com.hazelcast.core.HazelcastInstance#getAtomicReference(String)
+     */
+    <E> IAtomicReference<E> getAtomicReference(String name);
 
 }
