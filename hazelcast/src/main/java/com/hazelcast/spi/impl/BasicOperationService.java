@@ -697,7 +697,15 @@ final class BasicOperationService implements InternalOperationService {
                 }
 
                 checkQueuingTime(op);
-                op.run();
+                long startTime = System.nanoTime();
+                try {
+                    op.run();
+                } finally {
+                    long duration = (System.nanoTime() - startTime);
+                    if (duration > MAX_QUEUEING_TIME_NS) {
+                        logger.warning("Operation " + op + " took " + TimeUnit.NANOSECONDS.toMillis(duration) + " ms to execute!. Partition ID = " +op.getPartitionId());
+                    }
+                }
                 handleResponse(op);
                 afterRun(op);
             } catch (Throwable e) {
