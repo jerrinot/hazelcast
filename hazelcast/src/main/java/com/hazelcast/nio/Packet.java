@@ -42,9 +42,11 @@ public final class Packet extends DataAdapter implements SocketWritable, SocketR
     private int partitionId;
 
     private transient Connection conn;
+    private long createdAt;
 
     public Packet(PortableContext context) {
         super(context);
+        createdAt = System.nanoTime();
     }
 
     public Packet(Data value, PortableContext context) {
@@ -54,6 +56,11 @@ public final class Packet extends DataAdapter implements SocketWritable, SocketR
     public Packet(Data value, int partitionId, PortableContext context) {
         super(value, context);
         this.partitionId = partitionId;
+        createdAt = System.nanoTime();
+    }
+
+    public long getQueuingTime() {
+        return System.nanoTime() - createdAt;
     }
 
     /**

@@ -94,6 +94,8 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PostJoinAwar
     private static final int EXECUTOR_QUEUE_CAPACITY_PER_CORE = 100000;
     private static final int THREADS_PER_CORE = 20;
 
+    private static final long MAX_QUEUEING_TIME_NS = TimeUnit.SECONDS.toNanos(5);
+
     private final Node node;
     private final NodeEngineImpl nodeEngine;
     private final Executor executor;
@@ -338,11 +340,16 @@ public class ClientEngineImpl implements ClientEngine, CoreService, PostJoinAwar
 
         @Override
         public void run() {
+            long queuingTime = packet.getQueuingTime();
+
             Connection conn = packet.getConn();
             ClientEndpointImpl endpoint = (ClientEndpointImpl) endpointManager.getEndpoint(conn);
             ClientRequest request = null;
             try {
                 request = loadRequest();
+                if (queuingTime > MAX_QUEUEING_TIME_NS) {
+                    logger.warning("Request " + request + " was locally queuing for " + TimeUnit.NANOSECONDS.toMillis(queuingTime) + " ms.");
+                }
                 if (request == null) {
                     handlePacketWithNullRequest();
                 } else if (request instanceof AuthenticationRequest) {
