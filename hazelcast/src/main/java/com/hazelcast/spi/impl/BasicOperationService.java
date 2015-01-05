@@ -711,7 +711,7 @@ final class BasicOperationService implements InternalOperationService {
             long queuingTime = op.getQueuingTime();
             if (queuingTime > MAX_QUEUEING_TIME_NS) {
                 logger.warning("Operation " + op + " was queuing for " +
-                        TimeUnit.NANOSECONDS.toMillis(queuingTime) + " ms. Caller Address: " + op.getCallerAddress());
+                        TimeUnit.NANOSECONDS.toMillis(queuingTime) + " ms. Caller UUID: " + op.getCallerUuid());
             }
         }
 
@@ -735,7 +735,7 @@ final class BasicOperationService implements InternalOperationService {
             if (isCallTimedOut(op)) {
                 long queuingTime = op.getQueuingTime();
                 logger.warning("Detected timeout of " + op + ". The operation has been queueing locally for "
-                        + TimeUnit.NANOSECONDS.toMillis(queuingTime) + " ms. Caller Address: " + op.getCallerAddress());
+                        + TimeUnit.NANOSECONDS.toMillis(queuingTime) + " ms. Caller UUID: " + op.getCallerUuid());
                 Object response = new CallTimeoutException(
                         op.getClass().getName(), op.getInvocationTime(), op.getCallTimeout());
                 op.getResponseHandler().sendResponse(response);
