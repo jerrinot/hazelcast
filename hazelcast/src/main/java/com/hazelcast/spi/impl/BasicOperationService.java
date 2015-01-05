@@ -732,6 +732,9 @@ final class BasicOperationService implements InternalOperationService {
 
         private boolean timeout(Operation op) {
             if (isCallTimedOut(op)) {
+                long queuingTime = op.getQueuingTime();
+                logger.warning("Detected timeout of " + op + ". The operation has been queueing locally for "
+                        + TimeUnit.NANOSECONDS.toMillis(queuingTime) + " ms.");
                 Object response = new CallTimeoutException(
                         op.getClass().getName(), op.getInvocationTime(), op.getCallTimeout());
                 op.getResponseHandler().sendResponse(response);
