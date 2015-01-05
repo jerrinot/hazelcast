@@ -101,7 +101,7 @@ import static java.lang.Math.min;
  * @see com.hazelcast.spi.impl.BasicTargetInvocation
  */
 final class BasicOperationService implements InternalOperationService {
-    private static final long MAX_QUEUEING_TIME_NS = TimeUnit.SECONDS.toNanos(1);
+    private static final long MAX_QUEUEING_TIME_NS = TimeUnit.SECONDS.toNanos(5);
 
     private static final int INITIAL_CAPACITY = 1000;
     private static final float LOAD_FACTOR = 0.75f;
