@@ -21,8 +21,8 @@ public interface ClientEndpoint {
     String getUuid();
 
     void setTransactionContext(TransactionContext context);
-
     TransactionContext getTransactionContext(String txnId);
+
 
     void removeTransactionContext(String txnId);
 

@@ -24,6 +24,7 @@ import com.hazelcast.client.impl.operations.ClientReAuthOperation;
 import com.hazelcast.config.GroupConfig;
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.serialization.Portable;
 import com.hazelcast.nio.serialization.PortableReader;
@@ -163,6 +164,9 @@ public final class AuthenticationRequest extends CallableClientRequest {
         final ClientEndpointManager endpointManager = clientEngine.getEndpointManager();
         final Set<ClientEndpoint> endpoints = endpointManager.getEndpoints(principal.getUuid());
         for (ClientEndpoint endpoint : endpoints) {
+            Connection connection = endpoint.getConnection();
+            String uuid = principal.getUuid();
+            Logger.getLogger(AuthenticationRequest.class).info("UUID: " + uuid + " - Connection: " + connection);
             endpoint.authenticated(principal);
         }
     }
