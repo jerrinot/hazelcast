@@ -56,6 +56,7 @@ import static com.hazelcast.util.FutureUtil.returnWithDeadline;
 public class QueryOperation extends AbstractMapOperation {
 
     private static final long QUERY_EXECUTION_TIMEOUT_MINUTES = 5;
+    private final static long MAX_WAITING_TIME_NS = TimeUnit.SECONDS.toNanos(5);
 
     Predicate predicate;
     QueryResult result;
@@ -201,14 +202,19 @@ public class QueryOperation extends AbstractMapOperation {
     }
 
     private final class PartitionCallable implements Callable<Collection<QueryableEntry>> {
-
         final int partition;
+        private final long createdAt;
 
         private PartitionCallable(int partitionId) {
             this.partition = partitionId;
+            this.createdAt = System.nanoTime();
         }
 
         public Collection<QueryableEntry> call() throws Exception {
+            long queueingTime = System.nanoTime() - createdAt;
+            if (queueingTime > MAX_WAITING_TIME_NS) {
+                getLogger().warning(PartitionCallable.class + " has been queueing for " + TimeUnit.NANOSECONDS.toMillis(queueingTime) + " ms.");
+            }
             MapContextQuerySupport mapContextQuerySupport = mapService.getMapServiceContext()
                     .getMapContextQuerySupport();
             return mapContextQuerySupport.queryOnPartition(name, predicate, partition);
