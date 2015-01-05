@@ -53,6 +53,8 @@ public abstract class Operation implements DataSerializable, RemotePropagatable<
     private String callerUuid;
     private String executorName;
 
+    private long createdAt;
+
     // injected
     private transient NodeEngine nodeEngine;
     private transient Object service;
@@ -80,6 +82,10 @@ public abstract class Operation implements DataSerializable, RemotePropagatable<
 
     public String getServiceName() {
         return serviceName;
+    }
+
+    public Operation() {
+        createdAt = System.nanoTime();
     }
 
     public final Operation setServiceName(String serviceName) {
@@ -308,9 +314,15 @@ public abstract class Operation implements DataSerializable, RemotePropagatable<
         callerUuid = in.readUTF();
         executorName = in.readUTF();
         readInternal(in);
+
+        createdAt = System.nanoTime();
     }
 
     protected abstract void writeInternal(ObjectDataOutput out) throws IOException;
 
     protected abstract void readInternal(ObjectDataInput in) throws IOException;
+
+    public long getQueuingTime() {
+        return System.nanoTime() - createdAt;
+    }
 }

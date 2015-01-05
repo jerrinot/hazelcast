@@ -101,6 +101,7 @@ import static java.lang.Math.min;
  * @see com.hazelcast.spi.impl.BasicTargetInvocation
  */
 final class BasicOperationService implements InternalOperationService {
+    private static final long MAX_QUEUEING_TIME_NS = TimeUnit.SECONDS.toNanos(1);
 
     private static final int INITIAL_CAPACITY = 1000;
     private static final float LOAD_FACTOR = 0.75f;
@@ -695,6 +696,7 @@ final class BasicOperationService implements InternalOperationService {
                     return;
                 }
 
+                checkQueuingTime(op);
                 op.run();
                 handleResponse(op);
                 afterRun(op);
@@ -702,6 +704,13 @@ final class BasicOperationService implements InternalOperationService {
                 handleOperationError(op, e);
             } finally {
                 afterCallExecution(op, callKey);
+            }
+        }
+
+        private void checkQueuingTime(Operation op) {
+            long queuingTime = op.getQueuingTime();
+            if (queuingTime > MAX_QUEUEING_TIME_NS) {
+                logger.warning("Operation " + op + " was queuing for " + TimeUnit.NANOSECONDS.toMillis(queuingTime) + " ms.");
             }
         }
 
