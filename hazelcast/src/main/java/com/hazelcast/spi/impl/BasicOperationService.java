@@ -16,6 +16,7 @@
 
 package com.hazelcast.spi.impl;
 
+import com.hazelcast.client.impl.operations.OperationFactoryWrapper;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.core.MemberLeftException;
@@ -706,20 +707,7 @@ final class BasicOperationService implements InternalOperationService {
                 } finally {
                     long duration = (System.nanoTime() - startTime);
                     if (duration > MAX_EXECUTION_TIME_NS) {
-                        StringBuilder sb = new StringBuilder("Operation ")
-                                .append(op)
-                                .append(" took ")
-                                .append(TimeUnit.NANOSECONDS.toMillis(duration))
-                                .append(" ms to execute!. Partition ID = ")
-                                .append(op.getPartitionId());
-                        if (op instanceof PartitionIteratingOperation) {
-                            Field field = PartitionIteratingOperation.class.getDeclaredField("operationFactory");
-                            field.setAccessible(true);
-                            OperationFactory of = (OperationFactory) field.get(op);
-                            sb.append(" . Operations Factory = ")
-                              .append(of);
-                        }
-                        logger.warning(sb.toString());
+                        printWarning(op, duration);
                     }
                 }
                 handleResponse(op);
@@ -729,6 +717,33 @@ final class BasicOperationService implements InternalOperationService {
             } finally {
                 afterCallExecution(op, callKey);
             }
+        }
+
+        private void printWarning(Operation op, long duration) throws NoSuchFieldException, IllegalAccessException {
+            StringBuilder sb = new StringBuilder("Operation ")
+                    .append(op)
+                    .append(" took ")
+                    .append(TimeUnit.NANOSECONDS.toMillis(duration))
+                    .append(" ms to execute!. Partition ID = ")
+                    .append(op.getPartitionId());
+            if (op instanceof PartitionIteratingOperation) {
+                Field field = PartitionIteratingOperation.class.getDeclaredField("operationFactory");
+                field.setAccessible(true);
+                OperationFactory of = (OperationFactory) field.get(op);
+                while (of instanceof OperationFactoryWrapper) {
+                    of = unwrapOperationFactory(of);
+                }
+                sb.append(" . Operations Factory = ")
+                  .append(of);
+            }
+            logger.warning(sb.toString());
+        }
+
+        private OperationFactory unwrapOperationFactory(OperationFactory of) throws NoSuchFieldException, IllegalAccessException {
+            Field opFactory = OperationFactoryWrapper.class.getDeclaredField("opFactory");
+            opFactory.setAccessible(true);
+            of = (OperationFactory) opFactory.get(of);
+            return of;
         }
 
         private void checkQueuingTime(Operation op) {
