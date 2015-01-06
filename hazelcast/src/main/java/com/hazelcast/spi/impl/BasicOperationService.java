@@ -686,6 +686,15 @@ final class BasicOperationService implements InternalOperationService {
 
             RemoteCallKey callKey = null;
             try {
+                long invocationTime = op.getInvocationTime();
+                if (invocationTime > 0) {
+                    long now = nodeEngine.getClusterTime();
+                    long diff = now - invocationTime;
+                    if (diff > 1000) {
+                        logger.warning("Operation " + op + " has been invoked " + diff + " ms ago.");
+                    }
+                }
+
                 if (timeout(op)) {
                     return;
                 }
