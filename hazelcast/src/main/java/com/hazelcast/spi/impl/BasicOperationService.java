@@ -31,6 +31,7 @@ import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.InternalPartition;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.partition.ReplicaErrorLogger;
+import com.hazelcast.query.impl.ReflectionHelper;
 import com.hazelcast.spi.BackupAwareOperation;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.ExecutionTracingService;
@@ -55,6 +56,7 @@ import com.hazelcast.spi.impl.PartitionIteratingOperation.PartitionResponse;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.ExceptionUtil;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -102,6 +104,7 @@ import static java.lang.Math.min;
  */
 final class BasicOperationService implements InternalOperationService {
     private static final long MAX_QUEUEING_TIME_NS = TimeUnit.SECONDS.toNanos(5);
+    private static final long MAX_EXECUTION_TIME_NS = TimeUnit.SECONDS.toNanos(1);
 
     private static final int INITIAL_CAPACITY = 1000;
     private static final float LOAD_FACTOR = 0.75f;
@@ -702,8 +705,21 @@ final class BasicOperationService implements InternalOperationService {
                     op.run();
                 } finally {
                     long duration = (System.nanoTime() - startTime);
-                    if (duration > MAX_QUEUEING_TIME_NS) {
-                        logger.warning("Operation " + op + " took " + TimeUnit.NANOSECONDS.toMillis(duration) + " ms to execute!. Partition ID = " +op.getPartitionId());
+                    if (duration > MAX_EXECUTION_TIME_NS) {
+                        StringBuilder sb = new StringBuilder("Operation ")
+                                .append(op)
+                                .append(" took ")
+                                .append(TimeUnit.NANOSECONDS.toMillis(duration))
+                                .append(" ms to execute!. Partition ID = ")
+                                .append(op.getPartitionId());
+                        if (op instanceof PartitionIteratingOperation) {
+                            Field field = PartitionIteratingOperation.class.getDeclaredField("operationFactory");
+                            field.setAccessible(true);
+                            OperationFactory of = (OperationFactory) field.get(op);
+                            sb.append(" . Operations Factory = ")
+                              .append(of);
+                        }
+                        logger.warning(sb.toString());
                     }
                 }
                 handleResponse(op);
