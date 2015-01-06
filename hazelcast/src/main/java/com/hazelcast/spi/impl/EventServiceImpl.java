@@ -66,9 +66,9 @@ import static com.hazelcast.util.FutureUtil.waitWithDeadline;
 public class EventServiceImpl implements EventService {
     private static final EventRegistration[] EMPTY_REGISTRATIONS = new EventRegistration[0];
 
-    private static final int EVENT_SYNC_FREQUENCY = 100000;
+    private static final int EVENT_SYNC_FREQUENCY = Integer.MAX_VALUE;
     private static final int SEND_RETRY_COUNT = 50;
-    private static final int SEND_EVENT_TIMEOUT_SECONDS = 30;
+    private static final int SEND_EVENT_TIMEOUT_SECONDS = 5;
     private static final int REGISTRATION_TIMEOUT_SECONDS = 5;
     private static final int DEREGISTER_TIMEOUT_SECONDS = 5;
 
@@ -326,7 +326,7 @@ public class EventServiceImpl implements EventService {
     private void sendEventPacket(Address subscriber, EventPacket eventPacket, int orderKey) {
         final String serviceName = eventPacket.serviceName;
         final EventServiceSegment segment = getSegment(serviceName, true);
-        boolean sync = segment.incrementPublish() % EVENT_SYNC_FREQUENCY == 0;
+        boolean sync = false;
 
         if (sync) {
             SendEventOperation op = new SendEventOperation(eventPacket, orderKey);
@@ -335,8 +335,9 @@ public class EventServiceImpl implements EventService {
                     .setTryCount(SEND_RETRY_COUNT).invoke();
             try {
                 f.get(SEND_EVENT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            } catch (Exception ignored) {
-                ignore(ignored);
+            } catch (Exception e) {
+                logger.warning("Timeout when sending events.", e);
+                ignore(e);
             }
         } else {
             final Packet packet = new Packet(nodeEngine.toData(eventPacket), orderKey, nodeEngine.getPortableContext());
