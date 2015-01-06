@@ -68,7 +68,7 @@ public class EventServiceImpl implements EventService {
 
     private static final int EVENT_SYNC_FREQUENCY = 100000;
     private static final int SEND_RETRY_COUNT = 50;
-    private static final int SEND_EVENT_TIMEOUT_SECONDS = 5;
+    private static final int SEND_EVENT_TIMEOUT_SECONDS = 30;
     private static final int REGISTRATION_TIMEOUT_SECONDS = 5;
     private static final int DEREGISTER_TIMEOUT_SECONDS = 5;
 
