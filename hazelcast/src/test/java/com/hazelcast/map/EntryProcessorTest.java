@@ -1080,6 +1080,28 @@ public class EntryProcessorTest extends HazelcastTestSupport {
         assertEquals("entry processor tasks executed in unexpected order", expectedOrder, actualOrder);
     }
 
+    @Test
+    public void testLongRunningEntryProcessor() {
+        TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(1);
+        HazelcastInstance instance = factory.newHazelcastInstance();
+
+        IMap<String, String> map = instance.getMap("map");
+        map.put("key", "value");
+
+        map.executeOnEntries(new AbstractEntryProcessor() {
+            @Override
+            public Object process(Map.Entry entry) {
+                try {
+                    TimeUnit.SECONDS.sleep(5);
+                } catch (InterruptedException ignored) {
+                }
+                return entry;
+            }
+        });
+
+        fail("For reasons...");
+    }
+
     private static class SimpleEntryProcessor implements DataSerializable, EntryProcessor<Object, List<Integer>>, EntryBackupProcessor<Object, List<Integer>> {
         private Integer id;
 

@@ -81,6 +81,8 @@ public final class BasicOperationScheduler {
 
     private final ResponseThread responseThread;
 
+    private final PartitionThreadWatchDog partitionThreadWatchDog;
+
     private volatile boolean shutdown;
 
     //The trigger is used when a priority message is send and offered to the operation-thread priority queue.
@@ -113,6 +115,9 @@ public final class BasicOperationScheduler {
 
         this.responseThread = new ResponseThread();
         responseThread.start();
+
+        this.partitionThreadWatchDog = new PartitionThreadWatchDog();
+        partitionThreadWatchDog.start();
 
         logger.info("Starting with " + genericOperationThreads.length + " generic operation threads and "
                 + partitionOperationThreads.length + " partition operation threads.");
@@ -392,6 +397,9 @@ public final class BasicOperationScheduler {
         private final BlockingQueue workQueue;
         private final Queue priorityWorkQueue;
 
+        private volatile Object currentTask;
+        private volatile long startedAt;
+
         public OperationThread(String name, boolean isPartitionSpecific,
                                int threadId, BlockingQueue workQueue, Queue priorityWorkQueue) {
             super(node.threadGroup, name);
@@ -436,9 +444,13 @@ public final class BasicOperationScheduler {
 
         private void process(Object task) {
             try {
+                startedAt = System.nanoTime();
+                currentTask = task;
                 dispatcher.dispatch(task);
             } catch (Exception e) {
                 logger.severe("Failed to process task: " + task + " on partitionThread:" + getName());
+            } finally {
+                currentTask = null;
             }
         }
 
@@ -518,6 +530,57 @@ public final class BasicOperationScheduler {
         @Override
         public void run() {
             dispatcher.dispatch(op);
+        }
+    }
+
+    private final class PartitionThreadWatchDog extends Thread {
+        @Override
+        public void run() {
+            while (node.getClusterService() == null) {
+                try {
+                    TimeUnit.MILLISECONDS.sleep(100);
+                } catch (InterruptedException ignored) {
+                    break;
+                }
+            }
+
+            while (!shutdown) {
+                checkForLongRunningTasks(partitionOperationThreads);
+                checkForLongRunningTasks(genericOperationThreads);
+
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException ignored) {
+                    break;
+                }
+            }
+        }
+
+        private void checkForLongRunningTasks(OperationThread[] operationThreads) {
+            long now = System.nanoTime();
+
+            for (OperationThread operationThread : operationThreads) {
+                Object task = operationThread.currentTask;
+                if (task != null) {
+                    long diff = now - operationThread.startedAt;
+                    if (TimeUnit.NANOSECONDS.toSeconds(diff) > 3) {
+                        reportLongRunningTasks(operationThread, task, diff);
+                    }
+                }
+            }
+        }
+
+        private void reportLongRunningTasks(OperationThread operationThread, Object task, long diffMs) {
+            StringBuilder sb = new StringBuilder();
+
+            sb.append("Task: " + task+"\n");
+            sb.append("Running for " + TimeUnit.NANOSECONDS.toMillis(diffMs) + " ms...\n");
+
+            sb.append("Stack Trace:\n");
+            for (StackTraceElement stackTraceElement : operationThread.getStackTrace()) {
+                sb.append(stackTraceElement.toString()).append("\n");
+            }
+            logger.warning(sb.toString());
         }
     }
 }
