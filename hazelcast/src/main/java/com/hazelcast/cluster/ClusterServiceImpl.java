@@ -1251,6 +1251,7 @@ public final class ClusterServiceImpl implements ClusterService, ConnectionListe
     public void setMasterTime(long masterTime) {
         long diff = masterTime - Clock.currentTimeMillis();
         if (Math.abs(diff) < Math.abs(clusterTimeDiff)) {
+            logger.info("Setting cluster time diff to " + diff);
             this.clusterTimeDiff = diff;
         }
     }
