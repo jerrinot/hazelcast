@@ -36,15 +36,27 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class NodeIOService implements IOService {
 
     private final Node node;
     private final NodeEngineImpl nodeEngine;
 
+    private final AtomicLong clientPacketCounter = new AtomicLong();
+    private final AtomicLong memberPacketCounter = new AtomicLong();
+
     public NodeIOService(Node node) {
         this.node = node;
         this.nodeEngine = node.nodeEngine;
+
+        startPacketDumper();
+    }
+
+    private void startPacketDumper() {
+        PacketDumper packetDumper = new PacketDumper();
+        packetDumper.setDaemon(true);
+        packetDumper.start();
     }
 
     @Override
@@ -100,11 +112,13 @@ public class NodeIOService implements IOService {
                 member.didRead();
             }
         }
+        memberPacketCounter.incrementAndGet();
         nodeEngine.handlePacket(packet);
     }
 
     @Override
     public void handleClientPacket(Packet p) {
+        clientPacketCounter.incrementAndGet();
         node.clientEngine.handlePacket(p);
     }
 
@@ -302,6 +316,31 @@ public class NodeIOService implements IOService {
     private Collection<String> getPortDefinitions(NetworkConfig networkConfig) {
         return networkConfig.getOutboundPortDefinitions() == null
                 ? Collections.<String>emptySet() : networkConfig.getOutboundPortDefinitions();
+    }
+
+    private class PacketDumper extends Thread {
+        private final int SLEEP_SECONDS = 1;
+
+        @Override
+        public void run() {
+            for (;;) {
+                long clientPackets = clientPacketCounter.getAndSet(0);
+                long memberPackets = memberPacketCounter.getAndSet(0);
+                ILogger logger = node.loggingService.getLogger(PacketDumper.class);
+                if (logger != null) {
+                    logger.info("Client Packets: " + clientPackets + " Member Packets: " + memberPackets);
+                }
+                sleep();
+            }
+        }
+
+        private void sleep() {
+            try {
+                Thread.sleep(SLEEP_SECONDS * 1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
 
