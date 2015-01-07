@@ -73,7 +73,13 @@ public final class PartitionIteratingOperation extends AbstractOperation impleme
             for (Map.Entry<Integer, ResponseQueue> responseQueueEntry : responses.entrySet()) {
                 final ResponseQueue queue = responseQueueEntry.getValue();
                 final Integer key = responseQueueEntry.getKey();
+                long started = System.currentTimeMillis();
                 final Object result = queue.get();
+                long diff = System.currentTimeMillis() - started;
+                if (diff > 1000) {
+                    getLogger().info("PartitionIteratingOp, getting result for partition " + key + " took " + diff + " ms. " +
+                            "Factory is creating " + operationFactory.createOperation());
+                }
                 if (result instanceof NormalResponse) {
                     results.put(key, ((NormalResponse) result).getValue());
                 } else {
