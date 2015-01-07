@@ -691,7 +691,9 @@ final class BasicOperationService implements InternalOperationService {
                     long now = nodeEngine.getClusterTime();
                     long diff = now - invocationTime;
                     if (diff > 1000) {
-                        logger.warning("Operation " + op + " has been invoked " + diff + " ms ago.");
+                        StringBuilder sb = new StringBuilder("Operation " + op + " has been invoked " + diff + " ms ago.");
+                        appendOperationFactoryInfo(op, sb);
+                        logger.warning(sb.toString());
                     }
                 }
 
@@ -735,6 +737,11 @@ final class BasicOperationService implements InternalOperationService {
                     .append(TimeUnit.NANOSECONDS.toMillis(duration))
                     .append(" ms to execute!. Partition ID = ")
                     .append(op.getPartitionId());
+            appendOperationFactoryInfo(op, sb);
+            logger.warning(sb.toString());
+        }
+
+        private void appendOperationFactoryInfo(Operation op, StringBuilder sb) throws NoSuchFieldException, IllegalAccessException {
             if (op instanceof PartitionIteratingOperation) {
                 Field field = PartitionIteratingOperation.class.getDeclaredField("operationFactory");
                 field.setAccessible(true);
@@ -745,7 +752,6 @@ final class BasicOperationService implements InternalOperationService {
                 sb.append(" . Operations Factory = ")
                   .append(of);
             }
-            logger.warning(sb.toString());
         }
 
         private OperationFactory unwrapOperationFactory(OperationFactory of) throws NoSuchFieldException, IllegalAccessException {
