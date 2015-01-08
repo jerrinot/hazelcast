@@ -50,6 +50,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -86,7 +87,11 @@ public class EventServiceImpl implements EventService {
     private final int eventThreadCount;
     private final int eventQueueCapacity;
 
+    private int randomizedEventFrequency;
+
     EventServiceImpl(NodeEngineImpl nodeEngine) {
+        randomizedEventFrequency = calculateEventSyncFrequency();
+
         this.nodeEngine = nodeEngine;
         this.logger = nodeEngine.getLogger(EventService.class.getName());
         final Node node = nodeEngine.getNode();
@@ -101,6 +106,12 @@ public class EventServiceImpl implements EventService {
                 eventThreadCount,
                 eventQueueCapacity);
         this.segments = new ConcurrentHashMap<String, EventServiceSegment>();
+
+    }
+
+    private int calculateEventSyncFrequency() {
+        Random random = new Random();
+        return random.nextInt(EVENT_SYNC_FREQUENCY / 2) + (EVENT_SYNC_FREQUENCY / 2);
     }
 
     @Override
@@ -326,9 +337,10 @@ public class EventServiceImpl implements EventService {
     private void sendEventPacket(Address subscriber, EventPacket eventPacket, int orderKey) {
         final String serviceName = eventPacket.serviceName;
         final EventServiceSegment segment = getSegment(serviceName, true);
-        boolean sync = segment.incrementPublish() % EVENT_SYNC_FREQUENCY == 0;
+        boolean sync = segment.incrementPublish() % randomizedEventFrequency == 0;
 
         if (sync) {
+            randomizedEventFrequency = calculateEventSyncFrequency();
             SendEventOperation op = new SendEventOperation(eventPacket, orderKey);
             Future f = nodeEngine.getOperationService()
                     .createInvocationBuilder(serviceName, op, subscriber)
@@ -336,7 +348,6 @@ public class EventServiceImpl implements EventService {
             try {
                 f.get(SEND_EVENT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             } catch (Exception ignored) {
-
                 ignore(ignored);
             }
         } else {
