@@ -66,9 +66,9 @@ import static com.hazelcast.util.FutureUtil.waitWithDeadline;
 public class EventServiceImpl implements EventService {
     private static final EventRegistration[] EMPTY_REGISTRATIONS = new EventRegistration[0];
 
-    private static final int EVENT_SYNC_FREQUENCY = 100000;
+    private static final int EVENT_SYNC_FREQUENCY = Integer.getInteger("eventSync", 100000);
     private static final int SEND_RETRY_COUNT = 50;
-    private static final int SEND_EVENT_TIMEOUT_SECONDS = 5;
+    private static final int SEND_EVENT_TIMEOUT_SECONDS = Integer.getInteger("eventSyncTimeout", 5);;
     private static final int REGISTRATION_TIMEOUT_SECONDS = 5;
     private static final int DEREGISTER_TIMEOUT_SECONDS = 5;
 
