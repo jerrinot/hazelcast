@@ -336,6 +336,7 @@ public class EventServiceImpl implements EventService {
             try {
                 f.get(SEND_EVENT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             } catch (Exception ignored) {
+
                 ignore(ignored);
             }
         } else {

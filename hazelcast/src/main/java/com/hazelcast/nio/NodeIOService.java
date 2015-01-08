@@ -45,6 +45,7 @@ public class NodeIOService implements IOService {
 
     private final AtomicLong clientPacketCounter = new AtomicLong();
     private final AtomicLong memberPacketCounter = new AtomicLong();
+    private final AtomicLong eventPacketCounter = new AtomicLong();
 
     public NodeIOService(Node node) {
         this.node = node;
@@ -112,7 +113,11 @@ public class NodeIOService implements IOService {
                 member.didRead();
             }
         }
-        memberPacketCounter.incrementAndGet();
+        if (packet.isHeaderSet(Packet.HEADER_OP)) {
+            memberPacketCounter.incrementAndGet();
+        } else if (packet.isHeaderSet(Packet.HEADER_EVENT)) {
+            eventPacketCounter.incrementAndGet();
+        }
         nodeEngine.handlePacket(packet);
     }
 
@@ -326,9 +331,10 @@ public class NodeIOService implements IOService {
             for (;;) {
                 long clientPackets = clientPacketCounter.getAndSet(0);
                 long memberPackets = memberPacketCounter.getAndSet(0);
+                long eventPackets = eventPacketCounter.getAndSet(0);
                 ILogger logger = node.loggingService.getLogger(PacketDumper.class);
                 if (logger != null) {
-                    logger.info("Client Packets: " + clientPackets + " Member Packets: " + memberPackets);
+                    logger.info("Client Packets: " + clientPackets + " Member Packets: " + memberPackets + " Event Packets: " + eventPackets);
                 }
                 sleep();
             }
