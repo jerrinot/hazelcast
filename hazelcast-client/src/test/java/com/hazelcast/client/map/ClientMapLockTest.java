@@ -17,18 +17,8 @@
 package com.hazelcast.client.map;
 
 import com.hazelcast.client.HazelcastClient;
-import com.hazelcast.config.Config;
-import com.hazelcast.config.MapStoreConfig;
 import com.hazelcast.core.*;
-import com.hazelcast.map.AbstractEntryProcessor;
-import com.hazelcast.monitor.LocalMapStats;
-import com.hazelcast.nio.ObjectDataInput;
-import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.nio.serialization.DataSerializable;
-import com.hazelcast.nio.serialization.HazelcastSerializationException;
-import com.hazelcast.query.Predicate;
-import com.hazelcast.query.SqlPredicate;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -36,17 +26,14 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
-import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.test.HazelcastTestSupport.*;
 import static org.junit.Assert.*;
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastTestClassRunner.class)
 @Category(QuickTest.class)
 public class ClientMapLockTest {
 

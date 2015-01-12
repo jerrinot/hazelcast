@@ -6,8 +6,9 @@ import com.hazelcast.map.impl.mapstore.writebehind.WriteBehindQueue;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.DefaultSerializationServiceBuilder;
 import com.hazelcast.nio.serialization.SerializationService;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.util.Clock;
 import org.junit.Test;
@@ -20,8 +21,8 @@ import static com.hazelcast.map.impl.mapstore.writebehind.WriteBehindQueues.crea
 import static com.hazelcast.map.impl.mapstore.writebehind.WriteBehindQueues.createSafeBoundedArrayWriteBehindQueue;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(HazelcastParallelClassRunner.class)
-@Category(QuickTest.class)
+@RunWith(HazelcastTestClassRunner.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class WriteBehindQueueTest extends HazelcastTestSupport {
 
     @Test

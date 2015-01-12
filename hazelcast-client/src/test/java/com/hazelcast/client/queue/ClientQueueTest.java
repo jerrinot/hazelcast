@@ -20,7 +20,7 @@ import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.QueueConfig;
 import com.hazelcast.core.*;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.*;
 import org.junit.experimental.categories.Category;
@@ -35,7 +35,7 @@ import static com.hazelcast.test.HazelcastTestSupport.interruptCurrentThread;
 import static com.hazelcast.test.HazelcastTestSupport.randomString;
 import static org.junit.Assert.*;
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastTestClassRunner.class)
 @Category(QuickTest.class)
 public class ClientQueueTest {
 

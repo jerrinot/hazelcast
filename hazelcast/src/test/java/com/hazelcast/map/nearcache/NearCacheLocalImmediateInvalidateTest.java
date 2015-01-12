@@ -7,9 +7,10 @@ import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.map.AbstractEntryProcessor;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.After;
 import org.junit.Before;
@@ -31,8 +32,8 @@ import static org.junit.Assert.fail;
  * Invalidates any map operation starter node's near cache immediately.
  *
  */
-@RunWith(HazelcastParallelClassRunner.class)
-@Category(QuickTest.class)
+@RunWith(HazelcastTestClassRunner.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class NearCacheLocalImmediateInvalidateTest extends HazelcastTestSupport {
 
     private static final int numIterations = 1000;

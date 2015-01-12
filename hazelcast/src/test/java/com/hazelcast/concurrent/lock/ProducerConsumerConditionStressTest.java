@@ -3,7 +3,7 @@ package com.hazelcast.concurrent.lock;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICondition;
 import com.hazelcast.core.ILock;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -12,7 +12,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.assertNull;
 
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastTestClassRunner.class)
 @Ignore // https://github.com/hazelcast/hazelcast/issues/2272
 public class ProducerConsumerConditionStressTest extends HazelcastTestSupport {
 

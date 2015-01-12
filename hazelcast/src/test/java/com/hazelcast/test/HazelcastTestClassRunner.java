@@ -23,13 +23,13 @@ import org.junit.runners.model.Statement;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
+public class HazelcastTestClassRunner extends AbstractHazelcastClassRunner {
 
     private static final int MAX_THREADS;
 
     static {
         int cores = Runtime.getRuntime().availableProcessors();
-        if (!TestEnvironment.isMockNetwork()) {
+        if (!TestEnvironment.isMockNetwork() || Boolean.getBoolean("hazelcast.test.multiple.jvm")) {
             MAX_THREADS = 1;
         } else if (cores < 8) {
             MAX_THREADS = 8;
@@ -40,7 +40,7 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
 
     private final AtomicInteger numThreads;
 
-    public HazelcastParallelClassRunner(Class<?> klass) throws InitializationError {
+    public HazelcastTestClassRunner(Class<?> klass) throws InitializationError {
         super(klass);
         numThreads = new AtomicInteger(0);
     }
@@ -65,7 +65,7 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
         return new Statement() {
             @Override
             public void evaluate() throws Throwable {
-                HazelcastParallelClassRunner.super.childrenInvoker(notifier).evaluate();
+                HazelcastTestClassRunner.super.childrenInvoker(notifier).evaluate();
                 // wait for all child threads (tests) to complete
                 while (numThreads.get() > 0) {
                     Thread.sleep(25);
@@ -88,7 +88,7 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
             long start = System.currentTimeMillis();
             String testName = method.getMethod().getDeclaringClass().getSimpleName() + "." + method.getName();
             System.out.println("Started Running Test: " + testName);
-            HazelcastParallelClassRunner.super.runChild(method, notifier);
+            HazelcastTestClassRunner.super.runChild(method, notifier);
             numThreads.decrementAndGet();
             float took = (float) (System.currentTimeMillis() - start) / 1000;
             System.out.println(String.format("Finished Running Test: %s in %.3f seconds.", testName, took));

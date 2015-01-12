@@ -6,7 +6,8 @@ import com.hazelcast.concurrent.countdownlatch.client.AwaitRequest;
 import com.hazelcast.concurrent.countdownlatch.client.CountDownRequest;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.ICountDownLatch;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -17,8 +18,8 @@ import java.io.IOException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(HazelcastParallelClassRunner.class)
-@Category(QuickTest.class)
+@RunWith(HazelcastTestClassRunner.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class CountDownLatchRequestTest extends ClientTestSupport {
 
     static final String name = randomString();

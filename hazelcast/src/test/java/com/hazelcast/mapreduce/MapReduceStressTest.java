@@ -21,7 +21,7 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.mapreduce.MapReduceTest.GroupingTestMapper;
 import com.hazelcast.mapreduce.MapReduceTest.ObjectCombinerFactory;
 import com.hazelcast.mapreduce.MapReduceTest.ObjectReducerFactory;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.NightlyTest;
@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastTestClassRunner.class)
 @Category(NightlyTest.class)
 public class MapReduceStressTest
         extends HazelcastTestSupport {

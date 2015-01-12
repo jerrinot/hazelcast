@@ -12,8 +12,9 @@ import com.hazelcast.core.ISet;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.MultiMap;
 import com.hazelcast.core.ReplicatedMap;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,8 +27,8 @@ import java.io.Serializable;
  * This is the test that just tests if the mbeans get created. Tests in this class only exist for types that don't have
  * a specific test in this package. See LockMBeanTest for a specific test.
  */
-@RunWith(HazelcastParallelClassRunner.class)
-@Category(QuickTest.class)
+@RunWith(HazelcastTestClassRunner.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class MBeanTest extends HazelcastTestSupport {
     private JmxTestDataHolder holder;
 

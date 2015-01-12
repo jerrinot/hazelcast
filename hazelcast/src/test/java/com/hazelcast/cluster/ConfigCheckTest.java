@@ -5,7 +5,8 @@ import com.hazelcast.cluster.impl.ConfigMismatchException;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.PartitionGroupConfig;
 import com.hazelcast.instance.GroupProperties;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Assert;
 import org.junit.Test;
@@ -14,8 +15,8 @@ import org.junit.runner.RunWith;
 
 import static org.junit.Assert.fail;
 
-@RunWith(HazelcastParallelClassRunner.class)
-@Category(QuickTest.class)
+@RunWith(HazelcastTestClassRunner.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class ConfigCheckTest {
 
     @Test

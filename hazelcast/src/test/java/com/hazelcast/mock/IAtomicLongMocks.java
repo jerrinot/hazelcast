@@ -1,13 +1,13 @@
 package com.hazelcast.mock;
 
+import com.hazelcast.core.IAtomicLong;
+
+import java.util.concurrent.atomic.AtomicLong;
+
 import static com.hazelcast.mock.MockUtil.delegateTo;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
-import java.util.concurrent.atomic.AtomicLong;
-
-import com.hazelcast.core.IAtomicLong;
 
 public class IAtomicLongMocks {
 

@@ -24,7 +24,7 @@ import com.hazelcast.core.IQueue;
 import com.hazelcast.core.MultiMap;
 import com.hazelcast.core.TransactionalMultiMap;
 import com.hazelcast.map.MapTransactionStressTest;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.NightlyTest;
 import com.hazelcast.transaction.TransactionContext;
@@ -41,7 +41,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastTestClassRunner.class)
 @Category(NightlyTest.class)
 public class MultiMapTransactionStressTest extends HazelcastTestSupport {
 

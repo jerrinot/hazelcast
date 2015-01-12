@@ -21,7 +21,8 @@ import com.hazelcast.client.SimpleClient;
 import com.hazelcast.concurrent.atomiclong.client.*;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.IAtomicLong;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -34,8 +35,8 @@ import static org.junit.Assert.*;
 /**
  * @author ali 5/13/13
  */
-@RunWith(HazelcastParallelClassRunner.class)
-@Category(QuickTest.class)
+@RunWith(HazelcastTestClassRunner.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class AtomicLongClientRequestTest extends ClientTestSupport {
 
     static final String name = "test";

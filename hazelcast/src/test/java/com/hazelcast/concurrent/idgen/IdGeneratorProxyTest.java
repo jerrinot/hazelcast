@@ -13,11 +13,12 @@ import org.junit.runner.RunWith;
 
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IdGenerator;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 
-@RunWith(HazelcastParallelClassRunner.class)
-@Category(QuickTest.class)
+@RunWith(HazelcastTestClassRunner.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class IdGeneratorProxyTest {
 
     private IdGenerator idGenerator = createIdGenerator();

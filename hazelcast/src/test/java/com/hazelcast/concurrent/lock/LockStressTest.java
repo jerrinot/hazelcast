@@ -1,7 +1,7 @@
 package com.hazelcast.concurrent.lock;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.NightlyTest;
 import org.junit.Test;
@@ -19,7 +19,7 @@ import java.util.concurrent.locks.Lock;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastTestClassRunner.class)
 @Category(NightlyTest.class)
 public class LockStressTest extends HazelcastTestSupport {
 

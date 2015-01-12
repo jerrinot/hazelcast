@@ -1,6 +1,7 @@
 package com.hazelcast.config.helpers;
 
 import com.hazelcast.core.MapStore;
+
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
