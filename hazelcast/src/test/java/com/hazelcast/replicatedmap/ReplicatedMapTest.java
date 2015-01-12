@@ -32,6 +32,7 @@ import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.WatchedOperationExecutor;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -236,11 +237,13 @@ public class ReplicatedMapTest extends ReplicatedMapBaseTest {
     }
 
     @Test
+    @Ignore
     public void testAddTtlBinaryDelay0() throws Exception {
         testAddTtl(buildConfig(InMemoryFormat.BINARY, 0));
     }
 
     @Test
+    @Ignore
     public void testAddTtlBinaryDelayDefault() throws Exception {
         testAddTtl(buildConfig(InMemoryFormat.BINARY, ReplicatedMapConfig.DEFAULT_REPLICATION_DELAY_MILLIS));
     }
