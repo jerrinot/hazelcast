@@ -11,6 +11,7 @@ import com.hazelcast.cache.impl.record.CacheObjectRecord;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
+import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 
 import org.junit.Test;
@@ -27,7 +28,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(HazelcastTestClassRunner.class)
-@Category(QuickTest.class)
+@Category({QuickTest.class, ParallelTest.class})
 public class EvictionPolicyEvaluatorTest extends HazelcastTestSupport {
 
     private class SimpleEvictionCandidate<K, V extends Evictable> implements EvictionCandidate<K, V> {
