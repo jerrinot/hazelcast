@@ -23,6 +23,7 @@ import com.hazelcast.core.ItemEvent;
 import com.hazelcast.core.ItemListener;
 import com.hazelcast.core.TransactionalQueue;
 import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.QuickTest;
@@ -48,7 +49,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@RunWith(HazelcastSerialClassRunner.class)
+@RunWith(HazelcastTestClassRunner.class)
 @Category(QuickTest.class)
 public class QueueTestsFrom2X extends HazelcastTestSupport {
 
