@@ -25,6 +25,7 @@ import com.hazelcast.nio.serialization.DefaultSerializationServiceBuilder;
 import com.hazelcast.nio.serialization.SerializationService;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.QuickTest;
@@ -60,7 +61,7 @@ import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 
-@RunWith(HazelcastSerialClassRunner.class)
+@RunWith(HazelcastTestClassRunner.class)
 @Category(QuickTest.class)
 public class BasicCacheTest
         extends HazelcastTestSupport {

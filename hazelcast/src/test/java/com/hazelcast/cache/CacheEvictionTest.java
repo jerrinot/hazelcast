@@ -4,6 +4,7 @@ import com.hazelcast.cache.impl.HazelcastServerCachingProvider;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Before;
@@ -16,7 +17,7 @@ import javax.cache.CacheManager;
 import javax.cache.spi.CachingProvider;
 import java.util.Random;
 
-@RunWith(HazelcastSerialClassRunner.class)
+@RunWith(HazelcastTestClassRunner.class)
 @Category(QuickTest.class)
 public class CacheEvictionTest extends HazelcastTestSupport {
 

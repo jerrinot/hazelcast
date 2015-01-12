@@ -9,6 +9,7 @@ import com.hazelcast.cache.impl.eviction.EvictionPolicyType;
 import com.hazelcast.cache.impl.eviction.EvictionStrategyType;
 import com.hazelcast.cache.impl.record.CacheObjectRecord;
 import com.hazelcast.test.HazelcastSerialClassRunner;
+import com.hazelcast.test.HazelcastTestClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.QuickTest;
 
@@ -25,7 +26,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(HazelcastSerialClassRunner.class)
+@RunWith(HazelcastTestClassRunner.class)
 @Category(QuickTest.class)
 public class EvictionPolicyEvaluatorTest extends HazelcastTestSupport {
 
