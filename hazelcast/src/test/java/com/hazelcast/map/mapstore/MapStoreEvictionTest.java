@@ -14,6 +14,7 @@ import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.QuickTest;
 
+import static com.hazelcast.config.MapStoreConfig.InitialLoadMode.EAGER;
 import static com.hazelcast.test.TimeConstants.MINUTE;
 
 import static org.junit.Assert.assertEquals;
@@ -46,7 +47,7 @@ public class MapStoreEvictionTest extends HazelcastTestSupport {
     @Test(timeout = 2 * MINUTE)
     public void testLoadsAll_whenEvictionDisabled() throws Exception {
         final String mapName = randomMapName();
-        Config cfg = newConfig(mapName, false);
+        Config cfg = newConfig(mapName, false, EAGER);
 
         IMap<Object, Object> map = getMap(mapName, cfg);
 
@@ -67,7 +68,7 @@ public class MapStoreEvictionTest extends HazelcastTestSupport {
     @Test(timeout = 2 * MINUTE)
     public void testLoadsLessThanMaxSize_whenEvictionEnabled() throws Exception {
         final String mapName = randomMapName();
-        Config cfg = newConfig(mapName, true);
+        Config cfg = newConfig(mapName, true, EAGER);
 
         IMap<Object, Object> map = getMap(mapName, cfg);
 
@@ -79,7 +80,7 @@ public class MapStoreEvictionTest extends HazelcastTestSupport {
     @Test(timeout = 2 * MINUTE)
     public void testLoadsLessThanMaxSize_whenEvictionEnabledAndReloaded() throws Exception {
         final String mapName = randomMapName();
-        Config cfg = newConfig(mapName, true);
+        Config cfg = newConfig(mapName, true, EAGER);
 
         IMap<Object, Object> map = getMap(mapName, cfg);
         map.evictAll();
@@ -92,13 +93,15 @@ public class MapStoreEvictionTest extends HazelcastTestSupport {
         assertTrue(loader.isLoadAllKeysClosed());
     }
 
-    private Config newConfig(String mapName, boolean sizeLimited) {
+    private Config newConfig(String mapName, boolean sizeLimited, MapStoreConfig.InitialLoadMode loadMode) {
         Config cfg = new Config();
         cfg.setGroupConfig(new GroupConfig(getClass().getSimpleName()));
+        cfg.setProperty("hazelcast.partition.count", "5");
 
         MapStoreConfig mapStoreConfig = new MapStoreConfig()
                 .setImplementation(loader)
-                .setInitialLoadMode(MapStoreConfig.InitialLoadMode.EAGER);
+                .setImplementation(loader)
+                .setInitialLoadMode(loadMode);
 
         MapConfig mapConfig = cfg.getMapConfig(mapName).setMapStoreConfig(mapStoreConfig);
 

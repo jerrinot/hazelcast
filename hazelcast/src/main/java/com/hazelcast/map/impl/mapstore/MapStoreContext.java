@@ -7,6 +7,7 @@ import com.hazelcast.map.impl.MapStoreWrapper;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.SerializationService;
 
+import java.util.Collection;
 import java.util.Map;
 
 /**
@@ -28,6 +29,8 @@ public interface MapStoreContext {
 
     Map<Data, Object> getInitialKeys();
 
+    void addInitialKeys(Collection<Data> keys, boolean allKeysLoaded);
+
     MapStoreWrapper getMapStoreWrapper();
 
     boolean isWriteBehindMapStoreEnabled();
@@ -45,4 +48,6 @@ public interface MapStoreContext {
     void waitInitialLoadFinish() throws Exception;
 
     void triggerInitialKeyLoad();
+
+    boolean isAllKeysLoaded();
 }

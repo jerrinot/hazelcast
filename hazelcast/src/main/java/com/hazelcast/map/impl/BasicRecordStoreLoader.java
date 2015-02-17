@@ -87,7 +87,7 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
      * Every partition (record-store) loads its own key set.
      */
     @Override
-    public void loadInitialKeys(boolean replaceExisting) {
+    public void loadInitialValues(boolean replaceExisting) {
         if (isLoaded()) {
             return;
         }
@@ -96,23 +96,22 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
             return;
         }
 
-        final Runnable task = new InitialKeysLoaderTask(replaceExisting);
-        final String executorName = MAP_INITIAL_LOAD_EXECUTOR;
-        executeTask(executorName, task);
+        final Runnable task = new InitialValuesLoaderTask(replaceExisting);
+        executeTask(MAP_INITIAL_LOAD_EXECUTOR, task);
     }
 
-    private final class InitialKeysLoaderTask implements Runnable {
+    private final class InitialValuesLoaderTask implements Runnable {
 
         private final boolean replaceExisting;
 
-        public InitialKeysLoaderTask(boolean replaceExisting) {
+        public InitialValuesLoaderTask(boolean replaceExisting) {
             this.replaceExisting = replaceExisting;
         }
 
         @Override
         public void run() {
             try {
-                loadAllKeysInternal(replaceExisting);
+                loadAllValuesInternal(replaceExisting);
             } catch (Throwable t) {
                 setLoaderException(t);
             }
@@ -161,24 +160,33 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
 
         @Override
         public void run() {
-            loadKeysInternal(keys, replaceExistingValues);
+            loadValuesInternal(keys, replaceExistingValues);
         }
     }
 
-    private void loadAllKeysInternal(boolean replaceExistingValues) throws Exception {
+    private void loadAllValuesInternal(boolean replaceExistingValues) throws Exception {
         final MapContainer mapContainer = recordStore.getMapContainer();
         final MapStoreContext basicMapStoreContext = mapContainer.getMapStoreContext();
+
+        System.err.println("BasicRecordStoreLoader.waitInitialLoadFinish");
         basicMapStoreContext.waitInitialLoadFinish();
+
+        // while( !basicMapStoreContext.isKeyLoadDone() ) {
+        //     load values
+        // }
+        // set loaded = true;
 
         final Map<Data, Object> loadedKeys = basicMapStoreContext.getInitialKeys();
         if (loadedKeys == null || loadedKeys.isEmpty()) {
             setLoaded(true);
             return;
         }
+
+        System.err.println("starting doChunkedLoad. loadedKeys: " + loadedKeys.size());
         doChunkedLoad(loadedKeys, mapServiceContext.getNodeEngine(), replaceExistingValues);
     }
 
-    private void loadKeysInternal(List<Data> keys, boolean replaceExistingValues) {
+    private void loadValuesInternal(List<Data> keys, boolean replaceExistingValues) {
         if (!replaceExistingValues) {
             removeExistingKeys(keys);
         }
