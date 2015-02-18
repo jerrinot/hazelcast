@@ -234,7 +234,6 @@ final class BasicMapStoreContext implements MapStoreContext {
         mapStoreConfig.setImplementation(store);
     }
 
-
     private static MapStoreManager createMapStoreManager(MapStoreContext mapStoreContext) {
         final MapStoreConfig mapStoreConfig = mapStoreContext.getMapStoreConfig();
         if (isWriteBehindMapStoreEnabled(mapStoreConfig)) {

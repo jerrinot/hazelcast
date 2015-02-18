@@ -27,6 +27,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -169,7 +170,13 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
         final MapStoreContext basicMapStoreContext = mapContainer.getMapStoreContext();
 
         System.err.println("BasicRecordStoreLoader.waitInitialLoadFinish");
-        basicMapStoreContext.waitInitialLoadFinish();
+        //basicMapStoreContext.waitInitialLoadFinish();
+
+        System.err.println("loaded: " + basicMapStoreContext.isAllKeysLoaded());
+        while( !basicMapStoreContext.isAllKeysLoaded() ) {
+            TimeUnit.SECONDS.sleep(1);
+        }
+        System.err.println("loaded: " + basicMapStoreContext.isAllKeysLoaded());
 
         // while( !basicMapStoreContext.isKeyLoadDone() ) {
         //     load values
