@@ -2,6 +2,7 @@ package com.hazelcast.map.impl;
 
 import com.hazelcast.nio.serialization.Data;
 
+import java.util.Deque;
 import java.util.List;
 
 /**
@@ -28,7 +29,7 @@ interface RecordStoreLoader {
         }
 
         @Override
-        public void loadInitialValues(boolean replaceExisting) {
+        public void loadInitialValues(Deque<Data> keys, boolean replaceExisting) {
 
         }
 
@@ -58,9 +59,10 @@ interface RecordStoreLoader {
 
     /**
      * Loads initial keys.
+     * @param keysToLoad
      * @param replaceExisting keys
      */
-    void loadInitialValues(boolean replaceExisting);
+    void loadInitialValues(Deque<Data> keysToLoad, boolean replaceExisting);
 
     /**
      * Picks and returns any one of throwables during load all process.

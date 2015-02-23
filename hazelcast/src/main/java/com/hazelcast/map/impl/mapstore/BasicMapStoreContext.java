@@ -39,10 +39,10 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.FutureUtil;
+import com.hazelcast.util.FutureUtil.ExceptionHandler;
 
 import java.io.Closeable;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -89,7 +89,6 @@ final class BasicMapStoreContext implements MapStoreContext {
     private volatile Future<Boolean> initialKeyLoader;
 
     private OperationService ops;
-    private boolean allKeysLoaded = false;
 
     private BasicMapStoreContext() {
         System.err.println("BasicMapStoreContext.created");
@@ -99,19 +98,14 @@ final class BasicMapStoreContext implements MapStoreContext {
     public void start() {
         mapStoreManager.start();
 
-        System.err.println("BasicMapStoreContext.start trigger initial key load");
         triggerInitialKeyLoad();
     }
 
     @Override
     public void triggerInitialKeyLoad() {
-        Data mapNameData = mapServiceContext.toData(mapName);
-
-        if( mapServiceContext.isOwnedKey(mapNameData) ) {
-            System.err.println("BasicMapStoreContext.triggering initial key load");
-            Callable<Boolean> task = new TriggerInitialKeyLoad();
-            initialKeyLoader = executeTask(INITIAL_KEY_LOAD_EXECUTOR, task);
-        }
+        System.err.println("BasicMapStoreContext.triggerInitialKeyLoad");
+        Callable<Boolean> task = new TriggerInitialKeyLoad();
+        initialKeyLoader = executeTask(INITIAL_KEY_LOAD_EXECUTOR, task);
     }
 
     @Override
@@ -162,21 +156,6 @@ final class BasicMapStoreContext implements MapStoreContext {
     @Override
     public MapStoreManager getMapStoreManager() {
         return mapStoreManager;
-    }
-
-    @Override
-    public void addInitialKeys(Collection<Data> additionalInitialKeys, boolean allKeysLoaded) {
-        for(Data keyData: additionalInitialKeys) {
-            Object key = getSerializationService().toObject(keyData);
-            initialKeys.put(keyData, key);
-        }
-
-        this.allKeysLoaded = allKeysLoaded;
-    }
-
-    @Override
-    public boolean isAllKeysLoaded() {
-        return allKeysLoaded;
     }
 
     @Override
@@ -268,14 +247,14 @@ final class BasicMapStoreContext implements MapStoreContext {
         if (keys == null) {
             return;
         }
+        final NodeEngine nodeEngine = mapServiceContext.getNodeEngine();
+        final MapServiceContext mapServiceContext = getMapServiceContext();
 
         // select keys owned by current node.
-        final MapServiceContext mapServiceContext = getMapServiceContext();
         sendKeys(keys, mapServiceContext);
         //selectOwnedKeys(keys, mapServiceContext);
 
         // remove the keys remains more than 20 minutes.
-        final NodeEngine nodeEngine = mapServiceContext.getNodeEngine();
         final ExecutionService executionService = nodeEngine.getExecutionService();
         executionService.schedule(new Runnable() {
             @Override
@@ -322,7 +301,13 @@ final class BasicMapStoreContext implements MapStoreContext {
         }
 
         System.err.println("awaiting key loading to finish. futures: " + futures.size());
-        FutureUtil.waitWithDeadline(futures, 2L, TimeUnit.MINUTES);
+        ExceptionHandler h = new ExceptionHandler() {
+            @Override
+            public void handleException(Throwable e) {
+                e.printStackTrace();
+            }
+        };
+        FutureUtil.waitWithDeadline(futures, 10L, TimeUnit.MINUTES, h);
         System.err.println("loading finished");
     }
 
@@ -378,7 +363,12 @@ final class BasicMapStoreContext implements MapStoreContext {
         @Override
         public Boolean call() throws Exception {
 
-            loadInitialKeys();
+            Data mapNameData = mapServiceContext.toData(mapName);
+
+            if( mapServiceContext.isOwnedKey(mapNameData) ) { //note: blocks until owner are assigned
+                System.err.println("BasicMapStoreContext.triggering initial key load");
+                loadInitialKeys();
+            }
 
             return Boolean.TRUE;
         }

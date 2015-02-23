@@ -25,7 +25,6 @@ import com.hazelcast.map.impl.MapStoreWrapper;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.SerializationService;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 
@@ -115,15 +114,6 @@ public final class MapStoreContextFactory {
 
         @Override
         public void waitInitialLoadFinish() {
-        }
-
-        @Override
-        public void addInitialKeys(Collection<Data> keys, boolean allKeysLoaded) {
-        }
-
-        @Override
-        public boolean isAllKeysLoaded() {
-            return false;
         }
     }
 

@@ -36,12 +36,14 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
 
 import static com.hazelcast.map.impl.ExpirationTimeSetter.updateExpiryTime;
@@ -55,6 +57,9 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     private final MapDataStore<Data, Object> mapDataStore;
     private final RecordStoreLoader recordStoreLoader;
 
+    private Deque<Data> keysToLoad = new ConcurrentLinkedDeque<Data>();
+    private boolean keysLoaded = false;
+
     public DefaultRecordStore(MapContainer mapContainer, int partitionId) {
         super(mapContainer, partitionId);
         this.lockStore = createLockStore();
@@ -63,8 +68,20 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         this.mapDataStore = mapStoreManager.getMapDataStore(partitionId);
 
         this.recordStoreLoader = createRecordStoreLoader();
-        System.err.println("created default record store. loadInitialValues");
-        this.recordStoreLoader.loadInitialValues(true);
+        System.err.println("DefaultRecordStore created");
+    }
+
+    @Override
+    public void addKeysToLoad(Collection<Data> keys, boolean keysLoaded) {
+        this.keysToLoad.addAll(keys);
+        this.keysLoaded = keysLoaded;
+
+        this.recordStoreLoader.loadInitialValues(keysToLoad, true);
+    }
+
+    @Override
+    public boolean isKeysLoaded() {
+        return keysLoaded;
     }
 
     @Override
@@ -80,7 +97,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     @Override
     public void loadAllFromStore(boolean replaceExisting) {
         recordStoreLoader.setLoaded(false);
-        recordStoreLoader.loadInitialValues(replaceExisting);
+        recordStoreLoader.loadInitialValues(null, replaceExisting); //TODO
     }
 
     @Override

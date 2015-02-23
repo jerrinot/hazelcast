@@ -21,13 +21,13 @@ import com.hazelcast.util.ExceptionUtil;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -88,7 +88,7 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
      * Every partition (record-store) loads its own key set.
      */
     @Override
-    public void loadInitialValues(boolean replaceExisting) {
+    public void loadInitialValues(Deque<Data> keys, boolean replaceExisting) {
         if (isLoaded()) {
             return;
         }
@@ -97,22 +97,24 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
             return;
         }
 
-        final Runnable task = new InitialValuesLoaderTask(replaceExisting);
+        final Runnable task = new InitialValuesLoaderTask(keys, replaceExisting);
         executeTask(MAP_INITIAL_LOAD_EXECUTOR, task);
     }
 
     private final class InitialValuesLoaderTask implements Runnable {
 
         private final boolean replaceExisting;
+        private Deque<Data> keys;
 
-        public InitialValuesLoaderTask(boolean replaceExisting) {
+        public InitialValuesLoaderTask(Deque<Data> keys, boolean replaceExisting) {
+            this.keys = keys;
             this.replaceExisting = replaceExisting;
         }
 
         @Override
         public void run() {
             try {
-                loadAllValuesInternal(replaceExisting);
+                loadAllValuesInternal(keys, replaceExisting);
             } catch (Throwable t) {
                 setLoaderException(t);
             }
@@ -165,23 +167,22 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
         }
     }
 
-    private void loadAllValuesInternal(boolean replaceExistingValues) throws Exception {
+    private void loadAllValuesInternal(Deque<Data> keys, boolean replaceExistingValues) throws Exception {
+        System.err.println("BasicRecordStoreLoader.loadAllValuesInternal");
         final MapContainer mapContainer = recordStore.getMapContainer();
         final MapStoreContext basicMapStoreContext = mapContainer.getMapStoreContext();
 
-        System.err.println("BasicRecordStoreLoader.waitInitialLoadFinish");
         //basicMapStoreContext.waitInitialLoadFinish();
 
-        System.err.println("loaded: " + basicMapStoreContext.isAllKeysLoaded());
-        while( !basicMapStoreContext.isAllKeysLoaded() ) {
-            TimeUnit.SECONDS.sleep(1);
+        Map<Data, Object> chunkedKeys = new HashMap<Data, Object>();
+        while( !recordStore.isKeysLoaded() ) {
+            //keys.
         }
-        System.err.println("loaded: " + basicMapStoreContext.isAllKeysLoaded());
 
-        // while( !basicMapStoreContext.isKeyLoadDone() ) {
-        //     load values
-        // }
-        // set loaded = true;
+        Callback<Throwable> callback = createCallbackForThrowable();
+        AtomicInteger checkIfMapLoaded = new AtomicInteger();
+        MapLoadAllTask task = new MapLoadAllTask(chunkedKeys, checkIfMapLoaded , callback);
+        getExecutionService().submit(ExecutionService.MAP_LOADER_EXECUTOR, task);
 
         final Map<Data, Object> loadedKeys = basicMapStoreContext.getInitialKeys();
         if (loadedKeys == null || loadedKeys.isEmpty()) {

@@ -279,4 +279,8 @@ public interface RecordStore {
 
     void evictEntries(long now, boolean backup);
 
+    void addKeysToLoad(Collection<Data> keys, boolean allKeysLoaded);
+
+    boolean isKeysLoaded();
+
 }
