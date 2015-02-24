@@ -3,7 +3,7 @@ package com.hazelcast.map.impl;
 import com.hazelcast.config.MaxSizeConfig;
 import com.hazelcast.config.MaxSizeConfig.MaxSizePolicy;
 import com.hazelcast.core.IFunction;
-import com.hazelcast.map.impl.operation.LoadValuesOperation;
+import com.hazelcast.map.impl.operation.LoadAllOperation;
 import com.hazelcast.nio.IOUtil;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.InternalPartitionService;
@@ -31,15 +31,13 @@ import com.sun.xml.internal.ws.Closeable;
 public class KeyDispatcher {
 
     private int maxBatch = 1000; //TODO: property
+    static final String executorName = "hz:map:keyDispatcher";
 
     private String mapName;
     private OperationService opService;
     private InternalPartitionService partitionService;
     private IFunction<Object, Data> toData;
-
     private ExecutionService execService;
-    String executorName = "hz:map:keyDispatcher";
-
     private MaxSizeConfig maxSizeConfig;
 
     public KeyDispatcher(String mapName, OperationService opService, InternalPartitionService ps,
@@ -119,7 +117,7 @@ public class KeyDispatcher {
         for(Entry<Integer, List<Data>> e : batch.entrySet()) {
             int partitionId = e.getKey();
             List<Data> keys = e.getValue();
-            LoadValuesOperation op = new LoadValuesOperation(mapName, keys);
+            LoadAllOperation op = new LoadAllOperation(mapName, keys, true);
             InternalCompletableFuture<Object> fut = opService.invokeOnPartition(MapService.SERVICE_NAME, op, partitionId);
             futures.add(fut);
         }
