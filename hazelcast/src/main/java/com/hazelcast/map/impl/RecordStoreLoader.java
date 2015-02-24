@@ -2,8 +2,8 @@ package com.hazelcast.map.impl;
 
 import com.hazelcast.nio.serialization.Data;
 
-import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.Future;
 
 /**
  * Loader contract for a {@link RecordStore}.
@@ -24,13 +24,8 @@ interface RecordStoreLoader {
         }
 
         @Override
-        public void loadAll(List<Data> keys, boolean replaceExistingValues) {
-
-        }
-
-        @Override
-        public void loadInitialValues(Deque<Data> keys, boolean replaceExisting) {
-
+        public Future loadValues(List<Data> keys, boolean replaceExistingValues) {
+            return null;
         }
 
         @Override
@@ -54,15 +49,9 @@ interface RecordStoreLoader {
      *
      * @param keys                  keys to be loaded.
      * @param replaceExistingValues <code>true</code> if need to replace existing values otherwise <code>false</code>
+     * @return
      */
-    void loadAll(List<Data> keys, boolean replaceExistingValues);
-
-    /**
-     * Loads initial keys.
-     * @param keysToLoad
-     * @param replaceExisting keys
-     */
-    void loadInitialValues(Deque<Data> keysToLoad, boolean replaceExisting);
+    Future<?> loadValues(List<Data> keys, boolean replaceExistingValues);
 
     /**
      * Picks and returns any one of throwables during load all process.
@@ -71,5 +60,4 @@ interface RecordStoreLoader {
      * @return exception or null.
      */
     Throwable getExceptionOrNull();
-
 }

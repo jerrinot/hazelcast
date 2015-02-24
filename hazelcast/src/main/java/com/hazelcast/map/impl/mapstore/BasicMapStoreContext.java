@@ -24,38 +24,14 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.PartitioningStrategy;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.map.impl.MapContainer;
-import com.hazelcast.map.impl.MapService;
 import com.hazelcast.map.impl.MapServiceContext;
 import com.hazelcast.map.impl.MapStoreWrapper;
-import com.hazelcast.map.impl.operation.LoadKeysOperation;
-import com.hazelcast.map.impl.operation.LoadKeysOperationFactory;
-import com.hazelcast.nio.IOUtil;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.SerializationService;
-import com.hazelcast.partition.InternalPartitionService;
-import com.hazelcast.spi.ExecutionService;
-import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.OperationService;
-import com.hazelcast.util.ExceptionUtil;
-import com.hazelcast.util.FutureUtil;
-import com.hazelcast.util.FutureUtil.ExceptionHandler;
+import com.hazelcast.util.IterableUtil;
 
-import java.io.Closeable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.config.MaxSizeConfig.MaxSizePolicy.PER_NODE;
-import static com.hazelcast.map.impl.eviction.MaxSizeChecker.getApproximateMaxSize;
 import static com.hazelcast.map.impl.mapstore.MapStoreManagers.createWriteBehindManager;
 import static com.hazelcast.map.impl.mapstore.MapStoreManagers.createWriteThroughManager;
 import static com.hazelcast.map.impl.mapstore.StoreConstructor.createStore;
@@ -66,12 +42,6 @@ import static com.hazelcast.map.impl.mapstore.StoreConstructor.createStore;
  */
 final class BasicMapStoreContext implements MapStoreContext {
 
-    private static final int INITIAL_KEYS_REMOVE_DELAY_MINUTES = 20;
-
-    private static final String INITIAL_KEY_LOAD_EXECUTOR = "hz:trigger-initial-load";
-
-    private final Map<Data, Object> initialKeys = new ConcurrentHashMap<Data, Object>();
-
     private String mapName;
 
     private MapStoreManager mapStoreManager;
@@ -80,15 +50,9 @@ final class BasicMapStoreContext implements MapStoreContext {
 
     private MapServiceContext mapServiceContext;
 
-    private PartitioningStrategy partitioningStrategy;
-
     private MapStoreConfig mapStoreConfig;
 
     private MaxSizeConfig maxSizeConfig;
-
-    private volatile Future<Boolean> initialKeyLoader;
-
-    private OperationService ops;
 
     private BasicMapStoreContext() {
         System.err.println("BasicMapStoreContext.created");
@@ -97,22 +61,10 @@ final class BasicMapStoreContext implements MapStoreContext {
     @Override
     public void start() {
         mapStoreManager.start();
-
-        triggerInitialKeyLoad();
-    }
-
-    @Override
-    public void triggerInitialKeyLoad() {
-        System.err.println("BasicMapStoreContext.triggerInitialKeyLoad");
-        Callable<Boolean> task = new TriggerInitialKeyLoad();
-        initialKeyLoader = executeTask(INITIAL_KEY_LOAD_EXECUTOR, task);
     }
 
     @Override
     public void stop() {
-        if (initialKeyLoader != null) {
-            initialKeyLoader.cancel(true);
-        }
         mapStoreManager.stop();
     }
 
@@ -149,18 +101,8 @@ final class BasicMapStoreContext implements MapStoreContext {
     }
 
     @Override
-    public void waitInitialLoadFinish() throws Exception {
-        initialKeyLoader.get();
-    }
-
-    @Override
     public MapStoreManager getMapStoreManager() {
         return mapStoreManager;
-    }
-
-    @Override
-    public Map<Data, Object> getInitialKeys() {
-        return initialKeys;
     }
 
     @Override
@@ -190,7 +132,6 @@ final class BasicMapStoreContext implements MapStoreContext {
         context.setPartitioningStrategy(partitioningStrategy);
         context.setMapServiceContext(mapServiceContext);
         context.setStoreWrapper(storeWrapper);
-        context.setOperationService(nodeEngine.getOperationService());
 
         final MapStoreManager mapStoreManager = createMapStoreManager(context);
         context.setMapStoreManager(mapStoreManager);
@@ -199,10 +140,6 @@ final class BasicMapStoreContext implements MapStoreContext {
         callLifecycleSupportInit(context);
 
         return context;
-    }
-
-    private void setOperationService(OperationService operationService) {
-        ops = operationService;
     }
 
     private static void setStoreImplToWritableMapStoreConfig(NodeEngine nodeEngine, String mapName, Object store) {
@@ -238,150 +175,10 @@ final class BasicMapStoreContext implements MapStoreContext {
         mapStoreWrapper.init(hazelcastInstance, properties, mapName);
     }
 
-    private void loadInitialKeys() {
+    @Override
+    public Iterable<Object> loadAllKeys() {
+        return IterableUtil.nullToEmpty(storeWrapper.loadAllKeys());
 
-        System.err.println("BasicMapStoreContext.loadInitialKeys");
-
-        // load all keys.
-        Iterable keys = storeWrapper.loadAllKeys();
-        if (keys == null) {
-            return;
-        }
-        final NodeEngine nodeEngine = mapServiceContext.getNodeEngine();
-        final MapServiceContext mapServiceContext = getMapServiceContext();
-
-        // select keys owned by current node.
-        sendKeys(keys, mapServiceContext);
-        //selectOwnedKeys(keys, mapServiceContext);
-
-        // remove the keys remains more than 20 minutes.
-        final ExecutionService executionService = nodeEngine.getExecutionService();
-        executionService.schedule(new Runnable() {
-            @Override
-            public void run() {
-                initialKeys.clear();
-            }
-        }, INITIAL_KEYS_REMOVE_DELAY_MINUTES, TimeUnit.MINUTES);
-    }
-
-    int maxBatch = Integer.getInteger("hazelcast.map.load.chunk.size", 1000);
-
-    private void sendKeys(Iterable loadedKeys, MapServiceContext mapServiceContext) {
-
-        initialKeys.clear();
-        int maxSizePerNode = getApproximateMaxSize(maxSizeConfig, PER_NODE) - 1; //TODO
-        InternalPartitionService partitionService = mapServiceContext.getNodeEngine().getPartitionService();
-        List<Future> futures = new ArrayList<Future>();
-        Map<Integer, List<Data>> batch = new HashMap<Integer, List<Data>>();
-
-        for (Object key : loadedKeys) {
-            Data dataKey = mapServiceContext.toData(key, partitioningStrategy);
-
-            int part = partitionService.getPartitionId(dataKey);
-            List<Data> pKeys = batch.get(part);
-            if( pKeys == null ) {
-                pKeys = new ArrayList<Data>();
-                batch.put(part, pKeys);
-            }
-            pKeys.add(dataKey);
-
-            if( pKeys.size() >= maxBatch ) {
-                futures.addAll( sendBatch(batch) );
-                batch = new HashMap<Integer, List<Data>>();
-            }
-        }
-
-        futures.addAll( sendBatch(batch) );
-
-        LoadKeysOperationFactory f = new LoadKeysOperationFactory(mapName);
-        try {
-            ops.invokeOnAllPartitions(MapService.SERVICE_NAME, f);
-        } catch (Exception e) {
-            ExceptionUtil.rethrow(e);
-        }
-
-        System.err.println("awaiting key loading to finish. futures: " + futures.size());
-        ExceptionHandler h = new ExceptionHandler() {
-            @Override
-            public void handleException(Throwable e) {
-                e.printStackTrace();
-            }
-        };
-        FutureUtil.waitWithDeadline(futures, 10L, TimeUnit.MINUTES, h);
-        System.err.println("loading finished");
-    }
-
-    private List<Future> sendBatch(Map<Integer, List<Data>> batch) {
-
-        List<Future> futures = new ArrayList<Future>();
-
-        for(Entry<Integer, List<Data>> e : batch.entrySet()) {
-            int partitionId = e.getKey();
-            List<Data> keys = e.getValue();
-            LoadKeysOperation op = new LoadKeysOperation(mapName, keys, false);
-            InternalCompletableFuture<Object> fut = ops.invokeOnPartition(MapService.SERVICE_NAME, op, partitionId);
-            futures.add(fut);
-        }
-
-        return futures;
-    }
-
-
-    private void selectOwnedKeys(Iterable loadedKeys, MapServiceContext mapServiceContext) {
-
-        initialKeys.clear();
-        int maxSizePerNode = getApproximateMaxSize(maxSizeConfig, PER_NODE) - 1;
-
-        Iterator keyIterator = loadedKeys.iterator();
-
-        try {
-            while (keyIterator.hasNext()) {
-                Object key = keyIterator.next();
-                Data dataKey = mapServiceContext.toData(key, partitioningStrategy);
-                // this node will load only owned keys
-                if (mapServiceContext.isOwnedKey(dataKey)) {
-
-                    initialKeys.put(dataKey, key);
-
-                    if (initialKeys.size() == maxSizePerNode) {
-                        break;
-                    }
-                }
-            }
-        } finally {
-            if (keyIterator instanceof Closeable) {
-                IOUtil.closeResource((Closeable) keyIterator);
-            }
-        }
-    }
-
-    /**
-     * We are offloading initial key load operation.
-     * A {@link com.hazelcast.map.impl.RecordStore} should wait finish of this task.
-     */
-    private final class TriggerInitialKeyLoad implements Callable<Boolean> {
-        @Override
-        public Boolean call() throws Exception {
-
-            Data mapNameData = mapServiceContext.toData(mapName);
-
-            if( mapServiceContext.isOwnedKey(mapNameData) ) { //note: blocks until owner are assigned
-                System.err.println("BasicMapStoreContext.triggering initial key load");
-                loadInitialKeys();
-            }
-
-            return Boolean.TRUE;
-        }
-    }
-
-    private <T> Future<T> executeTask(String executorName, Callable task) {
-        return getExecutionService().submit(executorName, task);
-
-    }
-
-    private ExecutionService getExecutionService() {
-        final NodeEngine nodeEngine = mapServiceContext.getNodeEngine();
-        return nodeEngine.getExecutionService();
     }
 
     void setMapStoreManager(MapStoreManager mapStoreManager) {
@@ -401,7 +198,6 @@ final class BasicMapStoreContext implements MapStoreContext {
     }
 
     void setPartitioningStrategy(PartitioningStrategy partitioningStrategy) {
-        this.partitioningStrategy = partitioningStrategy;
     }
 
     void setMapStoreConfig(MapStoreConfig mapStoreConfig) {

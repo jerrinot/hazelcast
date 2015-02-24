@@ -492,12 +492,11 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
     protected void loadAllInternal(boolean replaceExistingValues) {
         NodeEngine nodeEngine = getNodeEngine();
         OperationService operationService = nodeEngine.getOperationService();
-        Collection<MemberImpl> members = nodeEngine.getClusterService().getMemberList();
+        InternalPartitionService partitionService = nodeEngine.getPartitionService();
+        int mapNamePartition = partitionService.getPartitionId(name);
 
-        for (MemberImpl member : members) {
-            Operation operation = new LoadMapOperation(name, replaceExistingValues);
-            operationService.invokeOnTarget(MapService.SERVICE_NAME, operation, member.getAddress());
-        }
+        Operation operation = new LoadMapOperation(name, replaceExistingValues);
+        operationService.invokeOnPartition(MapService.SERVICE_NAME, operation, mapNamePartition);
 
         waitUntilLoaded();
     }

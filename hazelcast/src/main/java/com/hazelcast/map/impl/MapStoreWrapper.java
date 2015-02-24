@@ -112,9 +112,9 @@ public class MapStoreWrapper implements MapStore, MapLoaderLifecycleSupport {
     }
 
     @Override
-    public Iterable loadAllKeys() {
+    public Iterable<Object> loadAllKeys() {
         if (isMapLoader()) {
-            Iterable allKeys;
+            Iterable<Object> allKeys;
             try {
                 allKeys = mapLoader.loadAllKeys();
             } catch (AbstractMethodError e) {

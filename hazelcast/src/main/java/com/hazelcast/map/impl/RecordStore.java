@@ -250,13 +250,6 @@ public interface RecordStore {
     boolean isExpirable();
 
     /**
-     * Loads all keys from the map store.
-     *
-     * @param replaceExistingValues <code>true</code> if need to replace existing values otherwise <code>false</code>
-     */
-    void loadAllFromStore(boolean replaceExistingValues);
-
-    /**
      * Loads all given keys from defined map store.
      *
      * @param keys                  keys to be loaded.
@@ -279,8 +272,10 @@ public interface RecordStore {
 
     void evictEntries(long now, boolean backup);
 
-    void addKeysToLoad(Collection<Data> keys, boolean allKeysLoaded);
-
-    boolean isKeysLoaded();
-
+    /**
+     * Loads all keys and values
+     *
+     * @param replaceExistingValues <code>true</code> if need to replace existing values otherwise <code>false</code>
+     **/
+    void loadAll(boolean replaceExistingValues);
 }

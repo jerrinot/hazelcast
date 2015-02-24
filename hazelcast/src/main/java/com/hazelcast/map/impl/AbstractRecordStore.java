@@ -3,6 +3,7 @@ package com.hazelcast.map.impl;
 import com.hazelcast.concurrent.lock.LockService;
 import com.hazelcast.concurrent.lock.LockStore;
 import com.hazelcast.config.InMemoryFormat;
+import com.hazelcast.map.impl.mapstore.MapStoreContext;
 import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.map.impl.record.RecordFactory;
 import com.hazelcast.nio.serialization.Data;
@@ -193,8 +194,8 @@ abstract class AbstractRecordStore implements RecordStore {
         }
     }
 
-    protected RecordStoreLoader createRecordStoreLoader() {
-        return mapContainer.getMapStoreContext().getMapStoreWrapper() == null
+    protected RecordStoreLoader createRecordStoreLoader(MapStoreContext mapStoreContext) {
+        return mapStoreContext.getMapStoreWrapper() == null
                 ? RecordStoreLoader.EMPTY_LOADER : new BasicRecordStoreLoader(this);
     }
 

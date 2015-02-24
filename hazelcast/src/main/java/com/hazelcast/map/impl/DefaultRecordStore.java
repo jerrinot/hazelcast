@@ -31,20 +31,20 @@ import com.hazelcast.spi.DefaultObjectNamespace;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.RetryableHazelcastException;
 import com.hazelcast.util.ExceptionUtil;
+import com.hazelcast.util.FutureUtil;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Future;
 
 import static com.hazelcast.map.impl.ExpirationTimeSetter.updateExpiryTime;
 
@@ -57,36 +57,39 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     private final MapDataStore<Data, Object> mapDataStore;
     private final RecordStoreLoader recordStoreLoader;
 
-    private Deque<Data> keysToLoad = new ConcurrentLinkedDeque<Data>();
-    private boolean keysLoaded = false;
+    private KeyDispatcher keyDispatcher;
+    private Collection<Future> loadingKeysFutures = new ArrayList<Future>();
+    private Collection<Future> loadingValsFutures = new ArrayList<Future>();
+    private MapStoreContext mapStoreContext;
 
-    public DefaultRecordStore(MapContainer mapContainer, int partitionId) {
+    public DefaultRecordStore(MapContainer mapContainer, int partitionId,
+            boolean isKeyLoader, KeyDispatcher keyDispatcher) {
         super(mapContainer, partitionId);
+
         this.lockStore = createLockStore();
-        final MapStoreContext mapStoreContext = mapContainer.getMapStoreContext();
-        final MapStoreManager mapStoreManager = mapStoreContext.getMapStoreManager();
+        this.mapStoreContext = mapContainer.getMapStoreContext();
+        MapStoreManager mapStoreManager = mapStoreContext.getMapStoreManager();
         this.mapDataStore = mapStoreManager.getMapDataStore(partitionId);
+        this.recordStoreLoader = createRecordStoreLoader(mapStoreContext);
+        this.keyDispatcher = keyDispatcher;
 
-        this.recordStoreLoader = createRecordStoreLoader();
-        System.err.println("DefaultRecordStore created");
-    }
-
-    @Override
-    public void addKeysToLoad(Collection<Data> keys, boolean keysLoaded) {
-        this.keysToLoad.addAll(keys);
-        this.keysLoaded = keysLoaded;
-
-        this.recordStoreLoader.loadInitialValues(keysToLoad, true);
-    }
-
-    @Override
-    public boolean isKeysLoaded() {
-        return keysLoaded;
+        System.err.println("DefaultRecordStore created " + partitionId );
+        if( isKeyLoader ) {
+            loadAll(true);
+        }
     }
 
     @Override
     public boolean isLoaded() {
-        return recordStoreLoader.isLoaded();
+        //TODO: remove completed futures
+        return FutureUtil.allDone(loadingKeysFutures) && FutureUtil.allDone(loadingValsFutures);
+    }
+
+    @Override
+    public void loadAll(boolean replaceExistingValues) {
+        System.err.println("sending keys with keyDispatcher");
+        //TODO: replaceExistingValues
+        loadingKeysFutures = keyDispatcher.sendKeys( mapStoreContext.loadAllKeys() );
     }
 
     @Override
@@ -95,9 +98,13 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     }
 
     @Override
-    public void loadAllFromStore(boolean replaceExisting) {
-        recordStoreLoader.setLoaded(false);
-        recordStoreLoader.loadInitialValues(null, replaceExisting); //TODO
+    public void loadAllFromStore(List<Data> keys, boolean replaceExistingValues) {
+        if (keys.isEmpty()) {
+            return;
+        }
+        System.err.println("Starting loading values " + keys.size());
+        Future f = recordStoreLoader.loadValues(keys, replaceExistingValues);
+        loadingValsFutures.add(f);
     }
 
     @Override
@@ -1000,14 +1007,6 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         return oldValue;
     }
 
-
-    @Override
-    public void loadAllFromStore(List<Data> keys, boolean replaceExistingValues) {
-        if (keys.isEmpty()) {
-            return;
-        }
-        recordStoreLoader.loadAll(keys, replaceExistingValues);
-    }
 
     @Override
     public MapDataStore<Data, Object> getMapDataStore() {

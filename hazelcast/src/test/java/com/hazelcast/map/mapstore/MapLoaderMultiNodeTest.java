@@ -10,7 +10,7 @@ import com.hazelcast.config.MapStoreConfig.InitialLoadMode;
 import com.hazelcast.config.MaxSizeConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.QuickTest;
@@ -29,7 +29,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastSerialClassRunner.class)
 @Category(QuickTest.class)
 public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
 
@@ -53,7 +53,6 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
 
         System.err.println("getting map");
         IMap<Object, Object> map = getMap(mapName, cfg);
-        sleepMillis(500);
 
         assertEquals(0, loadedValueCount.get());
     }
@@ -65,6 +64,7 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
 
         System.err.println("getting map");
         IMap<Object, Object> map = getMap(mapName, cfg);
+        assertEquals(0, loadedValueCount.get());
 
         System.err.println("getting map.size");
         assertEquals(MAP_STORE_ENTRY_COUNT, map.size());
@@ -77,9 +77,9 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
         Config cfg = newConfig(mapName, false, EAGER);
 
         IMap<Object, Object> map = getMap(mapName, cfg);
+        assertEquals(MAP_STORE_ENTRY_COUNT, loadedValueCount.get());
 
         assertEquals(MAP_STORE_ENTRY_COUNT, map.size());
-        assertEquals(MAP_STORE_ENTRY_COUNT, loadedValueCount.get());
     }
 
     private IMap<Object, Object> getMap(final String mapName, Config cfg) {

@@ -2,7 +2,6 @@ package com.hazelcast.map.impl;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.map.impl.mapstore.MapDataStore;
-import com.hazelcast.map.impl.mapstore.MapStoreContext;
 import com.hazelcast.map.impl.operation.PutAllOperation;
 import com.hazelcast.map.impl.operation.PutFromLoadAllOperation;
 import com.hazelcast.map.impl.record.Record;
@@ -21,13 +20,13 @@ import com.hazelcast.util.ExceptionUtil;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -76,58 +75,20 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
     }
 
     @Override
-    public void loadAll(List<Data> keys, boolean replaceExistingValues) {
+    public Future<?> loadValues(List<Data> keys, boolean replaceExistingValues) {
         setLoaded(false);
 
         final Runnable task = new GivenKeysLoaderTask(keys, replaceExistingValues);
         final String executorName = ExecutionService.MAP_LOAD_ALL_KEYS_EXECUTOR;
-        executeTask(executorName, task);
-    }
-
-    /**
-     * Every partition (record-store) loads its own key set.
-     */
-    @Override
-    public void loadInitialValues(Deque<Data> keys, boolean replaceExisting) {
-        if (isLoaded()) {
-            return;
-        }
-        if (!isOwner()) {
-            setLoaded(true);
-            return;
-        }
-
-        final Runnable task = new InitialValuesLoaderTask(keys, replaceExisting);
-        executeTask(MAP_INITIAL_LOAD_EXECUTOR, task);
-    }
-
-    private final class InitialValuesLoaderTask implements Runnable {
-
-        private final boolean replaceExisting;
-        private Deque<Data> keys;
-
-        public InitialValuesLoaderTask(Deque<Data> keys, boolean replaceExisting) {
-            this.keys = keys;
-            this.replaceExisting = replaceExisting;
-        }
-
-        @Override
-        public void run() {
-            try {
-                loadAllValuesInternal(keys, replaceExisting);
-            } catch (Throwable t) {
-                setLoaderException(t);
-            }
-        }
+        return executeTask(executorName, task);
     }
 
     private void setLoaderException(Throwable t) {
         BasicRecordStoreLoader.this.throwable = t;
     }
 
-    private void executeTask(String executorName, Runnable task) {
-        getExecutionService().submit(executorName, task);
-
+    private Future<?> executeTask(String executorName, Runnable task) {
+        return getExecutionService().submit(executorName, task);
     }
 
     private ExecutionService getExecutionService() {
@@ -145,7 +106,6 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
         final Address partitionOwner = nodeEngine.getPartitionService().getPartitionOwner(partitionId);
         return nodeEngine.getThisAddress().equals(partitionOwner);
     }
-
 
     /**
      * Task for loading given keys.
@@ -165,33 +125,6 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
         public void run() {
             loadValuesInternal(keys, replaceExistingValues);
         }
-    }
-
-    private void loadAllValuesInternal(Deque<Data> keys, boolean replaceExistingValues) throws Exception {
-        System.err.println("BasicRecordStoreLoader.loadAllValuesInternal");
-        final MapContainer mapContainer = recordStore.getMapContainer();
-        final MapStoreContext basicMapStoreContext = mapContainer.getMapStoreContext();
-
-        //basicMapStoreContext.waitInitialLoadFinish();
-
-        Map<Data, Object> chunkedKeys = new HashMap<Data, Object>();
-        while( !recordStore.isKeysLoaded() ) {
-            //keys.
-        }
-
-        Callback<Throwable> callback = createCallbackForThrowable();
-        AtomicInteger checkIfMapLoaded = new AtomicInteger();
-        MapLoadAllTask task = new MapLoadAllTask(chunkedKeys, checkIfMapLoaded , callback);
-        getExecutionService().submit(ExecutionService.MAP_LOADER_EXECUTOR, task);
-
-        final Map<Data, Object> loadedKeys = basicMapStoreContext.getInitialKeys();
-        if (loadedKeys == null || loadedKeys.isEmpty()) {
-            setLoaded(true);
-            return;
-        }
-
-        System.err.println("starting doChunkedLoad. loadedKeys: " + loadedKeys.size());
-        doChunkedLoad(loadedKeys, mapServiceContext.getNodeEngine(), replaceExistingValues);
     }
 
     private void loadValuesInternal(List<Data> keys, boolean replaceExistingValues) {

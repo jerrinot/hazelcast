@@ -9,7 +9,7 @@ import com.hazelcast.config.MapStoreConfig;
 import com.hazelcast.config.MaxSizeConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
-import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.QuickTest;
@@ -26,7 +26,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastSerialClassRunner.class)
 @Category(QuickTest.class)
 public class MapStoreEvictionTest extends HazelcastTestSupport {
 
@@ -87,7 +87,7 @@ public class MapStoreEvictionTest extends HazelcastTestSupport {
         loader.reset();
         map.loadAll(true);
 
-        assertFalse(map.isEmpty());
+        assertFalse("Map is not empty", map.isEmpty());
         assertTrue(MAX_SIZE_PER_CLUSTER >= map.size());
         assertTrue(MAX_SIZE_PER_CLUSTER >= loader.getLoadedValueCount());
         assertTrue(loader.isLoadAllKeysClosed());

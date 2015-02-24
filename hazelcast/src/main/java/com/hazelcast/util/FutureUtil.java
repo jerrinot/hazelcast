@@ -319,4 +319,13 @@ public final class FutureUtil {
     public interface ExceptionHandler {
         void handleException(Throwable throwable);
     }
+
+    public static boolean allDone(Collection<Future> futures) {
+        for(Future f: futures) {
+            if( ! f.isDone() ) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

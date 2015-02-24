@@ -16,9 +16,19 @@
 
 package com.hazelcast.map.impl;
 
+import com.hazelcast.cluster.ClusterService;
 import com.hazelcast.concurrent.lock.LockService;
+import com.hazelcast.config.MapConfig;
+import com.hazelcast.config.MaxSizeConfig;
+import com.hazelcast.core.IFunction;
+import com.hazelcast.core.PartitioningStrategy;
+import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.nio.serialization.SerializationService;
+import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.DefaultObjectNamespace;
+import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.ConcurrencyUtil;
 import com.hazelcast.util.ConstructorFunction;
 
@@ -36,10 +46,35 @@ public class PartitionContainer {
     private final ConstructorFunction<String, RecordStore> recordStoreConstructor
             = new ConstructorFunction<String, RecordStore>() {
         public RecordStore createNew(String name) {
-            final MapContainer mapContainer = mapService.getMapServiceContext().getMapContainer(name);
-            return new DefaultRecordStore(mapContainer, partitionId);
+
+            MapServiceContext serviceContext = mapService.getMapServiceContext();
+            MapContainer mapContainer = serviceContext.getMapContainer(name);
+            final PartitioningStrategy strategy = mapContainer.getPartitioningStrategy();
+            NodeEngine nodeEngine = serviceContext.getNodeEngine();
+            ClusterService cluster = nodeEngine.getClusterService();
+            OperationService opService = nodeEngine.getOperationService();
+            InternalPartitionService ps = nodeEngine.getPartitionService();
+            final SerializationService ss = nodeEngine.getSerializationService();
+            ExecutionService execService = nodeEngine.getExecutionService();
+            MapConfig mapConfig = mapContainer.getMapConfig();
+            MaxSizeConfig maxSizeConfig = mapConfig.getMaxSizeConfig();
+
+            IFunction<Object, Data> serialize = new IFunction<Object, Data>() {
+                @Override
+                public Data apply(Object input) {
+                    return ss.toData(input, strategy);
+                }
+            };
+
+            int namePartition = ps.getPartitionId(name);
+            boolean isLoader = (namePartition == partitionId) && serviceContext.getOwnedPartitions().contains(namePartition);
+
+            KeyDispatcher dispatcher = new KeyDispatcher(name, opService, ps, serialize, execService, maxSizeConfig);
+
+            return new DefaultRecordStore(mapContainer, partitionId, isLoader, dispatcher);
         }
     };
+
     /**
      * Flag to check if there is a {@link com.hazelcast.map.impl.operation.ClearExpiredOperation}
      * is running on this partition at this moment or not.

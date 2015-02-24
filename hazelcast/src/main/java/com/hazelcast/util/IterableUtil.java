@@ -18,8 +18,10 @@ package com.hazelcast.util;
 
 import com.hazelcast.core.IFunction;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * Utility functions for working with {@link Iterable}
@@ -48,7 +50,7 @@ public final class IterableUtil {
     }
 
     /** Transform the Iterator by applying a function to each element  **/
-    private static <T, R> Iterator<R> map(final Iterator<T> iterator, final IFunction<T, R> mapper) {
+    public static <T, R> Iterator<R> map(final Iterator<T> iterator, final IFunction<T, R> mapper) {
         return new Iterator<R>() {
             @Override
             public boolean hasNext() {
@@ -67,9 +69,42 @@ public final class IterableUtil {
         };
     }
 
+    public static <T, R> Iterator<R> limit(final Iterator<R> iterator, final int limit) {
+        return new Iterator<R>() {
+            int iterated = 0;
+
+            @Override
+            public boolean hasNext() {
+                return iterated < limit && iterator.hasNext();
+            }
+
+            @Override
+            public R next() {
+                iterated++;
+                return iterator.next();
+            }
+
+            @Override
+            public void remove() {
+                iterator.remove();
+            }
+        };
+    }
+
+    public static void main(String[] args) throws Exception {
+
+        List<Integer> list = Arrays.asList(1, 2, 3, 4);
+
+        Iterator<Integer> iter = limit(list.iterator(), 2);
+        while(iter.hasNext()) {
+            System.out.println(iter.next());
+        }
+    }
+
     /** Return empty Iterable if argument is null **/
     public static <T> Iterable<T> nullToEmpty(Iterable<T> iterable) {
         return iterable == null ? Collections.<T>emptyList() : iterable;
     }
+
 
 }

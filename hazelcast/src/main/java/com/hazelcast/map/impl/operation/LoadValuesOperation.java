@@ -23,23 +23,22 @@ import com.hazelcast.nio.serialization.Data;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.List;
 
 /**
  * Triggers map loading from a map store
  */
-public class LoadKeysOperation extends AbstractMapOperation {
+public class LoadValuesOperation extends AbstractMapOperation {
 
-    private Collection<Data> keys;
+    private List<Data> keys;
     private boolean allKeysLoaded;
 
-    public LoadKeysOperation() {
+    public LoadValuesOperation() {
     }
 
-    public LoadKeysOperation(String name, Collection<Data> keys, boolean allKeysLoaded) {
-        super(name);
+    public LoadValuesOperation(String mapName, List<Data> keys) {
+        super(mapName);
         this.keys = keys;
-        this.allKeysLoaded = allKeysLoaded;
     }
 
     @Override
@@ -47,7 +46,7 @@ public class LoadKeysOperation extends AbstractMapOperation {
         MapServiceContext mapServiceContext = mapContainer.getMapServiceContext();
 
         RecordStore recordStore = mapServiceContext.getRecordStore(getPartitionId(), name);
-        recordStore.addKeysToLoad(keys, allKeysLoaded);
+        recordStore.loadAllFromStore(keys, true);
     }
 
     @Override
