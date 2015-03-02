@@ -21,6 +21,7 @@ import com.hazelcast.config.EvictionPolicy;
 import com.hazelcast.config.GroupConfig;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MapStoreConfig;
+import com.hazelcast.config.MapStoreConfig.InitialLoadMode;
 import com.hazelcast.config.MaxSizeConfig;
 import com.hazelcast.config.XmlConfigBuilder;
 import com.hazelcast.core.EntryAdapter;
@@ -463,7 +464,7 @@ public class MapStoreTest extends HazelcastTestSupport {
         final String mapName = "testOneMemberWriteBehindWithEvictions";
         final TestEventBasedMapStore testMapStore = new TestEventBasedMapStore();
         testMapStore.loadAllLatch = new CountDownLatch(1);
-        final Config config = newConfig(testMapStore, 2);
+        final Config config = newConfig(testMapStore, 2, InitialLoadMode.EAGER);
         final HazelcastInstance node1 = createHazelcastInstance(config);
         final IMap map = node1.getMap(mapName);
         // check if load all called.
@@ -617,14 +618,15 @@ public class MapStoreTest extends HazelcastTestSupport {
     public void testOneMemberWriteBehind2() throws Exception {
         final TestEventBasedMapStore testMapStore = new TestEventBasedMapStore();
         testMapStore.setLoadAllKeys(false);
-        Config config = newConfig(testMapStore, 1);
+        Config config = newConfig(testMapStore, 1, InitialLoadMode.EAGER);
         HazelcastInstance h1 = createHazelcastInstance(config);
         IMap map = h1.getMap("default");
 
         assertTrueEventually(new AssertTask() {
             @Override
             public void run() throws Exception {
-                assertEquals(TestEventBasedMapStore.STORE_EVENTS.LOAD_ALL_KEYS, testMapStore.getEvents().poll());
+                Object event = testMapStore.getEvents().poll();
+                assertEquals(TestEventBasedMapStore.STORE_EVENTS.LOAD_ALL_KEYS, event);
             }
         });
 
@@ -859,29 +861,36 @@ public class MapStoreTest extends HazelcastTestSupport {
         assertEquals(1, testMapStore.getStore().size());
         assertEquals(1, map.size());
         testMapStore.assertAwait(10);
-        assertEquals(6, testMapStore.callCount.get());
+        assertEquals(5, testMapStore.callCount.get());
     }
 
     @Test(timeout = 300000)
     public void testTwoMemberWriteThrough2() throws Exception {
-        TestMapStore testMapStore = new TestMapStore(1000, 0, 0);
+        int items = 1000;
+        TestMapStore testMapStore = new TestMapStore(items, 0, 0);
         Config config = newConfig(testMapStore, 0);
         TestHazelcastInstanceFactory nodeFactory = createHazelcastInstanceFactory(3);
         HazelcastInstance h1 = nodeFactory.newHazelcastInstance(config);
         HazelcastInstance h2 = nodeFactory.newHazelcastInstance(config);
+
         IMap map1 = h1.getMap("default");
         IMap map2 = h2.getMap("default");
-        for (int i = 0; i < 1000; i++) {
+
+        for (int i = 0; i < items; i++) {
             map1.put(i, "value" + i);
         }
 
-        assertOpenEventually("store operations could not be done wisely ", testMapStore.latchStore);
-        assertEquals(1000, testMapStore.getStore().size());
-        assertEquals(1000, map1.size());
-        assertEquals(1000, map2.size());
+        assertTrue("store operations could not be done wisely ",
+                testMapStore.latchStore.await(30, TimeUnit.SECONDS));
+        assertEquals(items, testMapStore.getStore().size());
+
+        assertEquals(items, map1.size());
+
+        assertEquals(items, map2.size());
+
         testMapStore.assertAwait(10);
-        // 1000 put-load 1000 put-store call and 2 loadAllKeys
-        assertEquals(2002, testMapStore.callCount.get());
+        // N put-load N put-store call and 1 loadAllKeys
+        assertEquals(items*2+1, testMapStore.callCount.get());
     }
 
     @Test(timeout = 120000)
@@ -979,6 +988,7 @@ public class MapStoreTest extends HazelcastTestSupport {
 
         final long end = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1);
 
+        System.err.println("Checking if loaded");
         while (!loaded) {
             for (int i = 0; i < partitionCount; i++) {
                 final RecordStore recordStore = service.getMapServiceContext()
@@ -996,6 +1006,7 @@ public class MapStoreTest extends HazelcastTestSupport {
             //give a rest to cpu.
             Thread.sleep(10);
         }
+        System.err.println("Checking if loaded done: " + loaded);
         return loaded;
     }
 
@@ -1810,16 +1821,26 @@ public class MapStoreTest extends HazelcastTestSupport {
     }
 
     public static Config newConfig(Object storeImpl, int writeDelaySeconds) {
-        return newConfig("default", storeImpl, writeDelaySeconds);
+        return newConfig("default", storeImpl, writeDelaySeconds, InitialLoadMode.LAZY);
+    }
+
+    public static Config newConfig(Object storeImpl, int writeDelaySeconds, InitialLoadMode loadMode) {
+        return newConfig("default", storeImpl, writeDelaySeconds, loadMode);
     }
 
     public static Config newConfig(String mapName, Object storeImpl, int writeDelaySeconds) {
+        return newConfig(mapName, storeImpl, writeDelaySeconds, InitialLoadMode.LAZY);
+    }
+
+    public static Config newConfig(String mapName, Object storeImpl, int writeDelaySeconds, InitialLoadMode loadMode) {
         XmlConfigBuilder configBuilder = new XmlConfigBuilder();
         Config config = configBuilder.build();
+        config.getManagementCenterConfig().setEnabled(false);
         MapConfig mapConfig = config.getMapConfig(mapName);
         MapStoreConfig mapStoreConfig = new MapStoreConfig();
         mapStoreConfig.setImplementation(storeImpl);
         mapStoreConfig.setWriteDelaySeconds(writeDelaySeconds);
+        mapStoreConfig.setInitialLoadMode(loadMode);
         mapConfig.setMapStoreConfig(mapStoreConfig);
         return config;
     }
@@ -2326,6 +2347,7 @@ public class MapStoreTest extends HazelcastTestSupport {
         }
 
         public void store(Object key, Object value) {
+            System.err.println("store call: " + key);
             store.put(key, value);
             callCount.incrementAndGet();
             latchStore.countDown();
@@ -2335,6 +2357,7 @@ public class MapStoreTest extends HazelcastTestSupport {
         }
 
         public Set loadAllKeys() {
+            System.err.println("loadAllKeys call: ");
             callCount.incrementAndGet();
             latchLoadAllKeys.countDown();
             if (!loadAllKeys) return null;
@@ -2342,12 +2365,14 @@ public class MapStoreTest extends HazelcastTestSupport {
         }
 
         public Object load(Object key) {
+            System.err.println("load call: " + key);
             callCount.incrementAndGet();
             latchLoad.countDown();
             return store.get(key);
         }
 
         public void storeAll(Map map) {
+            System.err.println("storeAll call: ");
             store.putAll(map);
             callCount.incrementAndGet();
             latchStoreAll.countDown();
@@ -2360,6 +2385,7 @@ public class MapStoreTest extends HazelcastTestSupport {
         }
 
         public void delete(Object key) {
+            System.err.println("delete call: " + key);
             store.remove(key);
             callCount.incrementAndGet();
             latchDelete.countDown();
@@ -2373,6 +2399,7 @@ public class MapStoreTest extends HazelcastTestSupport {
                     map.put(key, value);
                 }
             }
+            System.err.println("loadAll call: " + keys.size());
             callCount.incrementAndGet();
             latchLoadAll.countDown();
             return map;

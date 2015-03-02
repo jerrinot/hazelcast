@@ -11,6 +11,7 @@ import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.OperationService;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -25,8 +26,6 @@ import java.util.concurrent.Future;
 import static com.hazelcast.map.impl.eviction.MaxSizeChecker.getApproximateMaxSize;
 import static com.hazelcast.util.IterableUtil.limit;
 import static com.hazelcast.util.IterableUtil.map;
-
-import com.sun.xml.internal.ws.Closeable;
 
 public class KeyDispatcher {
 

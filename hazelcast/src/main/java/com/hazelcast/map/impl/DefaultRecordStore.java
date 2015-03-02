@@ -73,7 +73,6 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         this.recordStoreLoader = createRecordStoreLoader(mapStoreContext);
         this.keyDispatcher = keyDispatcher;
 
-        System.err.println("DefaultRecordStore created " + partitionId );
         if( isKeyLoader ) {
             loadAll(true);
         }
@@ -102,7 +101,6 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         if (keys.isEmpty()) {
             return;
         }
-        System.err.println("Starting loading values " + keys.size());
         Future f = recordStoreLoader.loadValues(keys, replaceExistingValues);
         loadingValsFutures.add(f);
     }
@@ -112,7 +110,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         Throwable throwable = null;
         final RecordStoreLoader recordStoreLoader = this.recordStoreLoader;
         final Throwable exception = recordStoreLoader.getExceptionOrNull();
-        if (exception == null && !recordStoreLoader.isLoaded()) {
+        if (exception == null && !isLoaded()) {
             throwable = new RetryableHazelcastException("Map "
                     + getName() + " is still loading data from external store");
         } else if (exception != null) {
