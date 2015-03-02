@@ -128,6 +128,9 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
     }
 
     private void loadValuesInternal(List<Data> keys, boolean replaceExistingValues) {
+
+        System.err.println("loadValuesInternal: " + replaceExistingValues);
+
         if (!replaceExistingValues) {
             removeExistingKeys(keys);
         }

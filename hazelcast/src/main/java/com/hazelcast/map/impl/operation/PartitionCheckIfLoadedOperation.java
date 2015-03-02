@@ -36,7 +36,6 @@ public class PartitionCheckIfLoadedOperation extends AbstractMapOperation implem
         MapServiceContext mapServiceContext = mapService.getMapServiceContext();
         RecordStore recordStore = mapServiceContext.getRecordStore(getPartitionId(), name);
         isFinished = recordStore.isLoaded();
-        System.err.println("isFinished: " + isFinished + " - " + getPartitionId());
     }
 
     @Override

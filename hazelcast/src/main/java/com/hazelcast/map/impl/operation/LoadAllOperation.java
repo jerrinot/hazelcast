@@ -39,6 +39,7 @@ public class LoadAllOperation extends AbstractMapOperation implements PartitionA
         MapServiceContext mapServiceContext = mapService.getMapServiceContext();
         final RecordStore recordStore = mapServiceContext.getRecordStore(partitionId, name);
         keys = selectThisPartitionsKeys(this.keys);
+        System.err.println("LoadAllOperation: " + replaceExistingValues + " on " + getPartitionId());
         recordStore.loadAllFromStore(keys, replaceExistingValues);
     }
 

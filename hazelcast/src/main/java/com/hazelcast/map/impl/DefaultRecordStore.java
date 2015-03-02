@@ -87,8 +87,9 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     @Override
     public void loadAll(boolean replaceExistingValues) {
         System.err.println("sending keys with keyDispatcher");
+        new RuntimeException().printStackTrace();
         //TODO: replaceExistingValues
-        loadingKeysFutures = keyDispatcher.sendKeys( mapStoreContext.loadAllKeys() );
+        loadingKeysFutures = keyDispatcher.sendKeys( mapStoreContext.loadAllKeys(), replaceExistingValues);
     }
 
     @Override
@@ -110,6 +111,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         Throwable throwable = null;
         final RecordStoreLoader recordStoreLoader = this.recordStoreLoader;
         final Throwable exception = recordStoreLoader.getExceptionOrNull();
+        //TODO: get exception from loading futures
         if (exception == null && !isLoaded()) {
             throwable = new RetryableHazelcastException("Map "
                     + getName() + " is still loading data from external store");

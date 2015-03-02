@@ -115,6 +115,8 @@ public class LoadAllTest extends HazelcastTestSupport {
         populateMap(map, itemCount);
         map.evictAll();
         map.putTransient(0, -1, 0, SECONDS);
+
+        System.err.println("doing load all");
         map.loadAll(false);
 
         assertEquals(itemCount, map.size());
@@ -190,7 +192,9 @@ public class LoadAllTest extends HazelcastTestSupport {
 
     private static Config createNewConfig(String mapName) {
         final SimpleStore simpleStore = new SimpleStore();
-        return MapStoreTest.newConfig(mapName, simpleStore, 0);
+        Config c = MapStoreTest.newConfig(mapName, simpleStore, 0);
+        //c.setProperty(GroupProperties.PROP_PARTITION_COUNT, "11");
+        return c;
     }
 
     private static void populateMap(IMap map, int itemCount) {

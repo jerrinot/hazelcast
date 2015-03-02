@@ -49,7 +49,7 @@ public class KeyDispatcher {
         this.maxSizeConfig = maxSizeConfig;
     }
 
-    public Collection<Future> sendKeys(final Iterable<Object> keys) {
+    public Collection<Future> sendKeys(final Iterable<Object> keys, final boolean replaceExistingValues) {
 
         int maxSizePerNode = getApproximateMaxSize(maxSizeConfig, MaxSizePolicy.PER_NODE); //TODO
         int members = partitionService.getMemberPartitionsMap().size();
@@ -58,7 +58,7 @@ public class KeyDispatcher {
         Future<Collection<Future>> f = execService.submit(executorName, new Callable<Collection<Future>>() {
             @Override
             public Collection<Future> call() throws Exception {
-                return sendKeysInBatches(keys, maxSize);
+                return sendKeysInBatches(keys, maxSize, replaceExistingValues);
             }
         });
 
@@ -69,26 +69,21 @@ public class KeyDispatcher {
         }
     }
 
-    private Collection<Future> sendKeysInBatches(Iterable<Object> allKeys, int maxSize) {
+    private Collection<Future> sendKeysInBatches(Iterable<Object> allKeys, int maxSize, boolean replaceExistingValues) {
         List<Future> futures = new ArrayList<Future>();
-        Map<Integer, List<Data>> batch = new HashMap<Integer, List<Data>>();
 
         Iterator<Object> keys = allKeys.iterator();
-        Iterator<Data> dataKeys = limit(map(keys, toData), maxSize);
+        Iterator<Data> dataKeys = map(keys, toData);
+        if( maxSize > 0 )
+            dataKeys = limit(dataKeys, maxSize);
+        Iterator<Entry<Integer, Data>> partitionsAndKeys = map(dataKeys, toPartition());
 
-        while( dataKeys.hasNext() ) {
-            Data dataKey = dataKeys.next();
-            int part = partitionService.getPartitionId(dataKey);
+        Iterator<Map<Integer, List<Data>>> batches = toBatches(partitionsAndKeys, maxBatch);
 
-            List<Data> partitionKeys = addToBatch(batch, part, dataKey);
-
-            if( partitionKeys.size() >= maxBatch ) {
-                futures.addAll( sendBatch(batch) );
-                batch = new HashMap<Integer, List<Data>>();
-            }
+        while( batches.hasNext() ) {
+            Map<Integer, List<Data>> batch = batches.next();
+            futures.addAll( sendBatch(batch, replaceExistingValues) );
         }
-
-        futures.addAll( sendBatch(batch) );
 
         if (keys instanceof Closeable) {
             IOUtil.closeResource((Closeable) keys);
@@ -97,26 +92,66 @@ public class KeyDispatcher {
         return futures;
     }
 
-    private List<Data> addToBatch(Map<Integer, List<Data>> batch, int part, Data dataKey) {
+    public static Iterator<Map<Integer, List<Data>>> toBatches(
+            final Iterator<Entry<Integer, Data>> entries, final int maxBatch) {
 
-        List<Data> partitionKeys = batch.get(part);
-        if( partitionKeys == null ) {
-            partitionKeys = new ArrayList<Data>();
-            batch.put(part, partitionKeys);
-        }
-        partitionKeys.add(dataKey);
+        return new Iterator<Map<Integer, List<Data>>>() {
+            @Override
+            public boolean hasNext() {
+                return entries.hasNext();
+            }
 
-        return partitionKeys;
+            @Override
+            public Map<Integer, List<Data>> next() {
+                Map<Integer, List<Data>> batch = new HashMap<Integer, List<Data>>();
+                while( entries.hasNext() ) {
+                    Entry<Integer, Data> e = entries.next();
+                    List<Data> partitionKeys = addToMap(batch, e.getKey(), e.getValue());
+
+                    if( partitionKeys.size() >= maxBatch ) {
+                        break;
+                    }
+                }
+                return batch;
+            }
+
+            @Override
+            public void remove() {
+            }
+
+        };
     }
 
-    private List<Future> sendBatch(Map<Integer, List<Data>> batch) {
+    private IFunction<Data, Entry<Integer, Data>> toPartition() {
+        return new IFunction<Data, Entry<Integer,Data>>() {
+            @Override
+            public Entry<Integer, Data> apply(Data input) {
+                Integer partition = partitionService.getPartitionId(input);
+                return new MapEntrySimple<Integer, Data> (partition, input);
+            }
+        };
+    }
+
+    static <K, V> List<V> addToMap(Map<K, List<V>> batch, K key, V value) {
+
+        List<V> values = batch.get(key);
+        if( values == null ) {
+            values = new ArrayList<V>();
+            batch.put(key, values);
+        }
+        values.add(value);
+
+        return values;
+    }
+
+    private List<Future> sendBatch(Map<Integer, List<Data>> batch, boolean replaceExistingValues) {
 
         List<Future> futures = new ArrayList<Future>();
 
         for(Entry<Integer, List<Data>> e : batch.entrySet()) {
             int partitionId = e.getKey();
             List<Data> keys = e.getValue();
-            LoadAllOperation op = new LoadAllOperation(mapName, keys, true);
+            LoadAllOperation op = new LoadAllOperation(mapName, keys, replaceExistingValues);
             InternalCompletableFuture<Object> fut = opService.invokeOnPartition(MapService.SERVICE_NAME, op, partitionId);
             futures.add(fut);
         }
