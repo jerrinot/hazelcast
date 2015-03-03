@@ -74,7 +74,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         this.keyDispatcher = keyDispatcher;
 
         if( isKeyLoader ) {
-            loadAll(true);
+            loadAll(false);
         }
     }
 
