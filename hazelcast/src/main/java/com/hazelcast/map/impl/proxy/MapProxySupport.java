@@ -127,6 +127,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.map.impl.MapService.SERVICE_NAME;
 import static com.hazelcast.util.IterableUtil.nullToEmpty;
+import static java.util.Collections.singleton;
 
 abstract class MapProxySupport extends AbstractDistributedObject<MapService> implements InitializingObject {
 
@@ -137,12 +138,16 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
     protected final LocalMapStatsImpl localMapStats;
     protected final LockProxySupport lockSupport;
     protected final PartitioningStrategy partitionStrategy;
+    private MapServiceContext mapServiceContext;
+    private InternalPartitionService partitionService;
 
     protected MapProxySupport(final String name, final MapService service, NodeEngine nodeEngine) {
         super(nodeEngine, service);
         this.name = name;
-        partitionStrategy = service.getMapServiceContext().getMapContainer(name).getPartitioningStrategy();
-        localMapStats = service.getMapServiceContext().getLocalMapStatsProvider().getLocalMapStatsImpl(name);
+        this.mapServiceContext = service.getMapServiceContext();
+        partitionStrategy = mapServiceContext.getMapContainer(name).getPartitioningStrategy();
+        localMapStats = mapServiceContext.getLocalMapStatsProvider().getLocalMapStatsImpl(name);
+        this.partitionService = getNodeEngine().getPartitionService();
         lockSupport = new LockProxySupport(new DefaultObjectNamespace(MapService.SERVICE_NAME, name));
     }
 
@@ -598,32 +603,46 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
     public void waitUntilLoaded() {
         final NodeEngine nodeEngine = getNodeEngine();
         try {
-            Map<Integer, Object> results = nodeEngine.getOperationService()
-                    .invokeOnAllPartitions(SERVICE_NAME, new PartitionCheckIfLoadedOperationFactory(name));
-            Iterator<Entry<Integer, Object>> iterator = results.entrySet().iterator();
-            boolean isFinished = false;
-            final Set<Integer> retrySet = new HashSet<Integer>();
-            while (!isFinished) {
-                while (iterator.hasNext()) {
-                    final Entry<Integer, Object> entry = iterator.next();
-                    if (Boolean.TRUE.equals(entry.getValue())) {
-                        iterator.remove();
-                    } else {
-                        retrySet.add(entry.getKey());
-                    }
-                }
-                if (retrySet.size() > 0) {
-                    results = retryPartitions(retrySet);
-                    iterator = results.entrySet().iterator();
-                    final int oneSecond = 1000;
-                    Thread.sleep(oneSecond);
-                    retrySet.clear();
-                } else {
-                    isFinished = true;
-                }
-            }
+            OperationService operationService = nodeEngine.getOperationService();
+            PartitionCheckIfLoadedOperationFactory opFactory = new PartitionCheckIfLoadedOperationFactory(name);
+
+            Map<Integer, Object> results;
+            Collection<Integer> mapNamePartition = getPartitionsForKeys(singleton(toData(name)));
+            System.err.println("mapNamePartition: " + mapNamePartition);
+            results = operationService.invokeOnPartitions(SERVICE_NAME, opFactory, mapNamePartition);
+            waitAllTrue(results);
+
+            results = operationService.invokeOnAllPartitions(SERVICE_NAME, opFactory);
+            waitAllTrue(results);
+
         } catch (Throwable t) {
             throw ExceptionUtil.rethrow(t);
+        }
+    }
+
+    private void waitAllTrue(Map<Integer, Object> results)
+            throws InterruptedException {
+        Iterator<Entry<Integer, Object>> iterator = results.entrySet().iterator();
+        boolean isFinished = false;
+        final Set<Integer> retrySet = new HashSet<Integer>();
+        while (!isFinished) {
+            while (iterator.hasNext()) {
+                final Entry<Integer, Object> entry = iterator.next();
+                if (Boolean.TRUE.equals(entry.getValue())) {
+                    iterator.remove();
+                } else {
+                    retrySet.add(entry.getKey());
+                }
+            }
+            if (retrySet.size() > 0) {
+                results = retryPartitions(retrySet);
+                iterator = results.entrySet().iterator();
+                final int oneSecond = 1000;
+                Thread.sleep(oneSecond);
+                retrySet.clear();
+            } else {
+                isFinished = true;
+            }
         }
     }
 
@@ -641,6 +660,8 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
     public int size() {
         final NodeEngine nodeEngine = getNodeEngine();
         try {
+            waitUntilLoaded(); //TODO
+
             Map<Integer, Object> results = nodeEngine.getOperationService()
                     .invokeOnAllPartitions(SERVICE_NAME, new SizeOperationFactory(name));
             int total = 0;
@@ -732,7 +753,7 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
     }
 
     private Collection<Integer> getPartitionsForKeys(Set<Data> keys) {
-        InternalPartitionService partitionService = getNodeEngine().getPartitionService();
+
         int partitions = partitionService.getPartitionCount();
         //todo: is there better way to estimate size?
         int capacity = Math.min(partitions, keys.size());

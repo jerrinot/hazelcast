@@ -2,9 +2,9 @@ package com.hazelcast.map.impl;
 
 import com.hazelcast.config.MaxSizeConfig;
 import com.hazelcast.config.MaxSizeConfig.MaxSizePolicy;
+import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.map.impl.operation.LoadAllOperation;
-import com.hazelcast.nio.IOUtil;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.ExecutionService;
@@ -24,6 +24,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
 import static com.hazelcast.map.impl.eviction.MaxSizeChecker.getApproximateMaxSize;
+import static com.hazelcast.nio.IOUtil.closeResource;
 import static com.hazelcast.util.IterableUtil.limit;
 import static com.hazelcast.util.IterableUtil.map;
 
@@ -62,6 +63,19 @@ public class KeyDispatcher {
             }
         });
 
+        execService.asCompletableFuture(f).andThen(new ExecutionCallback<Collection<Future>>() {
+
+            @Override
+            public void onResponse(Collection<Future> response) {
+                System.err.println("Response: " + response.size());
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                t.printStackTrace();
+            }
+        });
+
         try {
             return f.get();
         } catch (Exception e) {
@@ -70,8 +84,8 @@ public class KeyDispatcher {
     }
 
     private Collection<Future> sendKeysInBatches(Iterable<Object> allKeys, int maxSize, boolean replaceExistingValues) {
-        List<Future> futures = new ArrayList<Future>();
 
+        List<Future> futures = new ArrayList<Future>();
         Iterator<Object> keys = allKeys.iterator();
         Iterator<Data> dataKeys = map(keys, toData);
         if( maxSize > 0 )
@@ -86,7 +100,7 @@ public class KeyDispatcher {
         }
 
         if (keys instanceof Closeable) {
-            IOUtil.closeResource((Closeable) keys);
+            closeResource((Closeable) keys);
         }
 
         return futures;
