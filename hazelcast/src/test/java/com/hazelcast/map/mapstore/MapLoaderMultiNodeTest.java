@@ -51,7 +51,6 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
         final String mapName = randomMapName();
         Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
 
-        System.err.println("getting map");
         IMap<Object, Object> map = getMap(mapName, cfg);
 
         assertEquals(0, loadedValueCount.get());
@@ -62,11 +61,9 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
         final String mapName = randomMapName();
         Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
 
-        System.err.println("getting map");
         IMap<Object, Object> map = getMap(mapName, cfg);
         assertEquals(0, loadedValueCount.get());
 
-        System.err.println("getting map.size");
         assertEquals(MAP_STORE_ENTRY_COUNT, map.size());
         assertEquals(MAP_STORE_ENTRY_COUNT, loadedValueCount.get());
     }
@@ -93,7 +90,7 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
     private Config newConfig(String mapName, boolean sizeLimited, MapStoreConfig.InitialLoadMode loadMode) {
         Config cfg = new Config();
         cfg.setGroupConfig(new GroupConfig(getClass().getSimpleName()));
-        cfg.setProperty("hazelcast.partition.count", "5");
+        //cfg.setProperty("hazelcast.partition.count", "5");
 
         MapStoreConfig mapStoreConfig = new MapStoreConfig()
                 .setImplementation(new CountingMapLoader(MAP_STORE_ENTRY_COUNT, loadedValueCount))

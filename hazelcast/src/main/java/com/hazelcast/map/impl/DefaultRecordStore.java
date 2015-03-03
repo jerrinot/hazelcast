@@ -81,13 +81,11 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     @Override
     public boolean isLoaded() {
         //TODO: remove completed futures
-        System.err.println("DefaultRecordStore.isLoaded " + loadingKeysFutures.size() + " - " + loadingValsFutures.size());
         return FutureUtil.allDone(loadingKeysFutures) && FutureUtil.allDone(loadingValsFutures);
     }
 
     @Override
     public void loadAll(boolean replaceExistingValues) {
-        System.err.println("sending keys with keyDispatcher");
         loadingKeysFutures = keyDispatcher.sendKeys( mapStoreContext.loadAllKeys(), replaceExistingValues);
     }
 

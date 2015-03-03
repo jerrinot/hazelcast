@@ -608,7 +608,7 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
 
             Map<Integer, Object> results;
             Collection<Integer> mapNamePartition = getPartitionsForKeys(singleton(toData(name)));
-            System.err.println("mapNamePartition: " + mapNamePartition);
+
             results = operationService.invokeOnPartitions(SERVICE_NAME, opFactory, mapNamePartition);
             waitAllTrue(results);
 
