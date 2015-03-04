@@ -55,7 +55,6 @@ final class BasicMapStoreContext implements MapStoreContext {
     private MaxSizeConfig maxSizeConfig;
 
     private BasicMapStoreContext() {
-        System.err.println("BasicMapStoreContext.created");
     }
 
     @Override
@@ -73,6 +72,11 @@ final class BasicMapStoreContext implements MapStoreContext {
         final MapStoreConfig mapStoreConfig = getMapStoreConfig();
         return mapStoreConfig != null && mapStoreConfig.isEnabled()
                 && mapStoreConfig.getWriteDelaySeconds() > 0;
+    }
+
+    @Override
+    public boolean isMapLoader() {
+        return storeWrapper.isMapLoader();
     }
 
     @Override

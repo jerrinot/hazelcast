@@ -38,4 +38,9 @@ public interface MapStoreContext {
     MapStoreConfig getMapStoreConfig();
 
     Iterable<Object> loadAllKeys();
+
+    /**
+     * @return true if MapLoader or MapStore is defined
+     */
+    boolean isMapLoader();
 }

@@ -64,6 +64,8 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     private Future<?> loadingKeysFuture = new CompletedFuture<Object>(null, null, null);
     private Collection<Future<Object>> loadingValsFutures = new ArrayList<Future<Object>>();
     private MapStoreContext mapStoreContext;
+    // Only one partition is the key loader
+    private boolean isKeyLoader;
 
     public DefaultRecordStore(MapContainer mapContainer, int partitionId,
             boolean isKeyLoader, KeyDispatcher keyDispatcher) {
@@ -75,15 +77,19 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         this.mapDataStore = mapStoreManager.getMapDataStore(partitionId);
         this.recordStoreLoader = createRecordStoreLoader(mapStoreContext);
         this.keyDispatcher = keyDispatcher;
+        this.isKeyLoader = isKeyLoader;
+    }
 
-        if (isKeyLoader) {
-            loadAll(false);
+    public void startLoading() {
+        if (mapStoreContext.isMapLoader()) {
+            if (isKeyLoader) {
+                loadAll(false);
+            }
         }
     }
 
     @Override
     public boolean isLoaded() {
-        //TODO: remove completed futures
         return loadingKeysFuture.isDone() && FutureUtil.allDone(loadingValsFutures);
     }
 
@@ -107,6 +113,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
             // check all loading futures for exceptions
             FutureUtil.returnWithDeadline(singleton(loadingKeysFuture), 1L, TimeUnit.SECONDS, FutureUtil.RETHROW_EVERYTHING);
             FutureUtil.returnWithDeadline(loadingValsFutures, 1L, TimeUnit.SECONDS, FutureUtil.RETHROW_EVERYTHING);
+            loadingValsFutures.clear();
 
         } else {
             Throwable throwable = new RetryableHazelcastException("Map " + getName() +

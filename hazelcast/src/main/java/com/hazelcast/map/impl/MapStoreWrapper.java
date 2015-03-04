@@ -77,7 +77,7 @@ public class MapStoreWrapper implements MapStore, MapLoaderLifecycleSupport {
         return (mapStore != null);
     }
 
-    private boolean isMapLoader() {
+    public boolean isMapLoader() {
         return (mapLoader != null);
     }
 

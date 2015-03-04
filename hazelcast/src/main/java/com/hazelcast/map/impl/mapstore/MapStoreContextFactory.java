@@ -103,6 +103,11 @@ public final class MapStoreContextFactory {
         public Iterable<Object> loadAllKeys() {
             return Collections.emptyList();
         }
+
+        @Override
+        public boolean isMapLoader() {
+            return false;
+        }
     }
 
 

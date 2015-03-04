@@ -71,7 +71,9 @@ public class PartitionContainer {
 
             KeyDispatcher dispatcher = new KeyDispatcher(name, opService, ps, serialize, execService, maxSizeConfig);
 
-            return new DefaultRecordStore(mapContainer, partitionId, isLoader, dispatcher);
+            DefaultRecordStore recordStore = new DefaultRecordStore(mapContainer, partitionId, isLoader, dispatcher);
+            recordStore.startLoading();
+            return recordStore;
         }
     };
 
