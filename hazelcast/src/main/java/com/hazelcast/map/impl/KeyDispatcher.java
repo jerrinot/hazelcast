@@ -30,7 +30,7 @@ import static com.hazelcast.util.IterableUtil.map;
 
 public class KeyDispatcher {
 
-    private int maxBatch = 1000; //TODO: property
+    private int maxBatch = 1000; //TODO: take from group property
     static final String executorName = "hz:map:keyDispatcher";
 
     private String mapName;

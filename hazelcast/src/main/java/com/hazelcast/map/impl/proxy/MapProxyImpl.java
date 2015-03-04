@@ -492,7 +492,6 @@ public class MapProxyImpl<K, V> extends MapProxySupport implements IMap<K, V>, I
 
     @Override
     public void evictAll() {
-        waitUntilLoaded();
         evictAllInternal();
     }
 

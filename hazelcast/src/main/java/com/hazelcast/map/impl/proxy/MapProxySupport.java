@@ -102,6 +102,7 @@ import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.InvocationBuilder;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
+import com.hazelcast.spi.OperationFactory;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.impl.BinaryOperationFactory;
 import com.hazelcast.util.ExceptionUtil;
@@ -163,7 +164,9 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
         if (mapStoreConfig != null && mapStoreConfig.isEnabled()) {
             MapStoreConfig.InitialLoadMode initialLoadMode = mapStoreConfig.getInitialLoadMode();
             if (MapStoreConfig.InitialLoadMode.EAGER.equals(initialLoadMode)) {
-                waitUntilLoaded();
+                waitUntilLoaded(true);
+            } else {
+                waitUntilLoaded(false);
             }
         }
     }
@@ -503,7 +506,7 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
         Operation operation = new LoadMapOperation(name, replaceExistingValues);
         operationService.invokeOnPartition(MapService.SERVICE_NAME, operation, mapNamePartition);
 
-        waitUntilLoaded();
+        waitUntilLoaded(true);
     }
 
     /**
@@ -525,7 +528,8 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
             final Operation operation = createLoadAllOperation(correspondingKeys, replaceExistingValues);
             nodeEngine.getOperationService().invokeOnPartition(SERVICE_NAME, operation, partitionId);
         }
-        waitUntilLoaded();
+
+        waitUntilLoaded(true);
     }
 
     private <K> Iterable<Data> convertToData(Iterable<K> keys) {
@@ -600,20 +604,23 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
         }
     }
 
-    public void waitUntilLoaded() {
+    public void waitUntilLoaded(boolean wait) {
         final NodeEngine nodeEngine = getNodeEngine();
         try {
             OperationService operationService = nodeEngine.getOperationService();
-            PartitionCheckIfLoadedOperationFactory opFactory = new PartitionCheckIfLoadedOperationFactory(name);
+            OperationFactory opFactory = new PartitionCheckIfLoadedOperationFactory(name);
 
             Map<Integer, Object> results;
             Collection<Integer> mapNamePartition = getPartitionsForKeys(singleton(toData(name)));
 
             results = operationService.invokeOnPartitions(SERVICE_NAME, opFactory, mapNamePartition);
-            waitAllTrue(results);
 
-            results = operationService.invokeOnAllPartitions(SERVICE_NAME, opFactory);
-            waitAllTrue(results);
+            if (wait) {
+                waitAllTrue(results);
+
+                results = operationService.invokeOnAllPartitions(SERVICE_NAME, opFactory);
+                waitAllTrue(results);
+            }
 
         } catch (Throwable t) {
             throw ExceptionUtil.rethrow(t);
@@ -660,7 +667,7 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
     public int size() {
         final NodeEngine nodeEngine = getNodeEngine();
         try {
-            waitUntilLoaded(); //TODO
+            //waitUntilLoaded(); //TODO testing, remove this line.
 
             Map<Integer, Object> results = nodeEngine.getOperationService()
                     .invokeOnAllPartitions(SERVICE_NAME, new SizeOperationFactory(name));
