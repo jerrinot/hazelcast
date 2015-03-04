@@ -2,19 +2,19 @@ package com.hazelcast.map.impl;
 
 import com.hazelcast.config.MaxSizeConfig;
 import com.hazelcast.config.MaxSizeConfig.MaxSizePolicy;
-import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.IFunction;
+import com.hazelcast.map.impl.mapstore.MapStoreContext;
 import com.hazelcast.map.impl.operation.LoadAllOperation;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.OperationService;
+import com.hazelcast.util.collection.UnmodifiableIterator;
 
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -50,48 +50,36 @@ public class KeyDispatcher {
         this.maxSizeConfig = maxSizeConfig;
     }
 
-    public Collection<Future> sendKeys(final Iterable<Object> keys, final boolean replaceExistingValues) {
+    public Future<?> sendKeys(final MapStoreContext mapStoreContext, final boolean replaceExistingValues) {
 
-        int maxSizePerNode = getApproximateMaxSize(maxSizeConfig, MaxSizePolicy.PER_NODE); //TODO
+        int maxSizePerNode = getApproximateMaxSize(maxSizeConfig, MaxSizePolicy.PER_NODE);
         int members = partitionService.getMemberPartitionsMap().size();
         final int maxSize = members * maxSizePerNode;
 
-        Future<Collection<Future>> f = execService.submit(executorName, new Callable<Collection<Future>>() {
+        return execService.submit(executorName, new Callable<Object>() {
             @Override
-            public Collection<Future> call() throws Exception {
-                return sendKeysInBatches(keys, maxSize, replaceExistingValues);
+            public Object call() throws Exception {
+                Iterable<Object> allKeys = mapStoreContext.loadAllKeys();
+                Collection<Future<Object>> f = sendKeysInBatches(allKeys, maxSize, replaceExistingValues);
+                for (Future<Object> future : f) {
+                    future.get();
+                }
+                return null;
             }
         });
-
-        execService.asCompletableFuture(f).andThen(new ExecutionCallback<Collection<Future>>() {
-
-            @Override
-            public void onResponse(Collection<Future> response) {
-                System.err.println("Response: " + response.size());
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                t.printStackTrace();
-            }
-        });
-
-        try {
-            return f.get();
-        } catch (Exception e) {
-            return Collections.<Future>singleton(f);
-        }
     }
 
-    private Collection<Future> sendKeysInBatches(Iterable<Object> allKeys, int maxSize, boolean replaceExistingValues) {
+    private Collection<Future<Object>> sendKeysInBatches(Iterable<Object> allKeys, int maxSize, boolean replaceExistingValues) {
 
-        List<Future> futures = new ArrayList<Future>();
+        List<Future<Object>> futures = new ArrayList<Future<Object>>();
+
         Iterator<Object> keys = allKeys.iterator();
         Iterator<Data> dataKeys = map(keys, toData);
+
         if( maxSize > 0 )
             dataKeys = limit(dataKeys, maxSize);
-        Iterator<Entry<Integer, Data>> partitionsAndKeys = map(dataKeys, toPartition());
 
+        Iterator<Entry<Integer, Data>> partitionsAndKeys = map(dataKeys, toPartition());
         Iterator<Map<Integer, List<Data>>> batches = toBatches(partitionsAndKeys, maxBatch);
 
         while( batches.hasNext() ) {
@@ -109,7 +97,7 @@ public class KeyDispatcher {
     public static Iterator<Map<Integer, List<Data>>> toBatches(
             final Iterator<Entry<Integer, Data>> entries, final int maxBatch) {
 
-        return new Iterator<Map<Integer, List<Data>>>() {
+        return new UnmodifiableIterator<Map<Integer, List<Data>>>() {
             @Override
             public boolean hasNext() {
                 return entries.hasNext();
@@ -117,22 +105,8 @@ public class KeyDispatcher {
 
             @Override
             public Map<Integer, List<Data>> next() {
-                Map<Integer, List<Data>> batch = new HashMap<Integer, List<Data>>();
-                while( entries.hasNext() ) {
-                    Entry<Integer, Data> e = entries.next();
-                    List<Data> partitionKeys = addToMap(batch, e.getKey(), e.getValue());
-
-                    if( partitionKeys.size() >= maxBatch ) {
-                        break;
-                    }
-                }
-                return batch;
+                return nextBatch(entries, maxBatch);
             }
-
-            @Override
-            public void remove() {
-            }
-
         };
     }
 
@@ -146,21 +120,35 @@ public class KeyDispatcher {
         };
     }
 
-    static <K, V> List<V> addToMap(Map<K, List<V>> batch, K key, V value) {
+    static <K, V> List<V> addToValueList(Map<K, List<V>> map, K key, V value) {
 
-        List<V> values = batch.get(key);
+        List<V> values = map.get(key);
         if( values == null ) {
             values = new ArrayList<V>();
-            batch.put(key, values);
+            map.put(key, values);
         }
         values.add(value);
 
         return values;
     }
 
-    private List<Future> sendBatch(Map<Integer, List<Data>> batch, boolean replaceExistingValues) {
+    private static Map<Integer, List<Data>> nextBatch(
+            final Iterator<Entry<Integer, Data>> entries, final int maxBatch) {
+        Map<Integer, List<Data>> batch = new HashMap<Integer, List<Data>>();
+        while( entries.hasNext() ) {
+            Entry<Integer, Data> e = entries.next();
+            List<Data> partitionKeys = addToValueList(batch, e.getKey(), e.getValue());
 
-        List<Future> futures = new ArrayList<Future>();
+            if( partitionKeys.size() >= maxBatch ) {
+                break;
+            }
+        }
+        return batch;
+    }
+
+    private List<Future<Object>> sendBatch(Map<Integer, List<Data>> batch, boolean replaceExistingValues) {
+
+        List<Future<Object>> futures = new ArrayList<Future<Object>>();
 
         for(Entry<Integer, List<Data>> e : batch.entrySet()) {
             int partitionId = e.getKey();

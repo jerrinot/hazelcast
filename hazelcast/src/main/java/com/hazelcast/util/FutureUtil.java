@@ -300,6 +300,7 @@ public final class FutureUtil {
         if (future instanceof InternalCompletableFuture) {
             return ((InternalCompletableFuture<V>) future).getSafely();
         }
+
         return future.get();
     }
 
@@ -320,8 +321,8 @@ public final class FutureUtil {
         void handleException(Throwable throwable);
     }
 
-    public static boolean allDone(Collection<Future> futures) {
-        for(Future f: futures) {
+    public static <E> boolean allDone(Collection<Future<E>> futures) {
+        for(Future<E> f: futures) {
             if( ! f.isDone() ) {
                 return false;
             }

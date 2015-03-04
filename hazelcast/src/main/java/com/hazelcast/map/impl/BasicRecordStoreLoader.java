@@ -2,25 +2,19 @@ package com.hazelcast.map.impl;
 
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.map.impl.mapstore.MapDataStore;
-import com.hazelcast.map.impl.operation.PutAllOperation;
 import com.hazelcast.map.impl.operation.PutFromLoadAllOperation;
 import com.hazelcast.map.impl.record.Record;
-import com.hazelcast.nio.Address;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.partition.InternalPartitionService;
-import com.hazelcast.spi.Callback;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationAccessor;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.ResponseHandler;
-import com.hazelcast.util.ExceptionUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -34,8 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Responsible for loading keys from configured map store.
  */
 class BasicRecordStoreLoader implements RecordStoreLoader {
-
-    private static final String MAP_INITIAL_LOAD_EXECUTOR = "hz:map-initialLoad";
 
     private final AtomicBoolean loaded;
 
@@ -51,8 +43,6 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
 
     private final int partitionId;
 
-    private volatile Throwable throwable;
-
     public BasicRecordStoreLoader(RecordStore recordStore) {
         this.recordStore = recordStore;
         final MapContainer mapContainer = recordStore.getMapContainer();
@@ -65,26 +55,10 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
     }
 
     @Override
-    public boolean isLoaded() {
-        return loaded.get();
-    }
-
-    @Override
-    public void setLoaded(boolean loaded) {
-        this.loaded.set(loaded);
-    }
-
-    @Override
     public Future<?> loadValues(List<Data> keys, boolean replaceExistingValues) {
-        setLoaded(false);
-
         final Runnable task = new GivenKeysLoaderTask(keys, replaceExistingValues);
         final String executorName = ExecutionService.MAP_LOAD_ALL_KEYS_EXECUTOR;
         return executeTask(executorName, task);
-    }
-
-    private void setLoaderException(Throwable t) {
-        BasicRecordStoreLoader.this.throwable = t;
     }
 
     private Future<?> executeTask(String executorName, Runnable task) {
@@ -94,17 +68,6 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
     private ExecutionService getExecutionService() {
         final NodeEngine nodeEngine = mapServiceContext.getNodeEngine();
         return nodeEngine.getExecutionService();
-    }
-
-    @Override
-    public Throwable getExceptionOrNull() {
-        return throwable;
-    }
-
-    private boolean isOwner() {
-        final NodeEngine nodeEngine = mapServiceContext.getNodeEngine();
-        final Address partitionOwner = nodeEngine.getPartitionService().getPartitionOwner(partitionId);
-        return nodeEngine.getThisAddress().equals(partitionOwner);
     }
 
     /**
@@ -273,129 +236,5 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
 
     private int getLoadBatchSize() {
         return mapServiceContext.getNodeEngine().getGroupProperties().MAP_LOAD_CHUNK_SIZE.getInteger();
-    }
-
-    private boolean shouldLoad(Data key, boolean replaceExisting) {
-        Record record = recordStore.getRecord(key);
-
-        if (record != null) {
-            if (!mapDataStore.loadable(key)) {
-                return false;
-            }
-
-            return replaceExisting;
-        }
-
-        return true;
-    }
-
-    private void doChunkedLoad(Map<Data, Object> loadedKeys, NodeEngine nodeEngine, boolean replaceExisting) {
-        int mapLoadChunkSize = getLoadBatchSize();
-        Queue<Map> chunks = new LinkedList<Map>();
-        Map<Data, Object> partitionKeys = new HashMap<Data, Object>();
-        InternalPartitionService partitionService = nodeEngine.getPartitionService();
-        Iterator<Map.Entry<Data, Object>> iterator = loadedKeys.entrySet().iterator();
-
-        while (iterator.hasNext()) {
-            final Map.Entry<Data, Object> entry = iterator.next();
-            final Data key = entry.getKey();
-
-            if (partitionId == partitionService.getPartitionId(key) && shouldLoad(key, replaceExisting)) {
-
-                partitionKeys.put(key, entry.getValue());
-                //split into chunks
-                if (partitionKeys.size() >= mapLoadChunkSize) {
-                    chunks.add(partitionKeys);
-                    partitionKeys = new HashMap<Data, Object>();
-                }
-                iterator.remove();
-            }
-        }
-        if (!partitionKeys.isEmpty()) {
-            chunks.add(partitionKeys);
-        }
-        if (chunks.isEmpty()) {
-            setLoaded(true);
-            return;
-        }
-        try {
-            this.throwable = null;
-            final AtomicInteger checkIfMapLoaded = new AtomicInteger(chunks.size());
-            ExecutionService executionService = nodeEngine.getExecutionService();
-            Map<Data, Object> chunkedKeys;
-            while ((chunkedKeys = chunks.poll()) != null) {
-                final Callback<Throwable> callback = createCallbackForThrowable();
-                MapLoadAllTask task = new MapLoadAllTask(chunkedKeys, checkIfMapLoaded, callback);
-                executionService.submit(ExecutionService.MAP_LOADER_EXECUTOR, task);
-            }
-        } catch (Throwable t) {
-            throw ExceptionUtil.rethrow(t);
-        }
-    }
-
-
-    private Callback<Throwable> createCallbackForThrowable() {
-        return new Callback<Throwable>() {
-            @Override
-            public void notify(Throwable throwable) {
-                setLoaderException(throwable);
-            }
-        };
-    }
-
-    private final class MapLoadAllTask implements Runnable {
-        private final Map<Data, Object> keys;
-        private final AtomicInteger checkIfMapLoaded;
-        private final Callback callback;
-
-        private MapLoadAllTask(Map<Data, Object> keys, AtomicInteger checkIfMapLoaded, Callback callback) {
-            this.keys = keys;
-            this.checkIfMapLoaded = checkIfMapLoaded;
-            this.callback = callback;
-        }
-
-        public void run() {
-            final NodeEngine nodeEngine = mapServiceContext.getNodeEngine();
-            try {
-                Map values = mapDataStore.loadAll(keys.values());
-                if (values == null || values.isEmpty()) {
-                    decrementCounterAndMarkAsLoaded();
-                    return;
-                }
-
-                final MapEntrySet entrySet = new MapEntrySet();
-                for (Data dataKey : keys.keySet()) {
-                    Object key = keys.get(dataKey);
-                    Object value = values.get(key);
-                    if (value != null) {
-                        Data dataValue = mapServiceContext.toData(value);
-                        entrySet.add(dataKey, dataValue);
-                    }
-                }
-
-                PutAllOperation operation = new PutAllOperation(name, entrySet, true);
-                final OperationService operationService = nodeEngine.getOperationService();
-                operationService.createInvocationBuilder(MapService.SERVICE_NAME, operation, partitionId)
-                        .setCallback(new Callback<Object>() {
-                            @Override
-                            public void notify(Object obj) {
-                                if (obj instanceof Throwable) {
-                                    return;
-                                }
-                                decrementCounterAndMarkAsLoaded();
-                            }
-                        }).invoke();
-            } catch (Throwable t) {
-                decrementCounterAndMarkAsLoaded();
-                logger.warning("Exception while load all task:" + t.toString());
-                callback.notify(t);
-            }
-        }
-
-        private void decrementCounterAndMarkAsLoaded() {
-            if (checkIfMapLoaded.decrementAndGet() == 0) {
-                setLoaded(true);
-            }
-        }
     }
 }

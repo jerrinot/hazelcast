@@ -227,9 +227,7 @@ public interface RecordStore {
 
     boolean isLoaded();
 
-    void checkIfLoaded();
-
-    void setLoaded(boolean loaded);
+    void checkIfLoaded() throws RuntimeException;
 
     int clear();
 

@@ -47,6 +47,17 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
     }
 
     @Test(timeout = 2 * MINUTE)
+    public void testLoadsNothing_whenLazyAndValueInserted() throws Exception {
+        final String mapName = randomMapName();
+        Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
+
+        IMap<Object, Object> map = getMap(mapName, cfg);
+        map.put(1, 1);
+
+        assertEquals(0, loadedValueCount.get());
+    }
+
+    @Test(timeout = 2 * MINUTE)
     public void testLoadsNothing_whenEvictionDisabledAndLazy() throws Exception {
         final String mapName = randomMapName();
         Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);

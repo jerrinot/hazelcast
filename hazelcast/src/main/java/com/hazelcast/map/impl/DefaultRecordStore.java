@@ -32,6 +32,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.RetryableHazelcastException;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.FutureUtil;
+import com.hazelcast.util.executor.CompletedFuture;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -45,8 +46,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.map.impl.ExpirationTimeSetter.updateExpiryTime;
+import static java.util.Collections.singleton;
 
 /**
  * Default implementation of record-store.
@@ -58,8 +61,8 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     private final RecordStoreLoader recordStoreLoader;
 
     private KeyDispatcher keyDispatcher;
-    private Collection<Future> loadingKeysFutures = new ArrayList<Future>();
-    private Collection<Future> loadingValsFutures = new ArrayList<Future>();
+    private Future<?> loadingKeysFuture = new CompletedFuture<Object>(null, null, null);
+    private Collection<Future<Object>> loadingValsFutures = new ArrayList<Future<Object>>();
     private MapStoreContext mapStoreContext;
 
     public DefaultRecordStore(MapContainer mapContainer, int partitionId,
@@ -73,7 +76,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         this.recordStoreLoader = createRecordStoreLoader(mapStoreContext);
         this.keyDispatcher = keyDispatcher;
 
-        if( isKeyLoader ) {
+        if (isKeyLoader) {
             loadAll(false);
         }
     }
@@ -81,17 +84,12 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     @Override
     public boolean isLoaded() {
         //TODO: remove completed futures
-        return FutureUtil.allDone(loadingKeysFutures) && FutureUtil.allDone(loadingValsFutures);
+        return loadingKeysFuture.isDone() && FutureUtil.allDone(loadingValsFutures);
     }
 
     @Override
     public void loadAll(boolean replaceExistingValues) {
-        loadingKeysFutures = keyDispatcher.sendKeys( mapStoreContext.loadAllKeys(), replaceExistingValues);
-    }
-
-    @Override
-    public void setLoaded(boolean loaded) {
-        recordStoreLoader.setLoaded(loaded);
+        loadingKeysFuture = keyDispatcher.sendKeys( mapStoreContext, replaceExistingValues);
     }
 
     @Override
@@ -105,17 +103,14 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
 
     @Override
     public void checkIfLoaded() {
-        Throwable throwable = null;
-        final RecordStoreLoader recordStoreLoader = this.recordStoreLoader;
-        final Throwable exception = recordStoreLoader.getExceptionOrNull();
-        //TODO: get exception from loading futures
-        if (exception == null && !isLoaded()) {
-            throwable = new RetryableHazelcastException("Map "
-                    + getName() + " is still loading data from external store");
-        } else if (exception != null) {
-            throwable = exception;
-        }
-        if (throwable != null) {
+        if (isLoaded()) {
+            // check all loading futures for exceptions
+            FutureUtil.returnWithDeadline(singleton(loadingKeysFuture), 1L, TimeUnit.SECONDS, FutureUtil.RETHROW_EVERYTHING);
+            FutureUtil.returnWithDeadline(loadingValsFutures, 1L, TimeUnit.SECONDS, FutureUtil.RETHROW_EVERYTHING);
+
+        } else {
+            Throwable throwable = new RetryableHazelcastException("Map " + getName() +
+                    " is still loading data from external store");
             throw ExceptionUtil.rethrow(throwable);
         }
     }

@@ -119,8 +119,6 @@ public class MapReplicationOperation extends AbstractOperation {
                     applyRecordInfo(newRecord, recordReplicationInfo);
                     recordStore.putRecord(key, newRecord);
                 }
-                recordStore.setLoaded(true);
-
             }
         }
         for (Entry<String, Collection<DelayedEntry>> entry : delayedEntries.entrySet()) {
