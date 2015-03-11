@@ -165,8 +165,6 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
             MapStoreConfig.InitialLoadMode initialLoadMode = mapStoreConfig.getInitialLoadMode();
             if (MapStoreConfig.InitialLoadMode.EAGER.equals(initialLoadMode)) {
                 waitUntilLoaded(true);
-            } else {
-                waitUntilLoaded(false);
             }
         }
     }
@@ -614,13 +612,10 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
             Collection<Integer> mapNamePartition = getPartitionsForKeys(singleton(toData(name)));
 
             results = operationService.invokeOnPartitions(SERVICE_NAME, opFactory, mapNamePartition);
+            waitAllTrue(results);
 
-            if (wait) {
-                waitAllTrue(results);
-
-                results = operationService.invokeOnAllPartitions(SERVICE_NAME, opFactory);
-                waitAllTrue(results);
-            }
+            results = operationService.invokeOnAllPartitions(SERVICE_NAME, opFactory);
+            waitAllTrue(results);
 
         } catch (Throwable t) {
             throw ExceptionUtil.rethrow(t);

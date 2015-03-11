@@ -321,8 +321,8 @@ public final class FutureUtil {
         void handleException(Throwable throwable);
     }
 
-    public static <E> boolean allDone(Collection<Future<E>> futures) {
-        for(Future<E> f: futures) {
+    public static boolean allDone(Collection<Future> futures) {
+        for(Future f: futures) {
             if( ! f.isDone() ) {
                 return false;
             }

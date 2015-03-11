@@ -31,7 +31,7 @@ import static com.hazelcast.util.IterableUtil.map;
 public class KeyDispatcher {
 
     private int maxBatch = 1000; //TODO: take from group property
-    static final String executorName = "hz:map:keyDispatcher";
+    static final String executorName = "hz:map:loader";
 
     private String mapName;
     private OperationService opService;
@@ -132,9 +132,10 @@ public class KeyDispatcher {
         return values;
     }
 
-    private static Map<Integer, List<Data>> nextBatch(
-            final Iterator<Entry<Integer, Data>> entries, final int maxBatch) {
+    private static Map<Integer, List<Data>> nextBatch(Iterator<Entry<Integer, Data>> entries, int maxBatch) {
+
         Map<Integer, List<Data>> batch = new HashMap<Integer, List<Data>>();
+
         while( entries.hasNext() ) {
             Entry<Integer, Data> e = entries.next();
             List<Data> partitionKeys = addToValueList(batch, e.getKey(), e.getValue());
@@ -143,6 +144,7 @@ public class KeyDispatcher {
                 break;
             }
         }
+
         return batch;
     }
 

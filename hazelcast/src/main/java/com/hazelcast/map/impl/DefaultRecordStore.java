@@ -32,7 +32,6 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.exception.RetryableHazelcastException;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.FutureUtil;
-import com.hazelcast.util.executor.CompletedFuture;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -46,10 +45,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.map.impl.ExpirationTimeSetter.updateExpiryTime;
-import static java.util.Collections.singleton;
+import static com.hazelcast.util.FutureUtil.RETHROW_EVERYTHING;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Default implementation of record-store.
@@ -61,10 +60,9 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     private final RecordStoreLoader recordStoreLoader;
 
     private KeyDispatcher keyDispatcher;
-    private Future<?> loadingKeysFuture = new CompletedFuture<Object>(null, null, null);
-    private Collection<Future<Object>> loadingValsFutures = new ArrayList<Future<Object>>();
+    private Collection<Future> loadingFutures = new ArrayList<Future>();
     private MapStoreContext mapStoreContext;
-    // Only one partition is the key loader
+
     private boolean isKeyLoader;
 
     public DefaultRecordStore(MapContainer mapContainer, int partitionId,
@@ -84,18 +82,22 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         if (mapStoreContext.isMapLoader()) {
             if (isKeyLoader) {
                 loadAll(false);
+            } else {
+                // touch key loader partition
+
             }
         }
     }
 
     @Override
     public boolean isLoaded() {
-        return loadingKeysFuture.isDone() && FutureUtil.allDone(loadingValsFutures);
+        return FutureUtil.allDone(loadingFutures);
     }
 
     @Override
     public void loadAll(boolean replaceExistingValues) {
-        loadingKeysFuture = keyDispatcher.sendKeys( mapStoreContext, replaceExistingValues);
+        Future<?> loadingKeysFuture = keyDispatcher.sendKeys(mapStoreContext, replaceExistingValues);
+        loadingFutures.add(loadingKeysFuture);
     }
 
     @Override
@@ -104,16 +106,16 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
             return;
         }
         Future f = recordStoreLoader.loadValues(keys, replaceExistingValues);
-        loadingValsFutures.add(f);
+        loadingFutures.add(f);
     }
 
     @Override
     public void checkIfLoaded() {
+
         if (isLoaded()) {
             // check all loading futures for exceptions
-            FutureUtil.returnWithDeadline(singleton(loadingKeysFuture), 1L, TimeUnit.SECONDS, FutureUtil.RETHROW_EVERYTHING);
-            FutureUtil.returnWithDeadline(loadingValsFutures, 1L, TimeUnit.SECONDS, FutureUtil.RETHROW_EVERYTHING);
-            loadingValsFutures.clear();
+            FutureUtil.waitWithDeadline(loadingFutures, 1L, SECONDS, RETHROW_EVERYTHING);
+            loadingFutures.clear();
 
         } else {
             Throwable throwable = new RetryableHazelcastException("Map " + getName() +
@@ -198,7 +200,6 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     public Map<Data, Record> getRecordMap() {
         return records;
     }
-
 
     @Override
     public void clearPartition() {
