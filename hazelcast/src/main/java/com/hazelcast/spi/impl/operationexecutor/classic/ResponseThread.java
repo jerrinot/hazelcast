@@ -1,5 +1,6 @@
 package com.hazelcast.spi.impl.operationexecutor.classic;
 
+import com.hazelcast.backports.queues.QueueFactory;
 import com.hazelcast.instance.HazelcastThreadGroup;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Packet;
@@ -24,7 +25,7 @@ import static com.hazelcast.instance.OutOfMemoryErrorDispatcher.inspectOutputMem
  */
 public final class ResponseThread extends Thread {
 
-    final BlockingQueue<Packet> workQueue = new LinkedBlockingQueue<Packet>();
+    final BlockingQueue<Packet> workQueue = QueueFactory.mpscBlocking();
     // field is only written by the response-thread itself, but can be read by other threads.
     volatile long processedResponses;
 

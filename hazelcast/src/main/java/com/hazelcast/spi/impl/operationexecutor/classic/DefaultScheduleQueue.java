@@ -1,5 +1,7 @@
 package com.hazelcast.spi.impl.operationexecutor.classic;
 
+import com.hazelcast.backports.queues.QueueFactory;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -19,7 +21,7 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
     private Object pendingNormalItem;
 
     public DefaultScheduleQueue() {
-        this(new LinkedBlockingQueue(), new ConcurrentLinkedQueue());
+        this(QueueFactory.mpscBlocking(), new ConcurrentLinkedQueue());
     }
 
     public DefaultScheduleQueue(BlockingQueue normalQueue, ConcurrentLinkedQueue priorityQueue) {
