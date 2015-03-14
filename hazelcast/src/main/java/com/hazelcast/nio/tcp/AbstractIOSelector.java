@@ -19,6 +19,7 @@ package com.hazelcast.nio.tcp;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
+import org.jctools.queues.MpscArrayQueue;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
@@ -38,7 +39,7 @@ public abstract class AbstractIOSelector extends Thread implements IOSelector {
 
     protected final ILogger logger;
 
-    protected final Queue<Runnable> selectorQueue = new ConcurrentLinkedQueue<Runnable>();
+    protected final Queue<Runnable> selectorQueue = new MpscArrayQueue<Runnable>(1000);
 
     protected final int waitTime;
 
