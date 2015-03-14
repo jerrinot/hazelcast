@@ -79,7 +79,7 @@ public class TcpIpConnectionManager implements ConnectionManager {
 
     private final boolean socketNoDelay;
 
-    private final Map<Address, Connection> connectionsMap = new HashMap<Address, Connection>(100);
+    private final Map<Address, Connection> connectionsMap = new ConcurrentHashMap<Address, Connection>(10, 075f, 1);
 
     private final ConcurrentMap<Address, TcpIpConnectionMonitor> monitors =
             new ConcurrentHashMap<Address, TcpIpConnectionMonitor>(100);
