@@ -1,5 +1,6 @@
 package com.hazelcast.map.impl;
 
+import com.hazelcast.backports.NonBlockingHashMap;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.HazelcastException;
@@ -59,7 +60,7 @@ class DefaultMapServiceContext extends AbstractMapServiceContextSupport {
         super(nodeEngine);
         int partitionCount = nodeEngine.getPartitionService().getPartitionCount();
         this.partitionContainers = new PartitionContainer[partitionCount];
-        this.mapContainers = new ConcurrentHashMap<String, MapContainer>();
+        this.mapContainers = new NonBlockingHashMap<String, MapContainer>();
         this.ownedPartitions = new AtomicReference<Collection<Integer>>();
         this.expirationManager = new ExpirationManager(this, nodeEngine);
         this.evictionOperator = EvictionOperator.create(this);
