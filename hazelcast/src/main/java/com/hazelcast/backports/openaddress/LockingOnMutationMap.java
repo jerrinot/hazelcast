@@ -1,9 +1,6 @@
 package com.hazelcast.backports.openaddress;
 
 
-import com.hazelcast.nio.Address;
-import com.hazelcast.nio.Connection;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -16,13 +13,14 @@ import static com.hazelcast.util.ValidationUtil.checkNotNull;
 
 public class LockingOnMutationMap<K, V> {
     private static final int DEFAULT_INITIAL_CAPACITY = 100;
-    private static final float DEFAULT_LOAD_FACTOR = 0.5f;
+    private static final float DEFAULT_LOAD_FACTOR = 0.7f;
 
     private final Lock mutationLock;
     private final float loadFactor;
     private final int initialCapacity;
 
     private int threshold;
+    private int hashSeed = 0;
 
     private volatile Object[] array;
     private volatile int size;
@@ -146,8 +144,17 @@ public class LockingOnMutationMap<K, V> {
         throw new IllegalStateException("Capacity Exceeded.");
     }
 
-    private int hash(Object key) {
-        return key.hashCode();
+    private int hash(Object k) {
+        int h = 0;
+        h ^= k.hashCode();
+        // Spread bits to regularize both segment and index locations,
+        // using variant of single-word Wang/Jenkins hash.
+        h += (h <<  15) ^ 0xffffcd7d;
+        h ^= (h >>> 10);
+        h += (h <<   3);
+        h ^= (h >>>  6);
+        h += (h <<   2) + (h << 14);
+        return h ^ (h >>> 16);
     }
 
     public int size() {
