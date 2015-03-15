@@ -1,6 +1,6 @@
 package com.hazelcast.map.impl;
 
-import com.hazelcast.backports.NonBlockingHashMap;
+import com.hazelcast.backports.nbhm.NonBlockingHashMap;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.HazelcastException;
@@ -18,7 +18,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;

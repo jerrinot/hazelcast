@@ -3,7 +3,8 @@
  * http://creativecommons.org/licenses/publicdomain
  */
 
-package com.hazelcast.backports;
+package com.hazelcast.backports.nbhm;
+import com.hazelcast.nio.UnsafeHelper;
 import sun.misc.Unsafe;
 
 import java.io.IOException;
@@ -82,7 +83,7 @@ public class NonBlockingHashMap<TypeK, TypeV>
     private static final int REPROBE_LIMIT=10; // Too many reprobes then force a table-resize
 
     // --- Bits to allow Unsafe access to arrays
-    private static final Unsafe _unsafe = UtilUnsafe.getUnsafe();
+    private static final Unsafe _unsafe = UnsafeHelper.UNSAFE;
     private static final int _Obase  = _unsafe.arrayBaseOffset(Object[].class);
     private static final int _Oscale = _unsafe.arrayIndexScale(Object[].class);
     private static long rawIndex(final Object[] ary, final int idx) {

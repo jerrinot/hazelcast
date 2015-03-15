@@ -16,7 +16,7 @@
 
 package com.hazelcast.nio.tcp;
 
-import com.hazelcast.backports.NonBlockingHashMap;
+import com.hazelcast.backports.nbhm.NonBlockingHashMap;
 import com.hazelcast.cluster.impl.BindMessage;
 import com.hazelcast.config.SocketInterceptorConfig;
 import com.hazelcast.logging.ILogger;

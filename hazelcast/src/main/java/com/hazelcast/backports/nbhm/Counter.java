@@ -3,7 +3,7 @@
  * http://creativecommons.org/licenses/publicdomain
  */
 
-package com.hazelcast.backports;
+package com.hazelcast.backports.nbhm;
 
 /**
  * A simple high-performance counter.  Merely renames the extended {@link

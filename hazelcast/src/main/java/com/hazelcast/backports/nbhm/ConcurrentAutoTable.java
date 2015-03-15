@@ -3,9 +3,11 @@
  * http://creativecommons.org/licenses/publicdomain
  */
 
-package com.hazelcast.backports;
+package com.hazelcast.backports.nbhm;
 import java.io.Serializable;
 import java.util.concurrent.atomic.*;
+
+import com.hazelcast.nio.UnsafeHelper;
 import sun.misc.Unsafe;
 
 /**
@@ -114,7 +116,7 @@ public class ConcurrentAutoTable implements Serializable {
     private static class CAT implements Serializable {
 
         // Unsafe crud: get a function which will CAS arrays
-        private static final Unsafe _unsafe = UtilUnsafe.getUnsafe();
+        private static final Unsafe _unsafe = UnsafeHelper.UNSAFE;
         private static final int _Lbase  = _unsafe.arrayBaseOffset(long[].class);
         private static final int _Lscale = _unsafe.arrayIndexScale(long[].class);
         private static long rawIndex(long[] ary, int i) {
