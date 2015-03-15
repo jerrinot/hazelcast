@@ -12,11 +12,11 @@ import static org.junit.Assert.*;
 
 public class FastLookupHashMapTest {
 
-    private FastLookupHashMap<Integer, String> map;
+    private LockingOnMutationMap<Integer, String> map;
 
     @Before
     public void setUp() {
-        map = new FastLookupHashMap<Integer, String>(512);
+        map = new LockingOnMutationMap<Integer, String>(1);
     }
 
     @Test
@@ -62,11 +62,11 @@ public class FastLookupHashMapTest {
     }
 
     private static class UpdateTask implements Runnable {
-        private final FastLookupHashMap<Integer, String> map;
+        private final LockingOnMutationMap<Integer, String> map;
         private final int noOfElements;
         private final int start;
 
-        public UpdateTask(int start, int noOfElements, FastLookupHashMap<Integer, String> map) {
+        public UpdateTask(int start, int noOfElements, LockingOnMutationMap<Integer, String> map) {
             this.map = map;
             this.start = start;
             this.noOfElements = noOfElements;
