@@ -17,6 +17,7 @@
 package com.hazelcast.nio.tcp;
 
 import com.hazelcast.backports.nbhm.NonBlockingHashMap;
+import com.hazelcast.backports.openaddress.FastLookupHashMap;
 import com.hazelcast.cluster.impl.BindMessage;
 import com.hazelcast.config.SocketInterceptorConfig;
 import com.hazelcast.logging.ILogger;
@@ -80,7 +81,7 @@ public class TcpIpConnectionManager implements ConnectionManager {
 
     private final boolean socketNoDelay;
 
-    private final ConcurrentMap<Address, Connection> connectionsMap = new NonBlockingHashMap<Address, Connection>();
+    private final FastLookupHashMap<Address, Connection> connectionsMap = new FastLookupHashMap<Address, Connection>(100);
 
     private final ConcurrentMap<Address, TcpIpConnectionMonitor> monitors =
             new ConcurrentHashMap<Address, TcpIpConnectionMonitor>(100);
@@ -438,7 +439,7 @@ public class TcpIpConnectionManager implements ConnectionManager {
         final Address endPoint = connection.getEndPoint();
         if (endPoint != null) {
             connectionsInProgress.remove(endPoint);
-            connectionsMap.remove(endPoint, connection);
+            connectionsMap.remove(endPoint);
             if (live) {
                 ioService.getEventService().executeEventCallback(new StripedRunnable() {
                     @Override
