@@ -20,9 +20,7 @@ import com.hazelcast.cluster.ClusterService;
 import com.hazelcast.concurrent.lock.LockService;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MaxSizeConfig;
-import com.hazelcast.core.IFunction;
 import com.hazelcast.core.PartitioningStrategy;
-import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.SerializationService;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.DefaultObjectNamespace;
@@ -45,8 +43,8 @@ public class PartitionContainer {
 
     private final ConstructorFunction<String, RecordStore> recordStoreConstructor
             = new ConstructorFunction<String, RecordStore>() {
-        public RecordStore createNew(String name) {
 
+        public RecordStore createNew(String name) {
             MapServiceContext serviceContext = mapService.getMapServiceContext();
             MapContainer mapContainer = serviceContext.getMapContainer(name);
             final PartitioningStrategy strategy = mapContainer.getPartitioningStrategy();
@@ -59,17 +57,10 @@ public class PartitionContainer {
             MapConfig mapConfig = mapContainer.getMapConfig();
             MaxSizeConfig maxSizeConfig = mapConfig.getMaxSizeConfig();
 
-            IFunction<Object, Data> serialize = new IFunction<Object, Data>() {
-                @Override
-                public Data apply(Object input) {
-                    return ss.toData(input, strategy);
-                }
-            };
+            KeyDispatcher dispatcher = new KeyDispatcher(name, opService, ps, mapContainer.toData, execService, maxSizeConfig);
 
             int namePartition = ps.getPartitionId(name);
             boolean isLoader = (namePartition == partitionId) && serviceContext.getOwnedPartitions().contains(namePartition);
-
-            KeyDispatcher dispatcher = new KeyDispatcher(name, opService, ps, serialize, execService, maxSizeConfig);
 
             DefaultRecordStore recordStore = new DefaultRecordStore(mapContainer, partitionId, isLoader, dispatcher);
             recordStore.startLoading();

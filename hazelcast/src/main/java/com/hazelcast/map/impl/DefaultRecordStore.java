@@ -58,12 +58,11 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     private final LockStore lockStore;
     private final MapDataStore<Data, Object> mapDataStore;
     private final RecordStoreLoader recordStoreLoader;
-
-    private KeyDispatcher keyDispatcher;
-    private Collection<Future> loadingFutures = new ArrayList<Future>();
-    private MapStoreContext mapStoreContext;
+    private final MapStoreContext mapStoreContext;
 
     private boolean isKeyLoader;
+    private KeyDispatcher keyDispatcher;
+    private Collection<Future> loadingFutures = new ArrayList<Future>();
 
     public DefaultRecordStore(MapContainer mapContainer, int partitionId,
             boolean isKeyLoader, KeyDispatcher keyDispatcher) {
@@ -83,8 +82,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
             if (isKeyLoader) {
                 loadAll(false);
             } else {
-                // touch key loader partition
-
+                loadingFutures.add( keyDispatcher.triggerKeyLoad() );
             }
         }
     }

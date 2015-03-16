@@ -662,8 +662,6 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
     public int size() {
         final NodeEngine nodeEngine = getNodeEngine();
         try {
-            //waitUntilLoaded(); //TODO testing, remove this line.
-
             Map<Integer, Object> results = nodeEngine.getOperationService()
                     .invokeOnAllPartitions(SERVICE_NAME, new SizeOperationFactory(name));
             int total = 0;

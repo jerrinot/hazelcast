@@ -5,10 +5,12 @@ import com.hazelcast.config.MaxSizeConfig.MaxSizePolicy;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.map.impl.mapstore.MapStoreContext;
 import com.hazelcast.map.impl.operation.LoadAllOperation;
+import com.hazelcast.map.impl.operation.PartitionCheckIfLoadedOperation;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.InternalCompletableFuture;
+import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.util.collection.UnmodifiableIterator;
 
@@ -52,15 +54,12 @@ public class KeyDispatcher {
 
     public Future<?> sendKeys(final MapStoreContext mapStoreContext, final boolean replaceExistingValues) {
 
-        int maxSizePerNode = getApproximateMaxSize(maxSizeConfig, MaxSizePolicy.PER_NODE);
-        int members = partitionService.getMemberPartitionsMap().size();
-        final int maxSize = members * maxSizePerNode;
-
         return execService.submit(executorName, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
                 Iterable<Object> allKeys = mapStoreContext.loadAllKeys();
-                Collection<Future<Object>> f = sendKeysInBatches(allKeys, maxSize, replaceExistingValues);
+
+                Collection<Future<Object>> f = sendKeysInBatches(allKeys, replaceExistingValues, getMaxSize());
                 for (Future<Object> future : f) {
                     future.get();
                 }
@@ -69,7 +68,20 @@ public class KeyDispatcher {
         });
     }
 
-    private Collection<Future<Object>> sendKeysInBatches(Iterable<Object> allKeys, int maxSize, boolean replaceExistingValues) {
+    public Future triggerKeyLoad() {
+        return execService.submit(executorName, new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+                int partition = partitionService.getPartitionId( toData.apply(mapName) );
+                Operation op = new PartitionCheckIfLoadedOperation(mapName);
+                InternalCompletableFuture<Object> f = opService.invokeOnPartition(MapService.SERVICE_NAME, op , partition);
+                f.get();
+                return null;
+            }
+        });
+    }
+
+    private Collection<Future<Object>> sendKeysInBatches(Iterable<Object> allKeys, boolean replaceExistingValues, int maxSize) {
 
         List<Future<Object>> futures = new ArrayList<Future<Object>>();
 
@@ -156,11 +168,20 @@ public class KeyDispatcher {
             int partitionId = e.getKey();
             List<Data> keys = e.getValue();
             LoadAllOperation op = new LoadAllOperation(mapName, keys, replaceExistingValues);
+
             InternalCompletableFuture<Object> fut = opService.invokeOnPartition(MapService.SERVICE_NAME, op, partitionId);
             futures.add(fut);
         }
 
         return futures;
     }
+
+    private int getMaxSize() {
+        int maxSizePerNode = getApproximateMaxSize(maxSizeConfig, MaxSizePolicy.PER_NODE);
+        int members = partitionService.getMemberPartitionsMap().size();
+        int maxSize = members * maxSizePerNode;
+        return maxSize;
+    }
+
 
 }
