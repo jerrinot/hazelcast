@@ -53,6 +53,8 @@ final class InvocationFuture<E> implements InternalCompletableFuture<E> {
     private volatile ExecutionCallbackNode<E> callbackHead;
     private volatile Object response;
 
+    private volatile Exception firstResponse;
+
     InvocationFuture(OperationServiceImpl operationService, Invocation invocation, final Callback<E> callback) {
         this.invocation = invocation;
         this.operationService = operationService;
@@ -132,10 +134,12 @@ final class InvocationFuture<E> implements InternalCompletableFuture<E> {
                 //HazelcastInstanceNotActiveException.
 
                 ILogger logger = invocation.logger;
-                if (logger.isFinestEnabled()) {
-                    logger.info("Future response is already set! Current response: "
-                            + response + ", Offered response: " + offeredResponse + ", Invocation: " + invocation);
-                }
+                String stackTracesNow = getStackTrace(new Exception());
+                String stackTraceFirst = getStackTrace(firstResponse);
+
+                logger.info("Future response is already set! Current response: "
+                            + response + ", Offered response: " + offeredResponse + ", Invocation: " + invocation
+                            + "First Response: " + stackTraceFirst + " Now: " + stackTracesNow);
                 return;
             }
 
@@ -143,6 +147,7 @@ final class InvocationFuture<E> implements InternalCompletableFuture<E> {
             if (offeredResponse == Invocation.WAIT_RESPONSE) {
                 return;
             }
+            firstResponse = new Exception();
             callbackChain = callbackHead;
             callbackHead = null;
             notifyAll();
@@ -150,6 +155,15 @@ final class InvocationFuture<E> implements InternalCompletableFuture<E> {
 
         operationService.deregisterInvocation(invocation);
         notifyCallbacks(callbackChain);
+    }
+
+    private String getStackTrace(Exception exception) {
+        StackTraceElement[] stackTrace = exception.getStackTrace();
+        StringBuilder sb = new StringBuilder();
+        for (StackTraceElement element : stackTrace) {
+            sb.append(element).append("\n");
+        }
+        return sb.toString();
     }
 
     private void notifyCallbacks(ExecutionCallbackNode<E> callbackChain) {
