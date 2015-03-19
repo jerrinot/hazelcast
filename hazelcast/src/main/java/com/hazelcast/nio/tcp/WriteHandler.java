@@ -21,6 +21,7 @@ import com.hazelcast.nio.SocketWritable;
 import com.hazelcast.nio.ascii.SocketTextWriter;
 import com.hazelcast.util.Clock;
 import com.hazelcast.util.EmptyStatement;
+import org.jctools.queues.MpscLinkedQueue7;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -41,8 +42,8 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
 
     private static final long TIMEOUT = 3;
 
-    private final Queue<SocketWritable> writeQueue = new ConcurrentLinkedQueue<SocketWritable>();
-    private final Queue<SocketWritable> urgentWriteQueue = new ConcurrentLinkedQueue<SocketWritable>();
+    private final Queue<SocketWritable> writeQueue = new MpscLinkedQueue7<SocketWritable>();
+    private final Queue<SocketWritable> urgentWriteQueue = new MpscLinkedQueue7<SocketWritable>();
     private final AtomicBoolean scheduled = new AtomicBoolean(false);
     private final ByteBuffer outputBuffer;
     private SocketWritable currentPacket;

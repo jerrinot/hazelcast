@@ -204,6 +204,7 @@
                             <artifactSet>
                                 <includes>
                                     <include>com.eclipsesource.minimal-json:minimal-json</include>
+                                    <include>org.jctools:jctools-core</include>
                                 </includes>
                             </artifactSet>
                             <relocations>
@@ -327,6 +328,12 @@
             <artifactId>minimal-json</artifactId>
             <version>0.9.1</version>
             <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jctools</groupId>
+            <artifactId>jctools-core</artifactId>
+            <version>1.0</version>
         </dependency>
 
     </dependencies>
