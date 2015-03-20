@@ -16,12 +16,9 @@
 
 package com.hazelcast.map.impl;
 
-import com.hazelcast.cluster.ClusterService;
 import com.hazelcast.concurrent.lock.LockService;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MaxSizeConfig;
-import com.hazelcast.core.PartitioningStrategy;
-import com.hazelcast.nio.serialization.SerializationService;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.DefaultObjectNamespace;
 import com.hazelcast.spi.ExecutionService;
@@ -47,12 +44,9 @@ public class PartitionContainer {
         public RecordStore createNew(String name) {
             MapServiceContext serviceContext = mapService.getMapServiceContext();
             MapContainer mapContainer = serviceContext.getMapContainer(name);
-            final PartitioningStrategy strategy = mapContainer.getPartitioningStrategy();
             NodeEngine nodeEngine = serviceContext.getNodeEngine();
-            ClusterService cluster = nodeEngine.getClusterService();
             OperationService opService = nodeEngine.getOperationService();
             InternalPartitionService ps = nodeEngine.getPartitionService();
-            final SerializationService ss = nodeEngine.getSerializationService();
             ExecutionService execService = nodeEngine.getExecutionService();
             MapConfig mapConfig = mapContainer.getMapConfig();
             MaxSizeConfig maxSizeConfig = mapConfig.getMaxSizeConfig();

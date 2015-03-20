@@ -164,7 +164,7 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
         if (mapStoreConfig != null && mapStoreConfig.isEnabled()) {
             MapStoreConfig.InitialLoadMode initialLoadMode = mapStoreConfig.getInitialLoadMode();
             if (MapStoreConfig.InitialLoadMode.EAGER.equals(initialLoadMode)) {
-                waitUntilLoaded(true);
+                waitUntilLoaded();
             }
         }
     }
@@ -504,7 +504,7 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
         Operation operation = new LoadMapOperation(name, replaceExistingValues);
         operationService.invokeOnPartition(MapService.SERVICE_NAME, operation, mapNamePartition);
 
-        waitUntilLoaded(true);
+        waitUntilLoaded();
     }
 
     /**
@@ -527,7 +527,7 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
             nodeEngine.getOperationService().invokeOnPartition(SERVICE_NAME, operation, partitionId);
         }
 
-        waitUntilLoaded(true);
+        waitUntilLoaded();
     }
 
     private <K> Iterable<Data> convertToData(Iterable<K> keys) {
@@ -602,7 +602,7 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
         }
     }
 
-    public void waitUntilLoaded(boolean wait) {
+    public void waitUntilLoaded() {
         final NodeEngine nodeEngine = getNodeEngine();
         try {
             OperationService operationService = nodeEngine.getOperationService();

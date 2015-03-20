@@ -47,46 +47,45 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
     }
 
     @Test(timeout = 2 * MINUTE)
-    public void testLoadsNothing_whenLazyAndValueInserted() throws Exception {
+    public void testLoadsNothing_whenMapCreated() throws Exception {
+        final String mapName = randomMapName();
+        Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
+
+        getMap(mapName, cfg);
+
+        assertEquals(0, loadedValueCount.get());
+    }
+
+    @Test(timeout = 2 * MINUTE)
+    public void testLoadsMap_whenLazyAndValueInserted() throws Exception {
         final String mapName = randomMapName();
         Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
 
         IMap<Object, Object> map = getMap(mapName, cfg);
         map.put(1, 1);
 
-        assertEquals(0, loadedValueCount.get());
+        assertEquals(MAP_STORE_ENTRY_COUNT, loadedValueCount.get());
     }
 
     @Test(timeout = 2 * MINUTE)
-    public void testLoadsNothing_whenEvictionDisabledAndLazy() throws Exception {
+    public void testLoadsAll_whenMapLazyAndCheckingSize() throws Exception {
         final String mapName = randomMapName();
         Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
 
         IMap<Object, Object> map = getMap(mapName, cfg);
-
-        assertEquals(0, loadedValueCount.get());
-    }
-
-    @Test(timeout = 2 * MINUTE)
-    public void testLoadsAll_whenEvictionDisabledAndLazy() throws Exception {
-        final String mapName = randomMapName();
-        Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
-
-        IMap<Object, Object> map = getMap(mapName, cfg);
-        assertEquals(0, loadedValueCount.get());
 
         assertEquals(MAP_STORE_ENTRY_COUNT, map.size());
         assertEquals(MAP_STORE_ENTRY_COUNT, loadedValueCount.get());
     }
 
     @Test(timeout = 2 * MINUTE)
-    public void testLoadsAll_whenEvictionDisabledAndEager() throws Exception {
+    public void testLoadsAll_whenMapCreatedInEager() throws Exception {
         final String mapName = randomMapName();
         Config cfg = newConfig(mapName, false, EAGER);
 
         IMap<Object, Object> map = getMap(mapName, cfg);
-        assertEquals(MAP_STORE_ENTRY_COUNT, loadedValueCount.get());
 
+        assertEquals(MAP_STORE_ENTRY_COUNT, loadedValueCount.get());
         assertEquals(MAP_STORE_ENTRY_COUNT, map.size());
     }
 
