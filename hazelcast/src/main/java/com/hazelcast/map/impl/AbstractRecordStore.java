@@ -58,7 +58,6 @@ abstract class AbstractRecordStore implements RecordStore {
         this.sizeEstimator = createMapSizeEstimator();
     }
 
-
     @Override
     public String getName() {
         return name;

@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CountingMapLoader extends SimpleMapLoader {
 
     private AtomicInteger loadedValueCount = new AtomicInteger();
+    private AtomicInteger loadAllKeysCount = new AtomicInteger();
     private AtomicBoolean loadAllKeysClosed = new AtomicBoolean();
 
     CountingMapLoader(int size) {
@@ -39,12 +40,17 @@ public class CountingMapLoader extends SimpleMapLoader {
     @Override
     public Iterable<Integer> loadAllKeys() {
         final Iterable<Integer> allKeys = super.loadAllKeys();
+        loadAllKeysCount.incrementAndGet();
         return new Iterable<Integer>() {
             @Override
             public Iterator<Integer> iterator() {
                 return new CloseableIterator<Integer>(allKeys.iterator());
             }
         };
+    }
+
+    public int getLoadAllKeysCount() {
+        return loadAllKeysCount.get();
     }
 
     private class CloseableIterator<T> implements Iterator<T>, Closeable {

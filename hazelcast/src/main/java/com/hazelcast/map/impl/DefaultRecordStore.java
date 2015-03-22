@@ -110,8 +110,6 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
 
     @Override
     public void checkIfLoaded() {
-        System.err.println("Checkif loaded: " + getPartitionId());
-
         if (isLoaded()) {
             try {
                 // check all loading futures for exceptions

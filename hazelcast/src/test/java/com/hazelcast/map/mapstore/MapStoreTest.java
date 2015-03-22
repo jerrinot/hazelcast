@@ -473,29 +473,40 @@ public class MapStoreTest extends HazelcastTestSupport {
             keys.add(i);
         }
         Config config = newConfig(testMapStore, 2);
+
         TestHazelcastInstanceFactory nodeFactory = createHazelcastInstanceFactory(3);
         HazelcastInstance h1 = nodeFactory.newHazelcastInstance(config);
         HazelcastInstance h2 = nodeFactory.newHazelcastInstance(config);
+
         IMap map1 = h1.getMap("default");
         IMap map2 = h2.getMap("default");
-        checkIfMapLoaded("default", h1);
-        checkIfMapLoaded("default", h2);
+
+        //checkIfMapLoaded("default", h1);
+        //checkIfMapLoaded("default", h2);
+
         assertEquals("value1", map1.get(1));
         assertEquals("value1", map2.get(1));
+
         assertEquals(1000, map1.size());
         assertEquals(1000, map2.size());
+
         HazelcastInstance h3 = nodeFactory.newHazelcastInstance(config);
         IMap map3 = h3.getMap("default");
-        checkIfMapLoaded("default", h3);
+        //checkIfMapLoaded("default", h3);
+
         assertEquals("value1", map1.get(1));
         assertEquals("value1", map2.get(1));
         assertEquals("value1", map3.get(1));
+
         assertEquals(1000, map1.size());
         assertEquals(1000, map2.size());
         assertEquals(1000, map3.size());
+
         h3.shutdown();
+
         assertEquals("value1", map1.get(1));
         assertEquals("value1", map2.get(1));
+
         assertEquals(1000, map1.size());
         assertEquals(1000, map2.size());
     }
@@ -508,7 +519,6 @@ public class MapStoreTest extends HazelcastTestSupport {
 
         final long end = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1);
 
-        System.err.println("Checking if loaded");
         while (!loaded) {
             for (int i = 0; i < partitionCount; i++) {
                 final RecordStore recordStore = service.getMapServiceContext()
@@ -526,7 +536,7 @@ public class MapStoreTest extends HazelcastTestSupport {
             //give a rest to cpu.
             Thread.sleep(10);
         }
-        System.err.println("Checking if loaded done: " + loaded);
+
         return loaded;
     }
 
@@ -937,6 +947,7 @@ public class MapStoreTest extends HazelcastTestSupport {
     public static Config newConfig(String mapName, Object storeImpl, int writeDelaySeconds, InitialLoadMode loadMode) {
         XmlConfigBuilder configBuilder = new XmlConfigBuilder();
         Config config = configBuilder.build();
+
         config.getManagementCenterConfig().setEnabled(false);
         MapConfig mapConfig = config.getMapConfig(mapName);
         MapStoreConfig mapStoreConfig = new MapStoreConfig();

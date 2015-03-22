@@ -2,6 +2,7 @@ package com.hazelcast.map.impl;
 
 import com.hazelcast.config.MaxSizeConfig;
 import com.hazelcast.config.MaxSizeConfig.MaxSizePolicy;
+import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.map.impl.mapstore.MapStoreContext;
 import com.hazelcast.map.impl.operation.LoadAllOperation;
@@ -10,8 +11,8 @@ import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.Operation;
+import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.impl.AbstractCompletableFuture;
-import com.hazelcast.spi.impl.operationservice.InternalOperationService;
 import com.hazelcast.util.collection.UnmodifiableIterator;
 
 import java.io.Closeable;
@@ -42,7 +43,7 @@ public class KeyDispatcher {
     static final String executorName = "hz:map:loader";
 
     private String mapName;
-    private InternalOperationService opService;
+    private OperationService opService;
     private InternalPartitionService partitionService;
     private IFunction<Object, Data> toData;
     private ExecutionService execService;
@@ -50,7 +51,7 @@ public class KeyDispatcher {
 
     private LoadFinishedFuture loadFinished;
 
-    public KeyDispatcher(String mapName, InternalOperationService opService, InternalPartitionService ps,
+    public KeyDispatcher(String mapName, OperationService opService, InternalPartitionService ps,
             IFunction<Object, Data> serialize, ExecutionService execService, MaxSizeConfig maxSizeConfig) {
         this.mapName = mapName;
         this.opService = opService;
@@ -65,16 +66,18 @@ public class KeyDispatcher {
      */
     public Future<?> sendKeys(final MapStoreContext mapStoreContext, final boolean replaceExistingValues) {
 
-        loadFinished = new LoadFinishedFuture();
+        if( loadFinished == null || loadFinished.isDone() ) {
+            loadFinished = new LoadFinishedFuture("sendKeys");
 
-        execService.submit(executorName, new Callable<Object>() {
-            @Override
-            public Object call() throws Exception {
-                Iterable<Object> allKeys = mapStoreContext.loadAllKeys();
-                sendKeysInBatches(allKeys, replaceExistingValues, getMaxSize());
-                return null;
-            }
-        });
+            execService.submit(executorName, new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    Iterable<Object> allKeys = mapStoreContext.loadAllKeys();
+                    sendKeysInBatches(allKeys, replaceExistingValues, getMaxSize());
+                    return null;
+                }
+            });
+        }
 
         return loadFinished;
     }
@@ -84,17 +87,33 @@ public class KeyDispatcher {
      */
     public Future triggerKeyLoad() {
 
-        loadFinished = new LoadFinishedFuture();
+        if( loadFinished == null || loadFinished.isDone() ) {
+            loadFinished = new LoadFinishedFuture("trigger");
 
-        final int partition = partitionService.getPartitionId( toData.apply(mapName) );
+            final int partition = partitionService.getPartitionId( toData.apply(mapName) );
 
-        execService.submit(SERVICE_NAME, new Runnable() {
-            @Override
-            public void run() {
-                Operation op = new PartitionCheckIfLoadedOperation(mapName);
-                opService.invokeOnPartition(SERVICE_NAME, op, partition);
-            }
-        });
+            execService.execute(SERVICE_NAME, new Runnable() {
+                @Override
+                public void run() {
+                    Operation op = new PartitionCheckIfLoadedOperation(mapName);
+                    System.err.println("Send trigger to: " + partition);
+                    opService.<Boolean>invokeOnPartition(SERVICE_NAME, op, partition)
+                        .andThen(new ExecutionCallback<Boolean>() {
+                            @Override
+                            public void onResponse(Boolean loaded) {
+                                System.err.println("Trigger response: " + loaded);
+                                if( loaded ) {
+                                    loadFinished.setResult(loaded);
+                                }
+                            }
+                            @Override
+                            public void onFailure(Throwable t) {
+                                loadFinished.setResult(t);
+                            }
+                        });
+                }
+            });
+        }
 
         return loadFinished;
     }
@@ -221,8 +240,15 @@ public class KeyDispatcher {
 
     static class LoadFinishedFuture extends AbstractCompletableFuture {
 
+        private String label;
+
         protected LoadFinishedFuture() {
             super(null, null);
+        }
+
+        public LoadFinishedFuture(String label) {
+            super(null, null);
+            this.label = label;
         }
 
         @Override
@@ -240,6 +266,11 @@ public class KeyDispatcher {
         @Override
         public boolean isCancelled() {
             return false;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + "{" + label + "}";
         }
     }
 }
