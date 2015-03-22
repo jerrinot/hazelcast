@@ -46,7 +46,7 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
         nodeFactory = createHazelcastInstanceFactory(NODE_COUNT);
     }
 
-    @Test(timeout = 2 * MINUTE)
+    @Test(timeout = MINUTE)
     public void testLoadsNothing_whenMapCreated() throws Exception {
         final String mapName = randomMapName();
         Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
@@ -56,7 +56,7 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
         assertEquals(0, loadedValueCount.get());
     }
 
-    @Test(timeout = 2 * MINUTE)
+    @Test(timeout = MINUTE)
     public void testLoadsMap_whenLazyAndValueInserted() throws Exception {
         final String mapName = randomMapName();
         Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
@@ -67,7 +67,7 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
         assertEquals(MAP_STORE_ENTRY_COUNT, loadedValueCount.get());
     }
 
-    @Test(timeout = 2 * MINUTE)
+    @Test(timeout = MINUTE)
     public void testLoadsAll_whenMapLazyAndCheckingSize() throws Exception {
         final String mapName = randomMapName();
         Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
@@ -78,7 +78,7 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
         assertEquals(MAP_STORE_ENTRY_COUNT, loadedValueCount.get());
     }
 
-    @Test(timeout = 2 * MINUTE)
+    @Test(timeout = MINUTE)
     public void testLoadsAll_whenMapCreatedInEager() throws Exception {
         final String mapName = randomMapName();
         Config cfg = newConfig(mapName, false, EAGER);

@@ -9,26 +9,32 @@ import com.hazelcast.map.impl.operation.PartitionCheckIfLoadedOperation;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.ExecutionService;
-import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.Operation;
-import com.hazelcast.spi.OperationService;
+import com.hazelcast.spi.impl.AbstractCompletableFuture;
+import com.hazelcast.spi.impl.operationservice.InternalOperationService;
 import com.hazelcast.util.collection.UnmodifiableIterator;
 
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
+import static com.hazelcast.map.impl.MapService.SERVICE_NAME;
 import static com.hazelcast.map.impl.eviction.MaxSizeChecker.getApproximateMaxSize;
 import static com.hazelcast.nio.IOUtil.closeResource;
 import static com.hazelcast.util.IterableUtil.limit;
 import static com.hazelcast.util.IterableUtil.map;
+import static java.lang.Boolean.TRUE;
 
 public class KeyDispatcher {
 
@@ -36,13 +42,15 @@ public class KeyDispatcher {
     static final String executorName = "hz:map:loader";
 
     private String mapName;
-    private OperationService opService;
+    private InternalOperationService opService;
     private InternalPartitionService partitionService;
     private IFunction<Object, Data> toData;
     private ExecutionService execService;
     private MaxSizeConfig maxSizeConfig;
 
-    public KeyDispatcher(String mapName, OperationService opService, InternalPartitionService ps,
+    private LoadFinishedFuture loadFinished;
+
+    public KeyDispatcher(String mapName, InternalOperationService opService, InternalPartitionService ps,
             IFunction<Object, Data> serialize, ExecutionService execService, MaxSizeConfig maxSizeConfig) {
         this.mapName = mapName;
         this.opService = opService;
@@ -52,33 +60,47 @@ public class KeyDispatcher {
         this.maxSizeConfig = maxSizeConfig;
     }
 
+    /**
+     * Sends keys too all nodes in batches.
+     */
     public Future<?> sendKeys(final MapStoreContext mapStoreContext, final boolean replaceExistingValues) {
 
-        return execService.submit(executorName, new Callable<Object>() {
+        loadFinished = new LoadFinishedFuture();
+
+        execService.submit(executorName, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
                 Iterable<Object> allKeys = mapStoreContext.loadAllKeys();
-
-                Collection<Future<Object>> f = sendKeysInBatches(allKeys, replaceExistingValues, getMaxSize());
-                for (Future<Object> future : f) {
-                    future.get();
-                }
+                sendKeysInBatches(allKeys, replaceExistingValues, getMaxSize());
                 return null;
             }
         });
+
+        return loadFinished;
     }
 
+    /**
+     * Trigger key loading on loader partition
+     */
     public Future triggerKeyLoad() {
-        return execService.submit(executorName, new Callable<Object>() {
+
+        loadFinished = new LoadFinishedFuture();
+
+        final int partition = partitionService.getPartitionId( toData.apply(mapName) );
+
+        execService.submit(SERVICE_NAME, new Runnable() {
             @Override
-            public Object call() throws Exception {
-                int partition = partitionService.getPartitionId( toData.apply(mapName) );
+            public void run() {
                 Operation op = new PartitionCheckIfLoadedOperation(mapName);
-                InternalCompletableFuture<Object> f = opService.invokeOnPartition(MapService.SERVICE_NAME, op , partition);
-                f.get();
-                return null;
+                opService.invokeOnPartition(SERVICE_NAME, op, partition);
             }
         });
+
+        return loadFinished;
+    }
+
+    public void completeLoading() {
+        loadFinished.setResult(TRUE);
     }
 
     private Collection<Future<Object>> sendKeysInBatches(Iterable<Object> allKeys, boolean replaceExistingValues, int maxSize) {
@@ -98,6 +120,8 @@ public class KeyDispatcher {
             Map<Integer, List<Data>> batch = batches.next();
             futures.addAll( sendBatch(batch, replaceExistingValues) );
         }
+
+        futures.addAll( sendLoadCompleted(partitionService.getPartitionCount(), replaceExistingValues) );
 
         if (keys instanceof Closeable) {
             closeResource((Closeable) keys);
@@ -167,10 +191,22 @@ public class KeyDispatcher {
         for(Entry<Integer, List<Data>> e : batch.entrySet()) {
             int partitionId = e.getKey();
             List<Data> keys = e.getValue();
-            LoadAllOperation op = new LoadAllOperation(mapName, keys, replaceExistingValues);
+            LoadAllOperation op = new LoadAllOperation(mapName, keys, replaceExistingValues, false);
 
-            InternalCompletableFuture<Object> fut = opService.invokeOnPartition(MapService.SERVICE_NAME, op, partitionId);
-            futures.add(fut);
+            futures.add( opService.invokeOnPartition(SERVICE_NAME, op, partitionId) );
+        }
+
+        return futures;
+    }
+
+    private List<Future<Object>> sendLoadCompleted(int partitions, boolean replaceExistingValues) {
+
+        List<Future<Object>> futures = new ArrayList<Future<Object>>();
+        boolean lastBatch = true;
+
+        for (int partitionId = 0; partitionId < partitions; partitionId++) {
+            LoadAllOperation op = new LoadAllOperation(mapName, Collections.<Data>emptyList(), replaceExistingValues, lastBatch);
+            futures.add( opService.invokeOnPartition(SERVICE_NAME, op, partitionId) );
         }
 
         return futures;
@@ -183,5 +219,27 @@ public class KeyDispatcher {
         return maxSize;
     }
 
+    static class LoadFinishedFuture extends AbstractCompletableFuture {
 
+        protected LoadFinishedFuture() {
+            super(null, null);
+        }
+
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            return false;
+        }
+
+        @Override
+        public Object get(long timeout, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
+            if (isDone())
+                return getResult();
+            throw new UnsupportedOperationException("Future is not done yet");
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+    }
 }

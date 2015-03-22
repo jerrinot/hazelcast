@@ -47,8 +47,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 
 import static com.hazelcast.map.impl.ExpirationTimeSetter.updateExpiryTime;
-import static com.hazelcast.util.FutureUtil.RETHROW_EVERYTHING;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Default implementation of record-store.
@@ -99,22 +97,29 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
     }
 
     @Override
-    public void loadAllFromStore(List<Data> keys, boolean replaceExistingValues) {
-        if (keys.isEmpty()) {
-            return;
+    public void loadAllFromStore(List<Data> keys, boolean replaceExistingValues, boolean lastBatch) {
+        if (!keys.isEmpty()) {
+            Future f = recordStoreLoader.loadValues(keys, replaceExistingValues);
+            loadingFutures.add(f);
         }
-        Future f = recordStoreLoader.loadValues(keys, replaceExistingValues);
-        loadingFutures.add(f);
+
+        if( lastBatch ) {
+            keyDispatcher.completeLoading();
+        }
     }
 
     @Override
     public void checkIfLoaded() {
+        System.err.println("Checkif loaded: " + getPartitionId());
 
         if (isLoaded()) {
-            // check all loading futures for exceptions
-            FutureUtil.waitWithDeadline(loadingFutures, 1L, SECONDS, RETHROW_EVERYTHING);
-            loadingFutures.clear();
-
+            try {
+                // check all loading futures for exceptions
+                FutureUtil.getAllDone(loadingFutures);
+                loadingFutures.clear();
+            } catch (Exception e) {
+                ExceptionUtil.rethrow(e);
+            }
         } else {
             Throwable throwable = new RetryableHazelcastException("Map " + getName() +
                     " is still loading data from external store");

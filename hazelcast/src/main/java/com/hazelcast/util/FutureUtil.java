@@ -322,11 +322,19 @@ public final class FutureUtil {
     }
 
     public static boolean allDone(Collection<Future> futures) {
-        for(Future f: futures) {
-            if( ! f.isDone() ) {
+        for (Future f: futures) {
+            if (!f.isDone()) {
                 return false;
             }
         }
         return true;
+    }
+
+    public static void getAllDone(Collection<Future> futures) throws Exception {
+        for (Future f: futures) {
+            if (f.isDone()) {
+                f.get();
+            }
+        }
     }
 }

@@ -23,7 +23,7 @@ import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.DefaultObjectNamespace;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.NodeEngine;
-import com.hazelcast.spi.OperationService;
+import com.hazelcast.spi.impl.operationservice.InternalOperationService;
 import com.hazelcast.util.ConcurrencyUtil;
 import com.hazelcast.util.ConstructorFunction;
 
@@ -45,8 +45,8 @@ public class PartitionContainer {
             MapServiceContext serviceContext = mapService.getMapServiceContext();
             MapContainer mapContainer = serviceContext.getMapContainer(name);
             NodeEngine nodeEngine = serviceContext.getNodeEngine();
-            OperationService opService = nodeEngine.getOperationService();
             InternalPartitionService ps = nodeEngine.getPartitionService();
+            InternalOperationService opService = (InternalOperationService) nodeEngine.getOperationService();
             ExecutionService execService = nodeEngine.getExecutionService();
             MapConfig mapConfig = mapContainer.getMapConfig();
             MaxSizeConfig maxSizeConfig = mapConfig.getMaxSizeConfig();

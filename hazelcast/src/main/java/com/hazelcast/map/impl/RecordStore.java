@@ -252,8 +252,9 @@ public interface RecordStore {
      *
      * @param keys                  keys to be loaded.
      * @param replaceExistingValues <code>true</code> if need to replace existing values otherwise <code>false</code>
+     * @param lastBatch
      */
-    void loadAllFromStore(List<Data> keys, boolean replaceExistingValues);
+    void loadAllFromStore(List<Data> keys, boolean replaceExistingValues, boolean lastBatch);
 
     MapDataStore<Data, Object> getMapDataStore();
 
