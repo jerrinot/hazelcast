@@ -84,28 +84,35 @@ public class KeyDispatcher {
 
     /**
      * Trigger key loading on loader partition
+     * @param partitionId
      */
-    public Future triggerKeyLoad() {
+    public Future triggerKeyLoad(final int partitionId) {
 
         if( loadFinished == null || loadFinished.isDone() ) {
-            loadFinished = new LoadFinishedFuture("trigger");
 
-            final int partition = partitionService.getPartitionId( toData.apply(mapName) );
+            final int mapNamePartition = partitionService.getPartitionId( toData.apply(mapName) );
+
+            loadFinished = new LoadFinishedFuture();
+
+            if( mapNamePartition == partitionId ) {
+                loadFinished.setResult(Boolean.TRUE);
+                return loadFinished;
+            }
 
             execService.execute(SERVICE_NAME, new Runnable() {
                 @Override
                 public void run() {
                     Operation op = new PartitionCheckIfLoadedOperation(mapName);
-                    System.err.println("Send trigger to: " + partition);
-                    opService.<Boolean>invokeOnPartition(SERVICE_NAME, op, partition)
+
+                    opService.<Boolean>invokeOnPartition(SERVICE_NAME, op, mapNamePartition)
                         .andThen(new ExecutionCallback<Boolean>() {
                             @Override
                             public void onResponse(Boolean loaded) {
-                                System.err.println("Trigger response: " + loaded);
                                 if( loaded ) {
                                     loadFinished.setResult(loaded);
                                 }
                             }
+
                             @Override
                             public void onFailure(Throwable t) {
                                 loadFinished.setResult(t);
@@ -270,7 +277,7 @@ public class KeyDispatcher {
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + "{" + label + "}";
+            return getClass().getSimpleName() + "{" + (isDone()?"":"not ") + "done, " + label + "}";
         }
     }
 }

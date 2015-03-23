@@ -80,7 +80,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
             if (isKeyLoader) {
                 loadAll(false);
             } else {
-                loadingFutures.add( keyDispatcher.triggerKeyLoad() );
+                loadingFutures.add( keyDispatcher.triggerKeyLoad(partitionId) );
             }
         }
     }
