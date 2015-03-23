@@ -182,7 +182,6 @@ final class BasicMapStoreContext implements MapStoreContext {
     @Override
     public Iterable<Object> loadAllKeys() {
         return IterableUtil.nullToEmpty(storeWrapper.loadAllKeys());
-
     }
 
     void setMapStoreManager(MapStoreManager mapStoreManager) {

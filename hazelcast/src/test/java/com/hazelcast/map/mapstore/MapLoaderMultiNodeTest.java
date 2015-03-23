@@ -87,7 +87,6 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
         Config cfg = newConfig(mapName, false, EAGER);
 
         IMap<Object, Object> map = getMap(mapName, cfg);
-
         nodeFactory.newHazelcastInstance(cfg);
 
         assertEquals(1, mapLoader.getLoadAllKeysCount());
@@ -96,25 +95,7 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
     }
 
     @Test(timeout = MINUTE)
-    public void testLoadsOnlyOnce_whenLoadedAndNodeRemoved() throws Exception {
-        final String mapName = "8adae415-e21d-4acb-8513-6a3b0fd02217";
-        System.out.println("mapName: " + mapName);
-
-        Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY);
-
-        IMap<Object, Object> map = getMap(mapName, cfg);
-        HazelcastInstance hz3 = nodeFactory.newHazelcastInstance(cfg);
-
-        map.size();
-        hz3.shutdown();
-
-        assertEquals(MAP_STORE_ENTRY_COUNT, map.size());
-        assertEquals(1, mapLoader.getLoadAllKeysCount());
-        assertEquals(MAP_STORE_ENTRY_COUNT, mapLoader.getLoadedValueCount());
-    }
-
-    @Test(timeout = MINUTE)
-    public void testLoads_whenLoadederNodeRemoved() throws Exception {
+    public void testLoads_whenLoaderNodeRemoved() throws Exception {
         Config cfg = newConfig("default", false, InitialLoadMode.LAZY);
         HazelcastInstance[] nodes = nodeFactory.newInstances(cfg, 3);
         HazelcastInstance hz3 = nodes[2];
@@ -124,23 +105,31 @@ public class MapLoaderMultiNodeTest extends HazelcastTestSupport {
 
         map.size();
         hz3.shutdown();
+        waitAllForSafeState(nodeFactory.getAllHazelcastInstances());
+
+        assertEquals(MAP_STORE_ENTRY_COUNT, map.size());
+        assertEquals(1, mapLoader.getLoadAllKeysCount());
+        assertEquals(MAP_STORE_ENTRY_COUNT, mapLoader.getLoadedValueCount());
+    }
+
+    @Test(timeout = MINUTE)
+    public void testLoadsAll_whenLoaderNodeRemoved() throws Exception {
+        Config cfg = newConfig("default", false, InitialLoadMode.LAZY);
+        HazelcastInstance[] nodes = nodeFactory.newInstances(cfg, 3);
+        HazelcastInstance hz3 = nodes[2];
+
+        String mapName = generateKeyOwnedBy(hz3);
+        IMap<Object, Object> map = nodes[0].getMap(mapName);
+
+        map.size();
+        hz3.shutdown();
+        waitAllForSafeState(nodeFactory.getAllHazelcastInstances());
 
         map.loadAll(true);
 
         assertEquals(MAP_STORE_ENTRY_COUNT, map.size());
         assertEquals(2, mapLoader.getLoadAllKeysCount());
         assertEquals(2*MAP_STORE_ENTRY_COUNT, mapLoader.getLoadedValueCount());
-    }
-
-    @Test(timeout = MINUTE)
-    public void testBackups() throws Exception {
-        final String mapName = "2d58249f-ab89-4b90-9f5f-2d29d27c872f";
-
-        Config cfg = newConfig(mapName, false, InitialLoadMode.LAZY, 1);
-
-        IMap<Object, Object> map = getMap(mapName, cfg);
-
-        assertEquals(MAP_STORE_ENTRY_COUNT, map.size());
     }
 
     @Test(timeout = MINUTE)

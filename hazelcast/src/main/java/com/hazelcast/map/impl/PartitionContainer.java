@@ -53,11 +53,18 @@ public class PartitionContainer {
 
             KeyDispatcher dispatcher = new KeyDispatcher(name, opService, ps, mapContainer.toData, execService, maxSizeConfig);
 
-            int namePartition = ps.getPartitionId(name);
-            boolean isLoader = (namePartition == partitionId) && serviceContext.getOwnedPartitions().contains(namePartition);
+            int mapNamePartition = ps.getPartitionId(name);
+            boolean partitionOwner = serviceContext.getOwnedPartitions().contains(partitionId);
+            boolean isLoader = (mapNamePartition == partitionId) && partitionOwner;
+
+            System.err.println("new record store: " + partitionId + " - pri: " + serviceContext.getOwnedPartitions().contains(partitionId));
+
+            if (isLoader)
+                System.err.println("loader: " + nodeEngine.getThisAddress());
 
             DefaultRecordStore recordStore = new DefaultRecordStore(mapContainer, partitionId, isLoader, dispatcher);
-            recordStore.startLoading();
+            if (partitionOwner)
+                recordStore.startLoading();
             return recordStore;
         }
     };
