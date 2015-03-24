@@ -20,6 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -56,12 +57,12 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
 
     @Override
     public Future<?> loadValues(List<Data> keys, boolean replaceExistingValues) {
-        final Runnable task = new GivenKeysLoaderTask(keys, replaceExistingValues);
+        final Callable task = new GivenKeysLoaderTask(keys, replaceExistingValues);
         final String executorName = ExecutionService.MAP_LOAD_ALL_KEYS_EXECUTOR;
         return executeTask(executorName, task);
     }
 
-    private Future<?> executeTask(String executorName, Runnable task) {
+    private Future<?> executeTask(String executorName, Callable task) {
         return getExecutionService().submit(executorName, task);
     }
 
@@ -74,7 +75,7 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
      * Task for loading given keys.
      * This task is used to make load in an outer thread instead of partition thread.
      */
-    private final class GivenKeysLoaderTask implements Runnable {
+    private final class GivenKeysLoaderTask implements Callable<Object> {
 
         private final List<Data> keys;
         private final boolean replaceExistingValues;
@@ -85,12 +86,13 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
         }
 
         @Override
-        public void run() {
+        public Object call() throws Exception {
             loadValuesInternal(keys, replaceExistingValues);
+            return null;
         }
     }
 
-    private void loadValuesInternal(List<Data> keys, boolean replaceExistingValues) {
+    private void loadValuesInternal(List<Data> keys, boolean replaceExistingValues) throws Exception {
 
         if (!replaceExistingValues) {
             removeExistingKeys(keys);
@@ -101,13 +103,19 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
             loaded.set(true);
             return;
         }
-        doBatchLoad(keys);
+
+        List<Future> futures = doBatchLoad(keys);
+        for(Future future: futures) {
+            future.get();
+        }
     }
 
-    private void doBatchLoad(List<Data> keys) {
+    private List<Future> doBatchLoad(List<Data> keys) {
         final Queue<List<Data>> batchChunks = createBatchChunks(keys);
         final int size = batchChunks.size();
         final AtomicInteger finishedBatchCounter = new AtomicInteger(size);
+        List<Future> futures = new ArrayList<Future>();
+
         while (!batchChunks.isEmpty()) {
             final List<Data> chunk = batchChunks.poll();
             final List<Data> keyValueSequence = loadAndGet(chunk);
@@ -117,8 +125,10 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
                 }
                 continue;
             }
-            sendOperation(keyValueSequence, finishedBatchCounter);
+            futures.add( sendOperation(keyValueSequence, finishedBatchCounter) );
         }
+
+        return futures;
     }
 
     private Queue<List<Data>> createBatchChunks(List<Data> keys) {
@@ -178,10 +188,11 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
         return list.subList(start, end);
     }
 
-    private void sendOperation(List<Data> keyValueSequence, AtomicInteger finishedBatchCounter) {
+    private Future<?> sendOperation(List<Data> keyValueSequence, AtomicInteger finishedBatchCounter) {
         OperationService operationService = mapServiceContext.getNodeEngine().getOperationService();
         final Operation operation = createOperation(keyValueSequence, finishedBatchCounter);
-        operationService.executeOperation(operation);
+        //operationService.executeOperation(operation);
+        return operationService.invokeOnPartition(MapService.SERVICE_NAME, operation, partitionId);
     }
 
     private Operation createOperation(List<Data> keyValueSequence, final AtomicInteger finishedBatchCounter) {
@@ -196,6 +207,7 @@ class BasicRecordStoreLoader implements RecordStoreLoader {
                 }
             }
 
+            @Override
             public boolean isLocal() {
                 return true;
             }
