@@ -1094,7 +1094,6 @@ public class MapStoreTest extends HazelcastTestSupport {
         }
 
         public Set loadAllKeys() {
-            System.err.println("loadAllKeys call: ");
             callCount.incrementAndGet();
             latchLoadAllKeys.countDown();
             if (!loadAllKeys) return null;
@@ -1102,14 +1101,12 @@ public class MapStoreTest extends HazelcastTestSupport {
         }
 
         public Object load(Object key) {
-            System.err.println("load call: " + key);
             callCount.incrementAndGet();
             latchLoad.countDown();
             return store.get(key);
         }
 
         public void storeAll(Map map) {
-            System.err.println("storeAll call: ");
             store.putAll(map);
             callCount.incrementAndGet();
             latchStoreAll.countDown();
@@ -1122,7 +1119,6 @@ public class MapStoreTest extends HazelcastTestSupport {
         }
 
         public void delete(Object key) {
-            System.err.println("delete call: " + key);
             store.remove(key);
             callCount.incrementAndGet();
             latchDelete.countDown();
@@ -1136,7 +1132,6 @@ public class MapStoreTest extends HazelcastTestSupport {
                     map.put(key, value);
                 }
             }
-            System.err.println("loadAll call: " + keys.size());
             callCount.incrementAndGet();
             latchLoadAll.countDown();
             return map;

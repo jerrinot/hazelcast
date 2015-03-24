@@ -57,11 +57,6 @@ public class PartitionContainer {
             boolean partitionOwner = serviceContext.getOwnedPartitions().contains(partitionId);
             boolean isLoader = (mapNamePartition == partitionId) && partitionOwner;
 
-            System.err.println("new record store: " + partitionId + " - pri: " + serviceContext.getOwnedPartitions().contains(partitionId));
-
-            if (isLoader)
-                System.err.println("loader: " + nodeEngine.getThisAddress());
-
             DefaultRecordStore recordStore = new DefaultRecordStore(mapContainer, partitionId, isLoader, dispatcher);
             if (partitionOwner)
                 recordStore.startLoading();
