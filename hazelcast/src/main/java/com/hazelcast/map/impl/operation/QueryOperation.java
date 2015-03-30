@@ -127,20 +127,29 @@ public class QueryOperation extends AbstractMapOperation {
                 = nodeEngine.getExecutionService().getExecutor(ExecutionService.QUERY_EXECUTOR);
         final List<Future<Collection<QueryableEntry>>> lsFutures
                 = new ArrayList<Future<Collection<QueryableEntry>>>(initialPartitions.size());
-        for (Integer partitionId : initialPartitions) {
-            Future<Collection<QueryableEntry>> f = executor.submit(new PartitionCallable(partitionId));
-            lsFutures.add(f);
-        }
+//        for (Integer partitionId : initialPartitions) {
+//            Future<Collection<QueryableEntry>> f = executor.submit(new PartitionCallable(partitionId));
+//            lsFutures.add(f);
+//        }
 
-        final Collection<Collection<QueryableEntry>> returnedResults = getResult(lsFutures);
-        for (Collection<QueryableEntry> returnedResult : returnedResults) {
-            if (returnedResult == null) {
-                continue;
-            }
-            for (QueryableEntry entry : returnedResult) {
+        for (Integer partitionId : initialPartitions) {
+            MapContextQuerySupport mapContextQuerySupport = mapService.getMapServiceContext()
+                    .getMapContextQuerySupport();
+            Collection<QueryableEntry> queryableEntries = mapContextQuerySupport.queryOnPartition(name, predicate, partitionId);
+            for (QueryableEntry entry : queryableEntries) {
                 result.add(new QueryResultEntryImpl(entry.getKeyData(), entry.getKeyData(), entry.getValueData()));
             }
         }
+
+//        final Collection<Collection<QueryableEntry>> returnedResults = getResult(lsFutures);
+//        for (Collection<QueryableEntry> returnedResult : returnedResults) {
+//            if (returnedResult == null) {
+//                continue;
+//            }
+//            for (QueryableEntry entry : returnedResult) {
+//                result.add(new QueryResultEntryImpl(entry.getKeyData(), entry.getKeyData(), entry.getValueData()));
+//            }
+//        }
     }
 
     private static Collection<Collection<QueryableEntry>> getResult(List<Future<Collection<QueryableEntry>>> lsFutures) {

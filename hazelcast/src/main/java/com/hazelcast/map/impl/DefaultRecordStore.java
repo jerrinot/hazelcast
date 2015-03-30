@@ -279,7 +279,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         checkIfLoaded();
         final long now = getNow();
 
-        final ConcurrentMap<Data, Record> records = this.records;
+        final Map<Data, Record> records = this.records;
         final Collection<Record> values = records.values();
         Map<Data, Data> tempMap = null;
         for (Record record : values) {
@@ -333,7 +333,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         checkIfLoaded();
         final long now = getNow();
 
-        final ConcurrentMap<Data, Record> records = this.records;
+        final Map<Data, Record> records = this.records;
         final Collection<Record> values = records.values();
         Set<Data> keySet = null;
         for (Record record : values) {
@@ -358,7 +358,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore implements 
         checkIfLoaded();
         final long now = getNow();
 
-        final ConcurrentMap<Data, Record> records = this.records;
+        final Map<Data, Record> records = this.records;
         final Collection<Record> values = records.values();
         List<Data> dataValueList = null;
         for (Record record : values) {
