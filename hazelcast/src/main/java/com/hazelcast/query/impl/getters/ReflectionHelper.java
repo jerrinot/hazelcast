@@ -30,7 +30,9 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -45,8 +47,10 @@ public final class ReflectionHelper {
 
     private static final int INITIAL_CAPACITY = 3;
 
-    private static final ConcurrentMap<Class, ConcurrentMap<String, Getter>> GETTER_CACHE
-            = new ConcurrentHashMap<Class, ConcurrentMap<String, Getter>>(1000);
+//    private static final ConcurrentMap<Class, ConcurrentMap<String, Getter>> GETTER_CACHE
+//            = new ConcurrentHashMap<Class, ConcurrentMap<String, Getter>>(1000);
+
+    private static final ThreadLocal<Map<Class, Map<String, Getter>>> GETTER_CACHE = new ThreadLocal<Map<Class, Map<String, Getter>>>();
 
     private static final ConstructorFunction<Class, ConcurrentMap<String, Getter>> GETTER_CACHE_CONSTRUCTOR
             = new ConstructorFunction<Class, ConcurrentMap<String, Getter>>() {
@@ -100,7 +104,12 @@ public final class ReflectionHelper {
 
 
     private static Getter get(Class clazz, String attribute) {
-        ConcurrentMap<String, Getter> cache = GETTER_CACHE.get(clazz);
+        Map<Class, Map<String, Getter>> getterCache = GETTER_CACHE.get();
+        if (getterCache == null) {
+            getterCache = new HashMap<Class, Map<String, Getter>>();
+            GETTER_CACHE.set(getterCache);
+        }
+        Map<String, Getter> cache = getterCache.get(clazz);
         if (cache == null) {
             return null;
         }
@@ -109,13 +118,29 @@ public final class ReflectionHelper {
     }
 
     private static Getter set(Class clazz, String attribute, Getter getter) {
-        ConcurrentMap<String, Getter> cache = ConcurrencyUtil.getOrPutIfAbsent(GETTER_CACHE, clazz, GETTER_CACHE_CONSTRUCTOR);
-        Getter foundGetter = cache.putIfAbsent(attribute, getter);
-        return foundGetter == null ? getter : foundGetter;
+        Map<Class, Map<String, Getter>> getterCache = GETTER_CACHE.get();
+        if (getterCache == null) {
+            getterCache = new HashMap<Class, Map<String, Getter>>();
+            GETTER_CACHE.set(getterCache);
+        }
+
+        Map<String, Getter> cache = getterCache.get(clazz);
+        if (cache == null) {
+            cache = new HashMap<String, Getter>();
+            getterCache.put(clazz, cache);
+        }
+
+        Getter oldGetter = cache.get(attribute);
+        if (oldGetter != null) {
+            return oldGetter;
+        }
+
+        cache.put(attribute, getter);
+        return getter;
     }
 
     public static void reset() {
-        GETTER_CACHE.clear();
+        GETTER_CACHE.remove();
     }
 
     public static AttributeType getAttributeType(Object value, String attribute) {
