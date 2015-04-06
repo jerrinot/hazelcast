@@ -260,7 +260,19 @@ public class GroupProperties {
     public static final String PROP_BACKPRESSURE_MAX_CONCURRENT_INVOCATIONS_PER_PARTITION
             = "hazelcast.backpressure.max.concurrent.invocations.per.partition";
 
-
+    /**
+     * Run Query Evaluations for multiple partitions in parallel.
+     *
+     * Each Hazelcast member evaluates query predicates using a single thread by default. It most cases the overhead of
+     * inter-thread communication overweight benefit of parallel execution.
+     *
+     * When you have a large dataset and/or slow predicate you may benefit from parallel predicate evaluations.
+     * Set to true if you are using slow predicates or have > 100,000s entries per member.
+     *
+     * Default: false
+     *
+     */
+    public static final String PROP_QUERY_PREDICATE_PARALLEL_EVALUATION = "hazelcast.query.predicate.parallel.evaluation";
 
 
     /**
@@ -442,6 +454,8 @@ public class GroupProperties {
     public final GroupProperty BACKPRESSURE_SYNCWINDOW;
     public final GroupProperty BACKPRESSURE_BACKOFF_TIMEOUT_MILLIS;
     public final GroupProperty BACKPRESSURE_MAX_CONCURRENT_INVOCATIONS_PER_PARTITION;
+
+    public final GroupProperty QUERY_PREDICATE_PARALLEL_EVALUATION;
     /**
      * @param config
      */
@@ -555,6 +569,9 @@ public class GroupProperties {
                 = new GroupProperty(config, PROP_BACKPRESSURE_MAX_CONCURRENT_INVOCATIONS_PER_PARTITION, "100");
         BACKPRESSURE_BACKOFF_TIMEOUT_MILLIS
                 = new GroupProperty(config, PROP_BACKPRESSURE_BACKOFF_TIMEOUT_MILLIS, "60000");
+
+        QUERY_PREDICATE_PARALLEL_EVALUATION
+                = new GroupProperty(config, PROP_QUERY_PREDICATE_PARALLEL_EVALUATION, "false");
     }
 
     public static class GroupProperty {

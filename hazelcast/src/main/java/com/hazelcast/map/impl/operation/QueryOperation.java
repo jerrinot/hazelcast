@@ -16,7 +16,10 @@
 
 package com.hazelcast.map.impl.operation;
 
+import com.hazelcast.config.Config;
+import com.hazelcast.config.GroupConfig;
 import com.hazelcast.core.MemberLeftException;
+import com.hazelcast.instance.GroupProperties;
 import com.hazelcast.map.impl.MapContextQuerySupport;
 import com.hazelcast.map.impl.MapService;
 import com.hazelcast.map.impl.MapServiceContext;
@@ -95,12 +98,7 @@ public class QueryOperation extends AbstractMapOperation {
                 result.add(resultEntry);
             }
         } else {
-            // run in parallel
-            if (pagingPredicate != null) {
-                runParallelForPaging(initialPartitions);
-            } else {
-                runParallel(initialPartitions);
-            }
+            fullTableScan(initialPartitions, nodeEngine.getGroupProperties());
         }
         Collection<Integer> finalPartitions = mapServiceContext.getOwnedPartitions();
         if (initialPartitions.equals(finalPartitions)) {
@@ -115,9 +113,38 @@ public class QueryOperation extends AbstractMapOperation {
         checkPartitionStateChanges(partitionService, partitionStateVersion);
     }
 
+    private void fullTableScan(Collection<Integer> initialPartitions, GroupProperties groupProperties)
+            throws InterruptedException, ExecutionException {
+        if (pagingPredicate != null) {
+            runParallelForPaging(initialPartitions);
+        } else {
+            boolean parallelEvaluation = groupProperties.QUERY_PREDICATE_PARALLEL_EVALUATION.getBoolean();
+            if (parallelEvaluation) {
+                runParallel(initialPartitions);
+            } else{
+                runSingleThreaded(initialPartitions);
+            }
+        }
+    }
+
     private void checkPartitionStateChanges(InternalPartitionService partitionService, int partitionStateVersion) {
         if (partitionStateVersion != partitionService.getPartitionStateVersion()) {
             getLogger().info("Partition assignments changed while executing query: " + predicate);
+        }
+    }
+
+    protected void runSingleThreaded(final Collection<Integer> initialPartitions) throws InterruptedException, ExecutionException {
+        final NodeEngine nodeEngine = getNodeEngine();
+        final ExecutorService executor
+                = nodeEngine.getExecutionService().getExecutor(ExecutionService.QUERY_EXECUTOR);
+
+        for (Integer partitionId : initialPartitions) {
+            MapContextQuerySupport mapContextQuerySupport = mapService.getMapServiceContext()
+                    .getMapContextQuerySupport();
+            Collection<QueryableEntry> queryableEntries = mapContextQuerySupport.queryOnPartition(name, predicate, partitionId);
+            for (QueryableEntry entry : queryableEntries) {
+                result.add(new QueryResultEntryImpl(entry.getKeyData(), entry.getKeyData(), entry.getValueData()));
+            }
         }
     }
 
