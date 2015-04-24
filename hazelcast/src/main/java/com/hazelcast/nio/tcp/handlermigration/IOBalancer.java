@@ -18,6 +18,7 @@ package com.hazelcast.nio.tcp.handlermigration;
 
 import com.hazelcast.instance.GroupProperties;
 import com.hazelcast.instance.HazelcastThreadGroup;
+import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingService;
 import com.hazelcast.nio.Connection;
@@ -28,6 +29,10 @@ import com.hazelcast.nio.tcp.OutSelectorImpl;
 import com.hazelcast.nio.tcp.ReadHandler;
 import com.hazelcast.nio.tcp.TcpIpConnection;
 import com.hazelcast.nio.tcp.WriteHandler;
+import com.hazelcast.util.counters.MwCounter;
+import com.hazelcast.util.counters.SwCounter;
+import static com.hazelcast.util.counters.MwCounter.newMwCounter;
+import static com.hazelcast.util.counters.SwCounter.newSwCounter;
 
 /**
  * It attempts to detect and fix a selector imbalance problem.
@@ -49,8 +54,6 @@ import com.hazelcast.nio.tcp.WriteHandler;
  * provided by {@link com.hazelcast.nio.ConnectionManager} to observe connections as it has to be notified
  * right after a physical TCP connection is created whilst <code>ConnectionListener</code> is notified only
  * after a successful (Hazelcast) binding process.
- *
- *
  */
 public class IOBalancer {
     private final ILogger log;
@@ -64,6 +67,14 @@ public class IOBalancer {
     private final HazelcastThreadGroup threadGroup;
     private volatile boolean enabled;
     private IOBalancerThread ioBalancerThread;
+
+    // only IOBalancerThread will write to this field.
+    @Probe
+    private final SwCounter imbalanceDetectedCount = newSwCounter();
+
+    // multiple threads can update this field.
+    @Probe
+    private final MwCounter migrationCompletedCount = newMwCounter();
 
     public IOBalancer(InSelectorImpl[] inSelectors, OutSelectorImpl[] outSelectors, HazelcastThreadGroup threadGroup,
                       int migrationIntervalSeconds, LoggingService loggingService) {
@@ -137,6 +148,7 @@ public class IOBalancer {
     private void scheduleMigrationIfNeeded(LoadTracker loadTracker) {
         LoadImbalance loadImbalance = loadTracker.updateImbalance();
         if (strategy.imbalanceDetected(loadImbalance)) {
+            imbalanceDetectedCount.inc();
             tryMigrate(loadImbalance);
         } else {
             if (log.isFinestEnabled()) {
@@ -151,7 +163,7 @@ public class IOBalancer {
         if (migrationIntervalSeconds < 0) {
             if (log.isFinestEnabled()) {
                 log.finest("I/O Balancer is disabled as the '"
-                        + GroupProperties.PROP_PERFORMANCE_MONITORING_ENABLED + "' property is set to "
+                        + GroupProperties.PROP_PERFORMANCE_MONITOR_ENABLED + "' property is set to "
                         + migrationIntervalSeconds + ". Set the property to a positive value to enable I/O Balancer.");
             }
             return false;
@@ -178,5 +190,9 @@ public class IOBalancer {
                     + " from a selector thread " + sourceSelector + " to " + destinationSelector);
         }
         handler.migrate(destinationSelector);
+    }
+
+    public void signalMigrationComplete() {
+        migrationCompletedCount.inc();
     }
 }

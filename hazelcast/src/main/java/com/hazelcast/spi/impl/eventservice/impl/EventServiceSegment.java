@@ -16,6 +16,7 @@
 
 package com.hazelcast.spi.impl.eventservice.impl;
 
+import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.nio.Address;
 import com.hazelcast.util.ConcurrencyUtil;
 import com.hazelcast.util.ConstructorFunction;
@@ -33,8 +34,10 @@ public class EventServiceSegment {
     private final ConcurrentMap<String, Collection<Registration>> registrations
             = new ConcurrentHashMap<String, Collection<Registration>>();
 
+    @Probe(name = "listenerCount")
     private final ConcurrentMap<String, Registration> registrationIdMap = new ConcurrentHashMap<String, Registration>();
 
+    @Probe(name = "publicationCount")
     private final AtomicLong totalPublishes = new AtomicLong();
 
     public EventServiceSegment(String serviceName) {

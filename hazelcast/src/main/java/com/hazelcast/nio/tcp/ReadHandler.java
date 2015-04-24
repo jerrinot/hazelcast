@@ -16,10 +16,14 @@
 
 package com.hazelcast.nio.tcp;
 
+import com.hazelcast.internal.metrics.MetricsRegistry;
+import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.nio.ConnectionType;
 import com.hazelcast.nio.Protocols;
 import com.hazelcast.nio.ascii.SocketTextReader;
 import com.hazelcast.util.Clock;
+import com.hazelcast.util.counters.Counter;
+import com.hazelcast.util.counters.SwCounter;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -27,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 
 import static com.hazelcast.util.StringUtil.bytesToString;
+import static com.hazelcast.util.counters.SwCounter.newSwCounter;
 
 /**
  * The reading side of the {@link com.hazelcast.nio.Connection}.
@@ -35,17 +40,56 @@ public final class ReadHandler extends AbstractSelectionHandler {
 
     private final ByteBuffer inputBuffer;
 
+    @Probe(name = "in.bytesRead")
+    private final SwCounter bytesRead = newSwCounter();
+    @Probe(name = "in.normalPacketsRead")
+    private final SwCounter normalPacketsRead = newSwCounter();
+    @Probe(name = "in.priorityPacketsRead")
+    private final SwCounter priorityPacketsRead  = newSwCounter();
+    @Probe(name = "in.exceptionCount")
+    private final SwCounter exceptionCount = newSwCounter();
+    private final MetricsRegistry metricRegistry;
+
     private SocketReader socketReader;
 
-    private volatile long lastHandle;
+    private volatile long lastReadTime;
 
     //This field will be incremented by a single thread. It can be read by multiple threads.
+    @Probe(name = "in.eventCount")
     private volatile long eventCount;
 
     public ReadHandler(TcpIpConnection connection, IOSelector ioSelector) {
         super(connection, ioSelector, SelectionKey.OP_READ);
         this.ioSelector = ioSelector;
         this.inputBuffer = ByteBuffer.allocate(connectionManager.socketReceiveBufferSize);
+
+        this.metricRegistry = connection.getConnectionManager().getMetricRegistry();
+        metricRegistry.scanAndRegister(this, "tcp.connection[" + connection.getMetricsId() + "]");
+    }
+
+    @Probe(name = "in.idleTimeMs")
+    private long idleTimeMs() {
+        return Math.max(System.currentTimeMillis() - lastReadTime, 0);
+    }
+
+    @Probe(name = "in.interestedOps")
+    private long interestOps() {
+        SelectionKey selectionKey = this.selectionKey;
+        return selectionKey == null ? -1 : selectionKey.interestOps();
+    }
+
+    @Probe(name = "in.readyOps")
+    private long readyOps() {
+        SelectionKey selectionKey = this.selectionKey;
+        return selectionKey == null ? -1 : selectionKey.readyOps();
+    }
+
+    public Counter getNormalPacketsRead() {
+        return normalPacketsRead;
+    }
+
+    public Counter getPriorityPacketsRead() {
+        return priorityPacketsRead;
     }
 
     public void start() {
@@ -56,7 +100,6 @@ public final class ReadHandler extends AbstractSelectionHandler {
 
             }
         });
-
         ioSelector.wakeup();
     }
 
@@ -70,7 +113,7 @@ public final class ReadHandler extends AbstractSelectionHandler {
             justification = "eventCount is accessed by a single thread only.")
     public void handle() {
         eventCount++;
-        lastHandle = Clock.currentTimeMillis();
+        lastReadTime = Clock.currentTimeMillis();
         if (!connection.isAlive()) {
             String message = "We are being asked to read, but connection is not live so we won't";
             logger.finest(message);
@@ -85,8 +128,11 @@ public final class ReadHandler extends AbstractSelectionHandler {
                 }
             }
             int readBytes = socketChannel.read(inputBuffer);
+
             if (readBytes == -1) {
                 throw new EOFException("Remote socket closed!");
+            } else {
+                bytesRead.inc(readBytes);
             }
         } catch (Throwable e) {
             handleSocketException(e);
@@ -106,6 +152,12 @@ public final class ReadHandler extends AbstractSelectionHandler {
         } catch (Throwable t) {
             handleSocketException(t);
         }
+    }
+
+    @Override
+    void handleSocketException(Throwable e) {
+        exceptionCount.inc();
+        super.handleSocketException(e);
     }
 
     private void initializeSocketReader()
@@ -146,11 +198,13 @@ public final class ReadHandler extends AbstractSelectionHandler {
         }
     }
 
-    long getLastHandle() {
-        return lastHandle;
+    long getLastReadTime() {
+        return lastReadTime;
     }
 
     void shutdown() {
+        metricRegistry.deregister(this);
+
         ioSelector.addTask(new Runnable() {
             @Override
             public void run() {
@@ -162,5 +216,7 @@ public final class ReadHandler extends AbstractSelectionHandler {
             }
         });
         ioSelector.wakeup();
+
+        logger.severe("DEREGISTER counters");
     }
 }

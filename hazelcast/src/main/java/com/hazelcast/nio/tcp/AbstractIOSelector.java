@@ -17,6 +17,7 @@
 package com.hazelcast.nio.tcp;
 
 import com.hazelcast.core.HazelcastException;
+import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 
@@ -38,6 +39,7 @@ public abstract class AbstractIOSelector extends Thread implements IOSelector {
 
     protected final ILogger logger;
 
+    @Probe(name = "selectorQueueSize")
     protected final Queue<Runnable> selectorQueue = new ConcurrentLinkedQueue<Runnable>();
 
     protected final int waitTime;
@@ -49,6 +51,8 @@ public abstract class AbstractIOSelector extends Thread implements IOSelector {
     private final IOSelectorOutOfMemoryHandler oomeHandler;
 
     private final CountDownLatch shutdownLatch = new CountDownLatch(1);
+
+    private volatile long lastSelectTimeMs;
 
     public AbstractIOSelector(ThreadGroup threadGroup, String tname, ILogger logger,
                               IOSelectorOutOfMemoryHandler oomeHandler) {
@@ -95,6 +99,11 @@ public abstract class AbstractIOSelector extends Thread implements IOSelector {
         selectorQueue.add(runnable);
     }
 
+    @Probe
+    private long idleTime() {
+        return Math.max(System.currentTimeMillis() - lastSelectTimeMs, 0);
+    }
+
     private void processSelectionQueue() {
         //noinspection WhileLoopSpinsOnField
         while (live) {
@@ -139,6 +148,7 @@ public abstract class AbstractIOSelector extends Thread implements IOSelector {
                 int selectedKeyCount;
                 try {
                     selectedKeyCount = selector.select(waitTime);
+                    lastSelectTimeMs = System.currentTimeMillis();
                 } catch (Throwable e) {
                     handleSelectFailure(e);
                     continue;
