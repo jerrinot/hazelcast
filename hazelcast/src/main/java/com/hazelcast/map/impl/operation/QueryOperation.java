@@ -108,7 +108,8 @@ public class QueryOperation extends AbstractMapOperation {
             checkPartitionStateChanges(partitionService, partitionStateVersion);
 
             long deltaNanos = System.nanoTime() - startTime;
-            getLogger().severe("QueryOperation successful, time : " + TimeUnit.NANOSECONDS.toMillis(deltaNanos));
+            getLogger().severe("QueryOperation successful, time : " + TimeUnit.NANOSECONDS.toMillis(deltaNanos)
+                    + "Size: " + result.getResult().size());
         } catch (Exception e) {
             long deltaNanos = System.nanoTime() - startTime;
             getLogger().severe("QueryOperation failed, time : " + TimeUnit.NANOSECONDS.toMillis(deltaNanos));
