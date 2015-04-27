@@ -16,6 +16,9 @@
 
 package com.hazelcast.map.impl;
 
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
+import com.hazelcast.logging.LoggerFactory;
 import com.hazelcast.map.QueryResultSizeExceededException;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
@@ -29,9 +32,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.concurrent.TimeUnit;
 
 public class QueryResult implements DataSerializable {
 
+    private static final ILogger logger = Logger.getLogger(QueryResult.class);
     private final Collection<QueryResultEntry> result = new LinkedHashSet<QueryResultEntry>();
 
     private Collection<Integer> partitionIds;
@@ -71,6 +76,7 @@ public class QueryResult implements DataSerializable {
     }
 
     public void writeData(ObjectDataOutput out) throws IOException {
+        long startTime = System.nanoTime();
         int partitionSize = (partitionIds == null) ? 0 : partitionIds.size();
         out.writeInt(partitionSize);
         if (partitionSize > 0) {
@@ -87,6 +93,9 @@ public class QueryResult implements DataSerializable {
                 queryableEntry.writeData(out);
             }
         }
+        long deltaTimeNanos = System.nanoTime() - startTime;
+        logger.severe("QueryResult deserialization took " + TimeUnit.NANOSECONDS.toMillis(deltaTimeNanos)+ " ns");
+
     }
 
     public void readData(ObjectDataInput in) throws IOException {
