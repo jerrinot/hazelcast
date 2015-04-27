@@ -202,6 +202,12 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
             justification = "eventCount is accessed by a single thread only.")
     public void handle() {
         eventCount++;
+        long now = Clock.currentTimeMillis();
+        long delta = now - lastHandle;
+        if (delta > 50) {
+            logger.severe("Last Write Handle of " + this + " " + delta + " ms ago.");
+        }
+
         lastHandle = Clock.currentTimeMillis();
         if (!connection.isAlive()) {
             return;
