@@ -21,6 +21,7 @@ import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.instance.Node;
 import com.hazelcast.instance.OutOfMemoryErrorDispatcher;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.map.impl.operation.QueryOperation;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.IOUtil;
@@ -44,6 +45,7 @@ import com.hazelcast.spi.impl.operationservice.impl.responses.ErrorResponse;
 import com.hazelcast.spi.impl.operationservice.impl.responses.NormalResponse;
 import com.hazelcast.util.ExceptionUtil;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 
@@ -117,7 +119,7 @@ class OperationRunnerImpl extends OperationRunner {
         if (publishCurrentTask) {
             currentTask = op;
         }
-
+        long startTime = System.nanoTime();
         try {
             if (timeout(op)) {
                 return;
@@ -137,6 +139,8 @@ class OperationRunnerImpl extends OperationRunner {
         } catch (Throwable e) {
             handleOperationError(op, e);
         } finally {
+            long deltaTimeNanos = System.nanoTime() - startTime;
+            logger.severe("Operation " + op + " took " + TimeUnit.NANOSECONDS.toMillis(deltaTimeNanos) + " ms to complete");
             if (publishCurrentTask) {
                 currentTask = null;
             }

@@ -94,7 +94,7 @@ public class QueryResult implements DataSerializable {
             }
         }
         long deltaTimeNanos = System.nanoTime() - startTime;
-        logger.severe("QueryResult deserialization took " + TimeUnit.NANOSECONDS.toMillis(deltaTimeNanos)+ " ns");
+        logger.severe("QueryResult serialization took " + TimeUnit.NANOSECONDS.toMillis(deltaTimeNanos)+ " ms");
 
     }
 
