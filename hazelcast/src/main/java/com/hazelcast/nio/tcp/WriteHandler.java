@@ -172,7 +172,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
         // So the outputBuffer is empty, so we are going to unschedule ourselves.
         scheduled.set(false);
 
-        if (writeQueue.isEmpty() && urgentWriteQueue.isEmpty()) {
+        if (writeQueue.isEmpty() && urgentWriteQueue.isEmpty() && currentPacket == null) {
             // there are no remaining packets, so we are done.
             return;
         }
