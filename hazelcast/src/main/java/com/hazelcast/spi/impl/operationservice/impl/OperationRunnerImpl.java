@@ -140,7 +140,18 @@ class OperationRunnerImpl extends OperationRunner {
             handleOperationError(op, e);
         } finally {
             long deltaTimeNanos = System.nanoTime() - startTime;
-            logger.severe("Operation " + op + " took " + TimeUnit.NANOSECONDS.toMillis(deltaTimeNanos) + " ms to complete");
+            if (op instanceof QueryOperation) {
+                QueryOperation queryOperation = (QueryOperation) op;
+                String message = "Operation " + op + " took " + TimeUnit.NANOSECONDS.toMillis(deltaTimeNanos) + " ms to complete." +
+                        " It was created " + (System.currentTimeMillis() - queryOperation.createdAt);
+                long deserilizedAt = queryOperation.deserializedAt;
+                if (deserilizedAt == 0) {
+                    message += " and it's a local operation";
+                } else {
+                    message += " and deserilized " + (System.currentTimeMillis() - deserilizedAt) + " ms ago.";
+                }
+                logger.severe(message);
+            }
             if (publishCurrentTask) {
                 currentTask = null;
             }

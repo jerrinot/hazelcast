@@ -59,6 +59,8 @@ public class QueryOperation extends AbstractMapOperation {
 
     private Predicate predicate;
     private PagingPredicate pagingPredicate;
+    public long createdAt;
+    public long deserializedAt;
 
     private QueryResult result;
 
@@ -67,6 +69,7 @@ public class QueryOperation extends AbstractMapOperation {
 
     public QueryOperation(String mapName, Predicate predicate) {
         super(mapName);
+        this.createdAt = System.currentTimeMillis();
         this.predicate = predicate;
         if (predicate instanceof PagingPredicate) {
             this.pagingPredicate = (PagingPredicate) predicate;
@@ -227,6 +230,7 @@ public class QueryOperation extends AbstractMapOperation {
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
+        out.writeLong(createdAt);
         out.writeUTF(name);
         out.writeObject(predicate);
     }
@@ -234,6 +238,8 @@ public class QueryOperation extends AbstractMapOperation {
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
+        createdAt = in.readLong();
+        deserializedAt = System.currentTimeMillis();
         name = in.readUTF();
         predicate = in.readObject();
         if (predicate instanceof PagingPredicate) {
