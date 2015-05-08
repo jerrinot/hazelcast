@@ -32,7 +32,7 @@ import java.util.LinkedHashSet;
 
 public class QueryResult implements DataSerializable {
 
-    private final Collection<QueryResultEntry> result = new ArrayList<QueryResultEntry>();
+    private Collection<QueryResultEntry> result = new LinkedHashSet<QueryResultEntry>();
 
     private Collection<Integer> partitionIds;
 
@@ -99,6 +99,10 @@ public class QueryResult implements DataSerializable {
         }
         int resultSize = in.readInt();
         if (resultSize > 0) {
+            if (resultSize > 10) {
+                result = new LinkedHashSet<QueryResultEntry>(resultSize);
+            }
+
             for (int i = 0; i < resultSize; i++) {
                 QueryResultEntryImpl resultEntry = new QueryResultEntryImpl();
                 resultEntry.readData(in);
