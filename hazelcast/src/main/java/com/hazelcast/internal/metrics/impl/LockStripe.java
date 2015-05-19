@@ -17,7 +17,7 @@
 package com.hazelcast.internal.metrics.impl;
 
 import static java.lang.Math.abs;
-import static java.lang.Math.min;
+import static java.lang.Math.max;
 import static java.lang.System.identityHashCode;
 
 /**
@@ -45,8 +45,8 @@ class LockStripe {
         int hash = identityHashCode(source);
 
         // the following code first converts the hash to a positive value for all values except Integer.MIN_VALUE
-        // and then calls min deal with Integer.MIN_VALUE; which is safely converted to 0.
-        hash = min(0, abs(hash));
+        // and then calls max deal with Integer.MIN_VALUE; which is safely converted to 0.
+        hash = max(0, abs(hash));
         return stripe[hash % stripe.length];
     }
 }
