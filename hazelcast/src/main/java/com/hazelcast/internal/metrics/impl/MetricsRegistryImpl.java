@@ -191,16 +191,18 @@ public class MetricsRegistryImpl implements MetricsRegistry {
 
             String name = entry.getKey();
 
+            boolean destroyed = false;
             synchronized (lockStripe.getLock(source)) {
                 if (probeInstance.source == source) {
                     changed = true;
                     probeInstances.remove(name);
                     probeInstance.source = null;
                     probeInstance.function = null;
+                    destroyed = true;
                 }
             }
 
-            if (logger.isFinestEnabled()) {
+            if (destroyed && logger.isFinestEnabled()) {
                 logger.finest("Destroying probeInstance " + name);
             }
         }
