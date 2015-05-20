@@ -62,7 +62,7 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
             return;
         }
 
-        ioSelector.addTask(new MigrationTask(newOwner));
+        ioSelector.addTask(new StartMigrationTask(newOwner));
         ioSelector.wakeup();
     }
 
@@ -129,10 +129,11 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
         return ioSelector;
     }
 
-    private class MigrationTask implements Runnable {
+    // This is called by the oldOwner-IOSelector-thread
+    private class StartMigrationTask implements Runnable {
         private final IOSelector newOwner;
 
-        public MigrationTask(IOSelector newOwner) {
+        public StartMigrationTask(IOSelector newOwner) {
             this.newOwner = newOwner;
         }
 
@@ -145,18 +146,27 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
             ioSelector = newOwner;
             selectionKey.cancel();
             selectionKey = null;
-            newOwner.addTask(new Runnable() {
-                @Override
-                public void run() {
-                    if (!socketChannel.isOpen()) {
-                        return;
-                    }
-                    selector = newOwner.getSelector();
-                    selectionKey = getSelectionKey();
-                    registerOp(initialOps);
-                }
-            });
+            newOwner.addTask(new CompleteMigrationTask(newOwner));
             newOwner.wakeup();
+        }
+    }
+
+    // This is called by the newOwner-IOSelector-thread
+    private class CompleteMigrationTask implements Runnable {
+        private final IOSelector newOwner;
+
+        public CompleteMigrationTask(IOSelector newOwner) {
+            this.newOwner = newOwner;
+        }
+
+        @Override
+        public void run() {
+            if (!socketChannel.isOpen()) {
+                return;
+            }
+            selector = newOwner.getSelector();
+            selectionKey = getSelectionKey();
+            registerOp(initialOps);
         }
     }
 }

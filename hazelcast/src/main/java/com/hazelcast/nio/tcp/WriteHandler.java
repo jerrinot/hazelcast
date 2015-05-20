@@ -35,6 +35,10 @@ import java.util.logging.Level;
 import static com.hazelcast.util.StringUtil.stringToBytes;
 
 /**
+ * You want to prevent that a registration is done on a IOSelector that doesn't own the WriteHandler anymore.
+ */
+
+/**
  * The writing side of the {@link TcpIpConnection}.
  */
 public final class WriteHandler extends AbstractSelectionHandler implements Runnable {
@@ -108,12 +112,20 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     }
 
     private SocketWritable poll() {
-        SocketWritable writable = urgentWriteQueue.poll();
-        if (writable == null) {
-            writable = writeQueue.poll();
-        }
+        for(;;) {
+            SocketWritable writable = urgentWriteQueue.poll();
+            if(writable instanceof MigrationIndicator){
+                newOwner = ((MigrationIndicator)writable).newOwner;
+                continue;
+            }
 
-        return writable;
+            if (writable == null) {
+                writable = writeQueue.poll();
+            }
+
+
+            return writable;
+        }
     }
 
     /**
@@ -142,6 +154,11 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
         ioSelector.wakeup();
     }
 
+    @Override
+    public void migrate(IOSelector newOwner) {
+        offer(new MigrationIndicator(newOwner));
+    }
+
     /**
      * Tries to unschedule this WriteHandler.
      * <p/>
@@ -161,7 +178,6 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
             // Because not all data was written to the socket, we need to register for OP_WRITE so we get
             // notified when the socketChannel is ready for more data.
             registerOp(SelectionKey.OP_WRITE);
-
             // If the outputBuffer is not empty, we don't need to unschedule ourselves. This is because the
             // WriteHandler will be triggered by a nio write event to continue sending data.
             return;
@@ -169,6 +185,12 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
 
         // since everything is written, we are not interested anymore in write-events, so lets unsubscribe
         unregisterOp(SelectionKey.OP_WRITE);
+
+        if (newOwner != null) {
+            ... magic here
+            return;
+        }
+
         // So the outputBuffer is empty, so we are going to unschedule ourselves.
         scheduled.set(false);
 
@@ -259,6 +281,8 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
         outputBuffer.compact();
     }
 
+    private IOSelector newOwner;
+
     /**
      * Fills the outBuffer with packets. This is done till there are no more packets or till there is no more space in the
      * outputBuffer.
@@ -323,6 +347,24 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
             latch.await(TIMEOUT, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             EmptyStatement.ignore(e);
+        }
+    }
+
+    class MigrationIndicator implements SocketWritable {
+        private final IOSelector newOwner;
+
+        MigrationIndicator(IOSelector newOwner) {
+            this.newOwner = newOwner;
+        }
+
+        @Override
+        public boolean writeTo(ByteBuffer destination) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean isUrgent() {
+            return true;
         }
     }
 }
