@@ -378,7 +378,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
 
     @Override
     void onBeforeMigration() {
-        scheduled.set(true);
+        //scheduled.set(true);
     }
 
     public void shutdown() {
