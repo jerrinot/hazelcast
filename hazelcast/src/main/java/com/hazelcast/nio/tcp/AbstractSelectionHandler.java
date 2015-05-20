@@ -78,6 +78,15 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
         return selectionKey;
     }
 
+    protected SelectionKey createNewSelectionKey() {
+        try {
+            selectionKey = socketChannel.register(selector, initialOps, this);
+        } catch (ClosedChannelException e) {
+            handleSocketException(e);
+        }
+        return selectionKey;
+    }
+
     void handleSocketException(Throwable e) {
         if (e instanceof OutOfMemoryError) {
             connectionManager.ioService.onOutOfMemory((OutOfMemoryError) e);
@@ -154,7 +163,7 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
                     if (currentSelectionKey != null) {
                         logger.severe("Current selection key: " + selectionKey + " is not null.");
                     }
-                    AbstractSelectionHandler.this.selectionKey = getSelectionKey();
+                    AbstractSelectionHandler.this.selectionKey = createNewSelectionKey();
                     registerOp(initialOps);
                     connectionManager.getIOBalancer().signalMigrationComplete();
                 }
