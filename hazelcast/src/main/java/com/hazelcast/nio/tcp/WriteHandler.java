@@ -376,6 +376,11 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
         }
     }
 
+    @Override
+    void onBeforeMigration() {
+        scheduled.set(true);
+    }
+
     public void shutdown() {
         metricsRegistry.deregister(this);
         writeQueue.clear();

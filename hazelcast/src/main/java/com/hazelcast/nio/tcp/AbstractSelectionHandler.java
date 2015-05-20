@@ -63,6 +63,7 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
             return;
         }
 
+        onBeforeMigration();
         ioSelector.addTask(new MigrationTask(newOwner));
         ioSelector.wakeup();
     }
@@ -131,6 +132,10 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
         }
     }
 
+    void onBeforeMigration() {
+        
+    }
+
     @Override
     public IOSelector getOwner() {
         return ioSelector;
@@ -163,7 +168,7 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
                     if (currentSelectionKey != null) {
                         logger.severe("Current selection key: " + selectionKey + " is not null.");
                     }
-                    AbstractSelectionHandler.this.selectionKey = createNewSelectionKey();
+                    AbstractSelectionHandler.this.selectionKey = getSelectionKey();
                     registerOp(initialOps);
                     connectionManager.getIOBalancer().signalMigrationComplete();
                 }
