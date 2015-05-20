@@ -80,7 +80,7 @@ public class IOBalancer {
                       int migrationIntervalSeconds, LoggingService loggingService) {
         this.log = loggingService.getLogger(IOBalancer.class);
         this.migrationIntervalSeconds = migrationIntervalSeconds;
-        this.strategy = new MigrationStrategy();
+        this.strategy = new MonkeyStrategy();
         this.threadGroup = threadGroup;
 
         this.inLoadTracker = new LoadTracker(inSelectors, loggingService);

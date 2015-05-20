@@ -50,6 +50,8 @@ class IOBalancerThread extends Thread {
             log.finest("IOBalancer thread stopped");
             //this thread is about to exit, no reason restoring the interrupt flag
             EmptyStatement.ignore(e);
+        } catch (Exception e) {
+            log.severe(e);
         }
     }
 }
