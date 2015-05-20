@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 
 public abstract class AbstractSelectionHandler implements MigratableHandler {
@@ -36,6 +37,9 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
 
     protected SelectionKey selectionKey;
     private final int initialOps;
+
+    //todo: remove after testing
+    private final AtomicBoolean migrating = new AtomicBoolean();
 
     public AbstractSelectionHandler(TcpIpConnection connection, IOSelector ioSelector, int initialOps) {
         this.connection = connection;
@@ -62,28 +66,20 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
         if (ioSelector == newOwner || !socketChannel.isOpen()) {
             return;
         }
-
-        onBeforeMigration();
         ioSelector.addTask(new MigrationTask(newOwner));
         ioSelector.wakeup();
     }
 
     protected SelectionKey getSelectionKey() {
         if (selectionKey == null) {
+            if (migrating.get()) {
+                logger.warning("Creating a new selecting key while the handler is migrating.", new Exception());
+            }
             try {
                 selectionKey = socketChannel.register(selector, initialOps, this);
             } catch (ClosedChannelException e) {
                 handleSocketException(e);
             }
-        }
-        return selectionKey;
-    }
-
-    protected SelectionKey createNewSelectionKey() {
-        try {
-            selectionKey = socketChannel.register(selector, initialOps, this);
-        } catch (ClosedChannelException e) {
-            handleSocketException(e);
         }
         return selectionKey;
     }
@@ -153,6 +149,8 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
             if (!socketChannel.isOpen()) {
                 return;
             }
+            migrating.set(true);
+            onBeforeMigration();
             unregisterOp(initialOps);
             ioSelector = newOwner;
             selectionKey.cancel();
@@ -168,7 +166,8 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
                     if (currentSelectionKey != null) {
                         logger.severe("Current selection key: " + selectionKey + " is not null.");
                     }
-                    AbstractSelectionHandler.this.selectionKey = getSelectionKey();
+                    migrating.set(false);
+                    selectionKey = getSelectionKey();
                     registerOp(initialOps);
                     connectionManager.getIOBalancer().signalMigrationComplete();
                 }
