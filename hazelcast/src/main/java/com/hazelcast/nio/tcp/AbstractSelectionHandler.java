@@ -47,26 +47,7 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
         this.initialOps = initialOps;
     }
 
-    /**
-     * Migrates this handler to a new IOSelector thread.
-     * The migration logic is rather simple:
-     * <p><ul>
-     *     <li>Submit a de-registration task to a current IOSelector thread</li>
-     *     <li>The de-registration task submits a registration task to the new IOSelector thread</li>
-     * </ul></p>
-     *
-     * @param newOwner target IOSelector this handler migrates to
-     */
-    public void migrate(final IOSelector newOwner) {
-        if (ioSelector == newOwner || !socketChannel.isOpen()) {
-            return;
-        }
-
-        ioSelector.addTask(new StartMigrationTask(newOwner));
-        ioSelector.wakeup();
-    }
-
-    protected SelectionKey getSelectionKey() {
+     protected SelectionKey getSelectionKey() {
         if (selectionKey == null) {
             try {
                 selectionKey = socketChannel.register(selector, initialOps, this);
@@ -121,34 +102,22 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     */
+    @Override
     public IOSelector getOwner() {
         return ioSelector;
     }
 
-    // This is called by the oldOwner-IOSelector-thread
-    private class StartMigrationTask implements Runnable {
-        private final IOSelector newOwner;
-
-        public StartMigrationTask(IOSelector newOwner) {
-            this.newOwner = newOwner;
+    void beginMigration(IOSelector newOwner) {
+        if (ioSelector == newOwner || !socketChannel.isOpen()) {
+            return;
         }
 
-        @Override
-        public void run() {
-            if (!socketChannel.isOpen()) {
-                return;
-            }
-            unregisterOp(initialOps);
-            ioSelector = newOwner;
-            selectionKey.cancel();
-            selectionKey = null;
-            newOwner.addTask(new CompleteMigrationTask(newOwner));
-            newOwner.wakeup();
-        }
+        unregisterOp(initialOps);
+        ioSelector = newOwner;
+        selectionKey.cancel();
+        selectionKey = null;
+        newOwner.addTask(new CompleteMigrationTask(newOwner));
+        newOwner.wakeup();
     }
 
     // This is called by the newOwner-IOSelector-thread

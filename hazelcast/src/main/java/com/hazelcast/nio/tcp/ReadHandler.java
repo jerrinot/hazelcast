@@ -60,6 +60,27 @@ public final class ReadHandler extends AbstractSelectionHandler {
         ioSelector.wakeup();
     }
 
+    /**
+     * Migrates this handler to a new IOSelector thread.
+     * The migration logic is rather simple:
+     * <p><ul>
+     *     <li>Submit a de-registration task to a current IOSelector thread</li>
+     *     <li>The de-registration task submits a registration task to the new IOSelector thread</li>
+     * </ul></p>
+     *
+     * @param newOwner target IOSelector this handler migrates to
+     */
+    @Override
+    public void requestMigration(final IOSelector newOwner) {
+        ioSelector.addTask(new Runnable() {
+            @Override
+            public void run() {
+                beginMigration(newOwner);
+            }
+        });
+        ioSelector.wakeup();
+    }
+
     @Override
     public long getEventCount() {
         return eventCount;

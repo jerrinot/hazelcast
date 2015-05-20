@@ -54,6 +54,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     private volatile long lastHandle;
     //This field will be incremented by a single thread. It can be read by multiple threads.
     private volatile long eventCount;
+    private IOSelector newOwner;
 
     WriteHandler(TcpIpConnection connection, IOSelector ioSelector) {
         super(connection, ioSelector, SelectionKey.OP_WRITE);
@@ -112,10 +113,10 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     }
 
     private SocketWritable poll() {
-        for(;;) {
+        for (; ; ) {
             SocketWritable writable = urgentWriteQueue.poll();
-            if(writable instanceof MigrationIndicator){
-                newOwner = ((MigrationIndicator)writable).newOwner;
+            if (writable instanceof MigrationIndicator) {
+                newOwner = ((MigrationIndicator) writable).newOwner;
                 continue;
             }
 
@@ -155,7 +156,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     }
 
     @Override
-    public void migrate(IOSelector newOwner) {
+    public void requestMigration(IOSelector newOwner) {
         offer(new MigrationIndicator(newOwner));
     }
 
@@ -185,11 +186,6 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
 
         // since everything is written, we are not interested anymore in write-events, so lets unsubscribe
         unregisterOp(SelectionKey.OP_WRITE);
-
-        if (newOwner != null) {
-            ... magic here
-            return;
-        }
 
         // So the outputBuffer is empty, so we are going to unschedule ourselves.
         scheduled.set(false);
@@ -243,7 +239,27 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
         } catch (Throwable t) {
             logger.severe("Fatal Error at WriteHandler for endPoint: " + connection.getEndPoint(), t);
         }
-        unschedule();
+
+        if (newOwner == null) {
+            unschedule();
+        } else {
+            beginMigration();
+        }
+    }
+
+    @Override
+    public void run() {
+        try {
+            handle();
+        } catch (Throwable e) {
+            ioSelector.handleSelectionKeyFailure(e);
+        }
+    }
+
+    private void beginMigration() {
+        IOSelector newOwner = this.newOwner;
+        this.newOwner = null;
+        super.beginMigration(newOwner);
     }
 
     /**
@@ -270,18 +286,18 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
             handleSocketException(e);
             return;
         }
+
         // Now we verify if all data is written.
         if (!outputBuffer.hasRemaining()) {
             // We managed to fully write the outputBuffer to the socket, so we are done.
             outputBuffer.clear();
             return;
         }
+
         // We did not manage to write all data to the socket. So lets compact the buffer so new data
         // can be added at the end.
         outputBuffer.compact();
     }
-
-    private IOSelector newOwner;
 
     /**
      * Fills the outBuffer with packets. This is done till there are no more packets or till there is no more space in the
@@ -290,7 +306,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
      * @throws Exception
      */
     private void fillOutputBuffer() throws Exception {
-        for (;;) {
+        for (; ; ) {
             if (!outputBuffer.hasRemaining()) {
                 // The buffer is completely filled, we are done.
                 return;
@@ -316,16 +332,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
         }
     }
 
-    @Override
-    public void run() {
-        try {
-            handle();
-        } catch (Throwable e) {
-            ioSelector.handleSelectionKeyFailure(e);
-        }
-    }
-
-    public void shutdown() {
+     public void shutdown() {
         writeQueue.clear();
         urgentWriteQueue.clear();
 
@@ -351,7 +358,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     }
 
     class MigrationIndicator implements SocketWritable {
-        private final IOSelector newOwner;
+        final IOSelector newOwner;
 
         MigrationIndicator(IOSelector newOwner) {
             this.newOwner = newOwner;

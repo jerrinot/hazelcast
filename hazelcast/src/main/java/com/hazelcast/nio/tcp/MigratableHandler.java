@@ -23,11 +23,11 @@ package com.hazelcast.nio.tcp;
 public interface MigratableHandler extends SelectionHandler {
 
     /**
-     * Migrate to a new IOSelector.
+     * Requests the MigratableHandler to move to the new owner.
      *
      * @param newOwner
      */
-    void migrate(final IOSelector newOwner);
+    void requestMigration(IOSelector newOwner);
 
     /**
      * Get IOSelector currently owning this handler. Handler owner is a thread running this handler.
