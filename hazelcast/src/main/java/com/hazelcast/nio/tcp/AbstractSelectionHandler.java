@@ -73,7 +73,7 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
     protected SelectionKey getSelectionKey() {
         if (selectionKey == null) {
             if (migrating.get()) {
-                logger.warning("Creating a new selecting key while the handler is migrating.", new Exception());
+                logger.warning("Creating a new selecting key while the handler " + this + " is migrating.", new Exception());
             }
             try {
                 selectionKey = socketChannel.register(selector, initialOps, this);
