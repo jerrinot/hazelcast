@@ -150,7 +150,11 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
                         return;
                     }
                     selector = newOwner.getSelector();
-                    selectionKey = getSelectionKey();
+                    SelectionKey currentSelectionKey = selectionKey;
+                    if (currentSelectionKey != null) {
+                        logger.severe("Current selection key: " + selectionKey + " is not null.");
+                    }
+                    AbstractSelectionHandler.this.selectionKey = getSelectionKey();
                     registerOp(initialOps);
                     connectionManager.getIOBalancer().signalMigrationComplete();
                 }
