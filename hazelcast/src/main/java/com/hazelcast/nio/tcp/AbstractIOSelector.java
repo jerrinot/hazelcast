@@ -115,6 +115,7 @@ public abstract class AbstractIOSelector extends Thread implements IOSelector {
         }
     }
 
+    // todo: this should not be needed.
     private IOSelector getTargetIOSelector(Runnable runnable) {
         if (runnable instanceof MigratableHandler) {
             return ((MigratableHandler) runnable).getOwner();

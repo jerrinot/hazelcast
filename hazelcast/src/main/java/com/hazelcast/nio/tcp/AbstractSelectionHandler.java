@@ -47,7 +47,7 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
         this.initialOps = initialOps;
     }
 
-     protected SelectionKey getSelectionKey() {
+    protected SelectionKey getSelectionKey() {
         if (selectionKey == null) {
             try {
                 selectionKey = socketChannel.register(selector, initialOps, this);
@@ -107,8 +107,12 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
         return ioSelector;
     }
 
+    // This method run on the oldOwner IOSelector(thread)
     void beginMigration(IOSelector newOwner) {
+        assert ioSelector == Thread.currentThread() : "beginMigration can only run on the owning IOSelector thread";
+
         if (ioSelector == newOwner || !socketChannel.isOpen()) {
+            // if there is no change in ownership or if the channel is closed, we are done.
             return;
         }
 
@@ -116,11 +120,13 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
         ioSelector = newOwner;
         selectionKey.cancel();
         selectionKey = null;
+        selector = null;
+
         newOwner.addTask(new CompleteMigrationTask(newOwner));
         newOwner.wakeup();
     }
 
-    // This is called by the newOwner-IOSelector-thread
+    // This is run on the newOwner IOSelector(thread)
     private class CompleteMigrationTask implements Runnable {
         private final IOSelector newOwner;
 

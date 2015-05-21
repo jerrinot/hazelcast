@@ -72,6 +72,8 @@ public final class ReadHandler extends AbstractSelectionHandler {
      */
     @Override
     public void requestMigration(final IOSelector newOwner) {
+        //todo: potentially racy?
+        IOSelector ioSelector = this.ioSelector;
         ioSelector.addTask(new Runnable() {
             @Override
             public void run() {

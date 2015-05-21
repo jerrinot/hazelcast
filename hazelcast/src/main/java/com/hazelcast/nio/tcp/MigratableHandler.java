@@ -23,7 +23,8 @@ package com.hazelcast.nio.tcp;
 public interface MigratableHandler extends SelectionHandler {
 
     /**
-     * Requests the MigratableHandler to move to the new owner.
+     * Requests the MigratableHandler to move to the new owner. This method can be called by any thread, and
+     * will probably be called by the {@link com.hazelcast.nio.tcp.handlermigration.IOBalancer}.
      *
      * @param newOwner
      */

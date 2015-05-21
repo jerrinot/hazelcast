@@ -54,6 +54,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     private volatile long lastHandle;
     //This field will be incremented by a single thread. It can be read by multiple threads.
     private volatile long eventCount;
+
     private IOSelector newOwner;
 
     WriteHandler(TcpIpConnection connection, IOSelector ioSelector) {
@@ -73,6 +74,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     void setProtocol(final String protocol) {
         final CountDownLatch latch = new CountDownLatch(1);
         ioSelector.addTask(new Runnable() {
+            @Override
             public void run() {
                 createWriter(protocol);
                 latch.countDown();
@@ -114,18 +116,18 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
 
     private SocketWritable poll() {
         for (; ; ) {
-            SocketWritable writable = urgentWriteQueue.poll();
-            if (writable instanceof MigrationIndicator) {
-                newOwner = ((MigrationIndicator) writable).newOwner;
+            SocketWritable packet = urgentWriteQueue.poll();
+
+            if (packet == null) {
+                packet = writeQueue.poll();
+            }
+
+            if (packet instanceof TaskPacket) {
+                ((TaskPacket) packet).run();
                 continue;
             }
 
-            if (writable == null) {
-                writable = writeQueue.poll();
-            }
-
-
-            return writable;
+            return packet;
         }
     }
 
@@ -149,15 +151,22 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
             return;
         }
 
-        // We managed to schedule this WriteHandler. This means we need to add a task to
-        // the ioReactor and to give the reactor-thread a kick so that it processes our packets.
+        // We managed to schedule this WriteHandler. This means we need to add the writeHandler to
+        // the ioSelector and to give the IOSelector-thread a kick so that it processes our packets.
         ioSelector.addTask(this);
         ioSelector.wakeup();
     }
 
     @Override
-    public void requestMigration(IOSelector newOwner) {
-        offer(new MigrationIndicator(newOwner));
+    public void requestMigration(final IOSelector newOwner) {
+        // the requestMigrationTask set the newOwner field. Once set, the handle method will deal with the actual migration
+        TaskPacket requestMigrationTask = new TaskPacket() {
+            @Override
+            void run() {
+                WriteHandler.this.newOwner = newOwner;
+            }
+        };
+        offer(requestMigrationTask);
     }
 
     /**
@@ -257,6 +266,8 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     }
 
     private void beginMigration() {
+        assert scheduled.get() : "Scheduled should be true!";
+
         IOSelector newOwner = this.newOwner;
         this.newOwner = null;
         super.beginMigration(newOwner);
@@ -332,14 +343,14 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
         }
     }
 
-     public void shutdown() {
-        writeQueue.clear();
-        urgentWriteQueue.clear();
-
+    public void shutdown() {
         final CountDownLatch latch = new CountDownLatch(1);
-        ioSelector.addTask(new Runnable() {
+        final TaskPacket shutdownTask = new TaskPacket() {
             @Override
-            public void run() {
+            void run() {
+                writeQueue.clear();
+                urgentWriteQueue.clear();
+                currentPacket = null;
                 try {
                     socketChannel.closeOutbound();
                 } catch (IOException e) {
@@ -348,8 +359,10 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
                     latch.countDown();
                 }
             }
-        });
-        ioSelector.wakeup();
+        };
+
+        offer(shutdownTask);
+
         try {
             latch.await(TIMEOUT, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
@@ -357,12 +370,12 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
         }
     }
 
-    class MigrationIndicator implements SocketWritable {
-        final IOSelector newOwner;
-
-        MigrationIndicator(IOSelector newOwner) {
-            this.newOwner = newOwner;
-        }
+    // The taskPacket is not really a Packet. It is a way to put a task on one of the packet queues. Using this approach we
+    // can lift on top of the packet scheduling mechanism and we can prevent having:
+    // - multiple IOSelector-tasks for a WriteHandler on multiple IOSelectors
+    // - multiple IOSelector-tasks for a WriteHandler on the same IOSelector.
+    abstract class TaskPacket implements SocketWritable {
+        abstract void run();
 
         @Override
         public boolean writeTo(ByteBuffer destination) {
