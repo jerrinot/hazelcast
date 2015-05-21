@@ -35,10 +35,6 @@ import java.util.logging.Level;
 import static com.hazelcast.util.StringUtil.stringToBytes;
 
 /**
- * You want to prevent that a registration is done on a IOSelector that doesn't own the WriteHandler anymore.
- */
-
-/**
  * The writing side of the {@link TcpIpConnection}.
  */
 public final class WriteHandler extends AbstractSelectionHandler implements Runnable {
