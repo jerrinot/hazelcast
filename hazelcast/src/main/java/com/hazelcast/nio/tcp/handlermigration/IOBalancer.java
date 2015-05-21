@@ -69,7 +69,15 @@ public class IOBalancer {
                       int migrationIntervalSeconds, LoggingService loggingService) {
         this.log = loggingService.getLogger(IOBalancer.class);
         this.migrationIntervalSeconds = migrationIntervalSeconds;
-        this.strategy = new MigrationStrategy();
+
+        if (Boolean.getBoolean("hazelcast.io.balancer.monkey")) {
+            log.warning("Using Monkey IO Balancer Strategy. This is for stress tests only. Do not user in production!");
+            this.strategy = new MonkeyStrategy();
+        } else {
+            log.finest("Using normal IO Balancer Strategy.");
+            this.strategy = new MigrationStrategy();
+        }
+
         this.threadGroup = threadGroup;
 
         this.inLoadTracker = new LoadTracker(inSelectors, loggingService);
