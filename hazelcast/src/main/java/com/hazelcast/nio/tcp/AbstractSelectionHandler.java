@@ -36,6 +36,7 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
 
     private SelectionKey selectionKey;
     private final int initialOps;
+    protected volatile boolean migrating;
 
     public AbstractSelectionHandler(TcpIpConnection connection, IOSelector ioSelector, int initialOps) {
         this.connection = connection;
@@ -49,6 +50,9 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
 
     protected SelectionKey getSelectionKey() {
         if (selectionKey == null) {
+            if (migrating) {
+                logger.warning("Creating a new selecting key while the handler " + this + " is migrating.", new Exception());
+            }
             try {
                 selectionKey = socketChannel.register(selector, initialOps, this);
             } catch (ClosedChannelException e) {
@@ -109,6 +113,7 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
 
     // This method run on the oldOwner IOSelector(thread)
     void beginMigration(IOSelector newOwner) {
+        migrating = true;
         assert ioSelector == Thread.currentThread() : "beginMigration can only run on the owning IOSelector thread";
 
         if (ioSelector == newOwner || !socketChannel.isOpen()) {
@@ -140,6 +145,7 @@ public abstract class AbstractSelectionHandler implements MigratableHandler {
                 return;
             }
             selector = newOwner.getSelector();
+            migrating = false;
             selectionKey = getSelectionKey();
             registerOp(initialOps);
         }

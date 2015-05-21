@@ -263,6 +263,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
 
     private void beginMigration() {
         assert scheduled.get() : "Scheduled should be true!";
+        migrating = true;
 
         IOSelector newOwner = this.newOwner;
         this.newOwner = null;
