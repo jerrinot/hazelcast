@@ -1086,7 +1086,8 @@ public interface IMap<K, V>
      *
      * @return a set clone of the keys contained in this map.
      * @throws QueryResultSizeExceededException on server side if query result size limit is exceeded
-     * @see GroupProperties#PROP_QUERY_RESULT_SIZE_LIMIT
+     * @see Group
+     * Properties#PROP_QUERY_RESULT_SIZE_LIMIT
      */
     Set<K> keySet();
 

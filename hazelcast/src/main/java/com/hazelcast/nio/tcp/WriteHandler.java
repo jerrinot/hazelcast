@@ -154,12 +154,20 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     }
 
     @Override
-    public void requestMigration(final IOSelector newOwner) {
+    public void requestMigration(final IOSelector theNewOwner) {
         // the requestMigrationTask set the newOwner field. Once set, the handle method will deal with the actual migration
         TaskPacket requestMigrationTask = new TaskPacket() {
             @Override
             void run() {
-                WriteHandler.this.newOwner = newOwner;
+                if (newOwner == theNewOwner) {
+                    //we already have a migration request for the same new owner
+                    return;
+                }
+                if (newOwner == null && ioSelector == theNewOwner) {
+                    //the new owner is the same as the current owner
+                    return;
+                }
+                newOwner = theNewOwner;
             }
         };
         offer(requestMigrationTask);
