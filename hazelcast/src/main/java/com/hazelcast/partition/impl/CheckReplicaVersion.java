@@ -21,8 +21,10 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.partition.ReplicaErrorLogger;
+import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.PartitionAwareOperation;
+import com.hazelcast.spi.impl.NodeEngineImpl;
 
 import java.io.IOException;
 
@@ -54,7 +56,21 @@ public final class CheckReplicaVersion extends Operation implements PartitionAwa
         long currentVersion = currentVersions[replicaIndex - 1];
 
         if (currentVersion == version) {
-            response = true;
+            NodeEngineImpl nodeEngine = (NodeEngineImpl) getNodeEngine();
+            boolean shutdownRequested = nodeEngine.getNode().shutdownRequested;
+            if (!shutdownRequested) {
+                if (partitionId == 156) {
+                    getLogger().finest("Replica " + replicaIndex + " of partition 156 has version " + currentVersion + ". GOOD.");
+                }
+                response = true;
+            } else {
+                if (partitionId == 156) {
+                    getLogger().finest("Replica " + replicaIndex + " of partition 156 has version " + currentVersion
+                            + ". However shutdown has been requested. BAD.");
+                }
+                partitionService.triggerPartitionReplicaSync(partitionId, replicaIndex, 0L);
+                response = false;
+            }
         } else {
             logBackupVersionMismatch(currentVersion);
             partitionService.triggerPartitionReplicaSync(partitionId, replicaIndex, 0L);

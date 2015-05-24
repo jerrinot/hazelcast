@@ -71,6 +71,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static com.hazelcast.instance.NodeShutdownHelper.shutdownNodeByFiringEvents;
 
 public class Node {
+    public volatile boolean shutdownRequested = false;
 
     private final ILogger logger;
 
@@ -360,6 +361,8 @@ public class Node {
     }
 
     public void shutdown(final boolean terminate) {
+        shutdownRequested = true;
+
         long start = Clock.currentTimeMillis();
         if (logger.isFinestEnabled()) {
             logger.finest("** we are being asked to shutdown when active = " + String.valueOf(active));

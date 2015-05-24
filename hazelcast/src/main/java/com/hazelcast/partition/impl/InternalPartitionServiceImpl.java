@@ -1141,6 +1141,8 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                     ok.compareAndSet(true, false);
                 } else if (object instanceof Throwable) {
                     ok.compareAndSet(true, false);
+                } else {
+                    logger.finest("Response from SyncReplicaVersion: " + object);
                 }
                 s.release();
             }

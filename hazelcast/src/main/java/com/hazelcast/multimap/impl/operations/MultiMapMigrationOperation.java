@@ -45,7 +45,11 @@ public class MultiMapMigrationOperation extends AbstractOperation {
 
     public void run() throws Exception {
         MultiMapService service = getService();
-        service.insertMigratedData(getPartitionId(), map);
+        int partitionId = getPartitionId();
+        if (partitionId == 156) {
+            getLogger().finest("Running MultiMapMigrationOperation for partition 156. Map Size: " + map.size());
+        }
+        service.insertMigratedData(partitionId, map);
     }
 
     protected void writeInternal(ObjectDataOutput out) throws IOException {
