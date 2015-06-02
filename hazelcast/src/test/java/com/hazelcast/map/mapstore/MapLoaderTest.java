@@ -17,6 +17,7 @@ import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.test.annotation.Repeat;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -38,6 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 
 @RunWith(HazelcastSerialClassRunner.class)
@@ -89,6 +91,20 @@ public class MapLoaderTest extends HazelcastTestSupport {
     }
 
     @Test
+//    @Repeat(100)
+    public void testFoo() throws Exception {
+        final int nodeCount = 3;
+        String mapName = randomString();
+        SampleIndexableObjectMapLoader loader = new SampleIndexableObjectMapLoader();
+        Config config = createMapConfig(mapName, loader);
+        NodeBuilder nodeBuilder = new NodeBuilder(nodeCount, config).build();
+
+        HazelcastInstance node = nodeBuilder.nodes[1];
+        assertEquals(nodeCount, node.getCluster().getMembers().size());
+    }
+
+    @Test
+//    @Repeat(100)
     public void testMapLoaderLoadUpdatingIndex() throws Exception {
         final int nodeCount = 3;
         String mapName = randomString();
@@ -97,7 +113,7 @@ public class MapLoaderTest extends HazelcastTestSupport {
         Config config = createMapConfig(mapName, loader);
 
         NodeBuilder nodeBuilder = new NodeBuilder(nodeCount, config).build();
-        HazelcastInstance node = nodeBuilder.getRandomNode();
+        HazelcastInstance node = nodeBuilder.nodes[1];
 
         IMap<Integer, SampleIndexableObject> map = node.getMap(mapName);
         for (int i = 0; i < 10; i++) {
@@ -111,7 +127,7 @@ public class MapLoaderTest extends HazelcastTestSupport {
         map.destroy();
         loader.preloadValues = true;
 
-        node = nodeBuilder.getRandomNode();
+        node = nodeBuilder.nodes[1];
         map = node.getMap(mapName);
 
         assertLoadAllKeysCount(loader, nodeCount);

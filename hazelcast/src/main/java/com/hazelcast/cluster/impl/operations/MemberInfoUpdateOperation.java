@@ -27,6 +27,7 @@ import com.hazelcast.util.Clock;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Random;
 
 public class MemberInfoUpdateOperation extends AbstractClusterOperation implements JoinOperation {
 
@@ -46,6 +47,7 @@ public class MemberInfoUpdateOperation extends AbstractClusterOperation implemen
 
     @Override
     public void run() throws Exception {
+        getLogger().warning("Member Size: " + memberInfos.size());
         processMemberUpdate();
     }
 
@@ -53,6 +55,13 @@ public class MemberInfoUpdateOperation extends AbstractClusterOperation implemen
         if (isValid()) {
             final ClusterServiceImpl clusterService = getService();
             clusterService.setMasterTime(masterTime);
+            if ( memberInfos.size() == 2 && getNodeEngine().getThisAddress().getPort() == 5002){
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
             clusterService.updateMembers(memberInfos);
         }
     }

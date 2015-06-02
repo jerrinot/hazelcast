@@ -951,6 +951,7 @@ public final class ClusterServiceImpl implements ClusterService, ConnectionListe
     public void updateMembers(Collection<MemberInfo> members) {
         lock.lock();
         try {
+            logger.warning("Cluster Size: " + members.size());
             Map<Address, MemberImpl> oldMemberMap = membersMapRef.get();
 
             if (oldMemberMap.size() == members.size()) {

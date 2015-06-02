@@ -93,6 +93,13 @@ public final class TestHazelcastInstanceFactory {
     public HazelcastInstance[] newInstances(Config config, int nodeCount) {
         final HazelcastInstance[] instances = new HazelcastInstance[nodeCount];
         for (int i = 0; i < nodeCount; i++) {
+            if (i == 2) {
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
             instances[i] = newHazelcastInstance(config);
         }
         return instances;
