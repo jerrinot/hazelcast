@@ -97,7 +97,7 @@ public class MapLoaderTest extends HazelcastTestSupport {
         Config config = createMapConfig(mapName, loader);
 
         NodeBuilder nodeBuilder = new NodeBuilder(nodeCount, config).build();
-        HazelcastInstance node = nodeBuilder.getRandomNode();
+        HazelcastInstance node = nodeBuilder.nodes[0];
 
         IMap<Integer, SampleIndexableObject> map = node.getMap(mapName);
         for (int i = 0; i < 10; i++) {

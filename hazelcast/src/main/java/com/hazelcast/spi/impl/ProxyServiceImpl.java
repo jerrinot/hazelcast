@@ -517,6 +517,14 @@ public class ProxyServiceImpl
         @Override
         public void run()
                 throws Exception {
+            int port = getNodeEngine().getLocalMember().getPort();
+            getLogger().info("Running DistributedObjectDestroyOperation on " + getNodeEngine().getLocalMember());
+            if (port == 5003) {
+                getLogger().warning("Sleeping");
+                Thread.sleep(4000);
+                getLogger().warning("Sleeping is over!");
+            }
+
             ProxyServiceImpl proxyService = getService();
             proxyService.destroyLocalDistributedObject(serviceName, name, false);
         }
