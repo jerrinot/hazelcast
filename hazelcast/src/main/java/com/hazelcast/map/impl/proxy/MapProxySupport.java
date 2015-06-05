@@ -666,8 +666,8 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
             if (retrySet.size() > 0) {
                 results = retryPartitions(retrySet);
                 iterator = results.entrySet().iterator();
-                final int oneSecond = 1000;
-                Thread.sleep(oneSecond);
+//                final int oneSecond = 1000;
+//                Thread.sleep(oneSecond);
                 retrySet.clear();
             } else {
                 isFinished = true;

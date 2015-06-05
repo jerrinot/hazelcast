@@ -73,6 +73,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.hazelcast.test.annotation.Repeat;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -443,6 +444,31 @@ public class MapStoreTest extends HazelcastTestSupport {
     }
 
     @Test(timeout = 120000)
+    @Repeat(1000)
+    public void testIssue4024() throws Exception {
+        TestEventBasedMapStore testMapStore = new TestEventBasedMapStore();
+        Map store = testMapStore.getStore();
+        Set keys = new HashSet();
+        int size = 1000;
+        for (int i = 0; i < size; i++) {
+            store.put(i, "value" + i);
+            keys.add(i);
+        }
+        Config config = newConfig(testMapStore, 2);
+        config.setProperty(GroupProperties.PROP_PARTITION_OPERATION_THREAD_COUNT, "271");
+
+        TestHazelcastInstanceFactory nodeFactory = createHazelcastInstanceFactory(3);
+        HazelcastInstance h1 = nodeFactory.newHazelcastInstance(config);
+        HazelcastInstance h2 = nodeFactory.newHazelcastInstance(config);
+
+        IMap map1 = h1.getMap("default");
+        IMap map2 = h2.getMap("default");
+
+        assertEquals(1000, map1.size());
+        assertEquals(1000, map2.size());
+    }
+
+        @Test(timeout = 120000)
     public void testOneMemberFlushOnShutdown() throws Exception {
         TestMapStore testMapStore = new TestMapStore(1, 1, 1);
         testMapStore.setLoadAllKeys(false);
