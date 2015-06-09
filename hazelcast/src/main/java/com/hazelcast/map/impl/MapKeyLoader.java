@@ -19,15 +19,18 @@ package com.hazelcast.map.impl;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.core.MapLoader;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.map.impl.mapstore.MapStoreContext;
 import com.hazelcast.map.impl.operation.LoadAllOperation;
 import com.hazelcast.map.impl.operation.PartitionCheckIfLoadedOperation;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.ExecutionService;
+import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.impl.AbstractCompletableFuture;
+import com.hazelcast.util.FutureUtil;
 import com.hazelcast.util.StateMachine;
 import com.hazelcast.util.scheduler.CoalescingDelayedTrigger;
 
@@ -102,16 +105,22 @@ public class MapKeyLoader {
             .withTransition(State.LOADING, State.LOADED, State.NOT_LOADED)
             .withTransition(State.LOADED, State.LOADING);
 
+    private final ILogger log;
+
     public MapKeyLoader(String mapName, OperationService opService, InternalPartitionService ps,
-            ExecutionService execService, IFunction<Object, Data> serialize) {
+            ExecutionService execService, IFunction<Object, Data> serialize, ILogger log) {
         this.mapName = mapName;
         this.opService = opService;
         this.partitionService = ps;
         this.toData = serialize;
         this.execService = execService;
+        this.log = log;
     }
 
+    private int partitionId;
+
     public Future startInitialLoad(MapStoreContext mapStoreContext, int partitionId) {
+        this.partitionId = partitionId;
 
         this.mapNamePartition = partitionService.getPartitionId(toData.apply(mapName));
         Role newRole = assignRole(partitionService, mapNamePartition, partitionId);
@@ -142,7 +151,17 @@ public class MapKeyLoader {
             Future<Boolean> sent = execService.submit(MAP_LOAD_ALL_KEYS_EXECUTOR, new Callable<Boolean>() {
                 @Override
                 public Boolean call() throws Exception {
-                    sendKeysInBatches(mapStoreContext, replaceExistingValues);
+                    List<Future> futures = sendKeysInBatches(mapStoreContext, replaceExistingValues);
+                    FutureUtil.waitWithDeadline(futures, 10, TimeUnit.MINUTES);
+                    for (Future f : futures) {
+                        try {
+                            Object o = f.get();
+                            log.finest("Response of sender's future: " + o);
+                        } catch (Exception e) {
+                            log.warning("Exception while waiting for sender's futures: ", e);
+                        }
+                    }
+
                     return false;
                 }
             });
@@ -189,9 +208,16 @@ public class MapKeyLoader {
 
     public void trackLoading(boolean lastBatch) {
         if (lastBatch) {
+            if (state.is(State.LOADED)) {
+                log.warning("State was loaded and I just received a last batch ops. Partition ID = " + partitionId);
+            }
+            if (state.is(State.NOT_LOADED)) {
+                log.warning("State was NOT_LOADED and I just received a last batch ops. Partition ID = " + partitionId);
+            }
             state.nextOrStay(State.LOADED);
             loadFinished.setResult(true);
         } else if (state.is(State.LOADED)) {
+            log.warning("Starting to load partition " + partitionId);
             state.next(State.LOADING);
         }
     }
@@ -228,11 +254,11 @@ public class MapKeyLoader {
         return state.is(State.NOT_LOADED);
     }
 
-    private void sendKeysInBatches(MapStoreContext mapStoreContext, boolean replaceExistingValues) {
+    private List<Future> sendKeysInBatches(MapStoreContext mapStoreContext, boolean replaceExistingValues) {
 
         int clusterSize = partitionService.getMemberPartitionsMap().size();
         Iterator<Object> keys = null;
-
+        List<Future> futures = new ArrayList<Future>();
         try {
             Iterable<Object> allKeys = mapStoreContext.loadAllKeys();
             keys = allKeys.iterator();
@@ -248,10 +274,13 @@ public class MapKeyLoader {
 
             while (batches.hasNext()) {
                 Map<Integer, List<Data>> batch = batches.next();
-                sendBatch(batch, replaceExistingValues);
+                List<Future<?>> batchFutures = sendBatch(batch, replaceExistingValues);
+                futures.addAll(batchFutures);
             }
+            return futures;
         } finally {
-            sendLoadCompleted(clusterSize, partitionService.getPartitionCount(), replaceExistingValues);
+            List<Future<Object>> f = sendLoadCompleted(clusterSize, partitionService.getPartitionCount(), replaceExistingValues);
+            futures.addAll(f);
 
             if (keys instanceof Closeable) {
                 closeResource((Closeable) keys);
@@ -259,13 +288,17 @@ public class MapKeyLoader {
         }
     }
 
-    private void sendBatch(Map<Integer, List<Data>> batch, boolean replaceExistingValues) {
+    private List<Future<?>> sendBatch(Map<Integer, List<Data>> batch, boolean replaceExistingValues) {
+        List<Future<?>> futures = new ArrayList<Future<?>>();
         for (Entry<Integer, List<Data>> e : batch.entrySet()) {
             int partitionId = e.getKey();
             List<Data> keys = e.getValue();
             LoadAllOperation op = new LoadAllOperation(mapName, keys, replaceExistingValues, false);
-            opService.invokeOnPartition(SERVICE_NAME, op, partitionId);
+            log.finest("Sending a batch to partition " + partitionId);
+            InternalCompletableFuture<Object> f = opService.invokeOnPartition(SERVICE_NAME, op, partitionId);
+            futures.add(f);
         }
+        return futures;
     }
 
     private List<Future<Object>> sendLoadCompleted(int clusterSize, int partitions, boolean replaceExistingValues) {
@@ -275,6 +308,7 @@ public class MapKeyLoader {
 
         for (int partitionId = 0; partitionId < partitions; partitionId++) {
             LoadAllOperation op = new LoadAllOperation(mapName, Collections.<Data>emptyList(), replaceExistingValues, lastBatch);
+            log.finest("Sending LoadAllOperation with latchBatch=true to a partition " + partitionId);
             futures.add(opService.invokeOnPartition(SERVICE_NAME, op, partitionId));
         }
 

@@ -28,6 +28,7 @@ import com.hazelcast.spi.OperationAccessor;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.ResponseHandler;
 import com.hazelcast.util.ExceptionUtil;
+import com.hazelcast.util.executor.CompletedFuture;
 
 import java.util.ArrayList;
 import java.util.Collection;

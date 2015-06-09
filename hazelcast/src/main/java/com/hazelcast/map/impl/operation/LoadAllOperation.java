@@ -52,6 +52,7 @@ public class LoadAllOperation extends AbstractMapOperation implements PartitionA
 
     public LoadAllOperation(String name, List<Data> keys, boolean replaceExistingValues, boolean lastBatch) {
         super(name);
+        getLogger().finest("Creating LoadAllOperation operation");
         this.keys = keys;
         this.replaceExistingValues = replaceExistingValues;
         this.lastBatch = lastBatch;
@@ -59,6 +60,7 @@ public class LoadAllOperation extends AbstractMapOperation implements PartitionA
 
     @Override
     public void run() throws Exception {
+        getLogger().finest("Running LoadAllOperation for partition " + getPartitionId() +", last batch = " + lastBatch);
         final int partitionId = getPartitionId();
         MapServiceContext mapServiceContext = mapService.getMapServiceContext();
         final RecordStore recordStore = mapServiceContext.getRecordStore(partitionId, name);

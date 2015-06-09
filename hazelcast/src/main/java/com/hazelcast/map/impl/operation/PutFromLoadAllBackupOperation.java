@@ -51,6 +51,7 @@ public class PutFromLoadAllBackupOperation extends AbstractMapOperation implemen
 
     @Override
     public void run() throws Exception {
+        getLogger().finest("Running PutFromLoadAllBackupOperation for partition " + getPartitionId());
         final List<Data> keyValueSequence = this.keyValueSequence;
         if (keyValueSequence == null || keyValueSequence.isEmpty()) {
             return;

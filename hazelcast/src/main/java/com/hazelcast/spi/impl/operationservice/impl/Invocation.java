@@ -501,11 +501,11 @@ abstract class Invocation implements ResponseHandler, Runnable {
     }
 
     private void handleRetry(Object cause) {
-        if (invokeCount > LOG_MAX_INVOCATION_COUNT && invokeCount % LOG_INVOCATION_COUNT_MOD == 0) {
+//        if (invokeCount > LOG_MAX_INVOCATION_COUNT && invokeCount % LOG_INVOCATION_COUNT_MOD == 0) {
             if (logger.isLoggable(WARNING)) {
-                logger.warning("Retrying invocation: " + toString() + ", Reason: " + cause);
+                logger.warning("Retrying invocation: " + toString() + ", Reason: " + cause + " Operation: " + op);
             }
-        }
+//        }
 
         operationService.invocationsRegistry.deregister(this);
 
@@ -557,6 +557,7 @@ abstract class Invocation implements ResponseHandler, Runnable {
 
          // The backups have not yet completed, but we are going to release the future anyway if a pendingResponse has been set.
         invocationFuture.set(pendingResponse);
+        logger.warning("Ignoring backup timeout for " + op + " for a partition " + op.getPartitionId());
         return true;
     }
 

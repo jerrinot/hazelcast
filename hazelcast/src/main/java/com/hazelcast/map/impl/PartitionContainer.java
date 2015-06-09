@@ -54,7 +54,8 @@ public class PartitionContainer {
             ExecutionService execService = nodeEngine.getExecutionService();
             GroupProperties groupProperties = nodeEngine.getGroupProperties();
 
-            MapKeyLoader keyLoader = new MapKeyLoader(name, opService, ps, execService, mapContainer.toData());
+            MapKeyLoader keyLoader = new MapKeyLoader(name, opService, ps, execService, mapContainer.toData(),
+                    nodeEngine.getLogger(MapKeyLoader.class));
             keyLoader.setMaxBatch(groupProperties.MAP_LOAD_CHUNK_SIZE.getInteger());
             keyLoader.setMaxSize(getMaxSizePerNode(mapConfig.getMaxSizeConfig()));
             keyLoader.setHasBackup(mapConfig.getBackupCount() > 0 || mapConfig.getAsyncBackupCount() > 0);

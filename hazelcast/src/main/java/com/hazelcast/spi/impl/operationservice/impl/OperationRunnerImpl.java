@@ -97,6 +97,7 @@ class OperationRunnerImpl extends OperationRunner {
         }
 
         try {
+            logger.finest("Running " + task);
             task.run();
         } finally {
             if (publishCurrentTask) {

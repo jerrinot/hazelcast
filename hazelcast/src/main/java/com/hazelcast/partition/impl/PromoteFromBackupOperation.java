@@ -83,6 +83,7 @@ final class PromoteFromBackupOperation
     @Override
     public void run()
             throws Exception {
+        logger.finest("Running PromoteFromBackupOperation for partition " + getPartitionId());
         handleLostBackups();
         promoteFromBackups();
     }

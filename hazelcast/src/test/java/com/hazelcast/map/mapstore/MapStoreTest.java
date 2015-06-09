@@ -455,17 +455,29 @@ public class MapStoreTest extends HazelcastTestSupport {
             keys.add(i);
         }
         Config config = newConfig(testMapStore, 2);
-        config.setProperty(GroupProperties.PROP_PARTITION_OPERATION_THREAD_COUNT, "271");
+        config.setProperty(GroupProperties.PROP_PARTITION_OPERATION_THREAD_COUNT, "50");
+        config.setProperty(GroupProperties.PROP_PARTITION_COUNT, "50");
 
         TestHazelcastInstanceFactory nodeFactory = createHazelcastInstanceFactory(3);
         HazelcastInstance h1 = nodeFactory.newHazelcastInstance(config);
         HazelcastInstance h2 = nodeFactory.newHazelcastInstance(config);
 
-        IMap map1 = h1.getMap("default");
-        IMap map2 = h2.getMap("default");
+        warmUpPartitions(h1, h2);
 
-        assertEquals(1000, map1.size());
-        assertEquals(1000, map2.size());
+        IMap map1 = h1.getMap("default");
+
+        getNode(h1).loggingService.getLogger(MapStoreTest.class).finest("Got Map map1");
+
+//        IMap map2 = h2.getMap("default");
+//        getNode(h2).loggingService.getLogger(MapStoreTest.class).finest("Got Map map2");
+
+//        assertSizeEventually(1000, map1);
+//        assertSizeEventually(1000, map2);
+
+        waitAllForSafeState();
+
+        assertEquals(size, map1.size());
+//        assertEquals(1000, map2.size());
     }
 
         @Test(timeout = 120000)
@@ -981,6 +993,7 @@ public class MapStoreTest extends HazelcastTestSupport {
         mapStoreConfig.setWriteDelaySeconds(writeDelaySeconds);
         mapStoreConfig.setInitialLoadMode(loadMode);
         mapConfig.setMapStoreConfig(mapStoreConfig);
+        mapConfig.setBackupCount(0);
         return config;
     }
 
