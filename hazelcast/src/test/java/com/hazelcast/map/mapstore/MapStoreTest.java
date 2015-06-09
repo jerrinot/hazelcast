@@ -478,6 +478,9 @@ public class MapStoreTest extends HazelcastTestSupport {
         HazelcastInstance h1 = nodeFactory.newHazelcastInstance(config);
         HazelcastInstance h2 = nodeFactory.newHazelcastInstance(config);
 
+        //added as a workaround for issue-4024
+        warmUpPartitions(h1, h2);
+
         IMap map1 = h1.getMap("default");
         IMap map2 = h2.getMap("default");
 
