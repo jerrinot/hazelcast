@@ -95,7 +95,6 @@ class OperationRunnerImpl extends OperationRunner {
         if (publishCurrentTask) {
             currentTask = task;
         }
-
         try {
             task.run();
         } finally {

@@ -75,35 +75,42 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
 
     @Override
     public void run() throws Exception {
-        InternalPartitionService partitionService = getNodeEngine().getPartitionService();
-        NodeEngine nodeEngine = getNodeEngine();
-        MapServiceContext mapServiceContext = mapService.getMapServiceContext();
-        MapContextQuerySupport mapQuerySupport = mapServiceContext.getMapContextQuerySupport();
+        String oldName = Thread.currentThread().getName();
+        String newName = oldName+"-partition-"+getPartitionId()+"-callID-"+getCallId();
+        Thread.currentThread().setName(newName);
+        try {
+            InternalPartitionService partitionService = getNodeEngine().getPartitionService();
+            NodeEngine nodeEngine = getNodeEngine();
+            MapServiceContext mapServiceContext = mapService.getMapServiceContext();
+            MapContextQuerySupport mapQuerySupport = mapServiceContext.getMapContextQuerySupport();
 
-        int partitionStateVersion = partitionService.getPartitionStateVersion();
-        Collection<Integer> initialPartitions = mapServiceContext.getOwnedPartitions();
+            int partitionStateVersion = partitionService.getPartitionStateVersion();
+            Collection<Integer> initialPartitions = mapServiceContext.getOwnedPartitions();
 
-        Set<QueryableEntry> entries = null;
-        if (!partitionService.hasOnGoingMigrationLocal()) {
-            entries = mapContainer.getIndexService().query(predicate);
-        }
+            Set<QueryableEntry> entries = null;
+            if (!partitionService.hasOnGoingMigrationLocal()) {
+                entries = mapContainer.getIndexService().query(predicate);
+            }
 
-        result = mapQuerySupport.newQueryResult(initialPartitions.size());
-        if (entries != null) {
-            result.addAll(entries);
-        } else {
-            fullTableScan(initialPartitions, nodeEngine.getGroupProperties());
-        }
-        Collection<Integer> finalPartitions = mapServiceContext.getOwnedPartitions();
-        if (initialPartitions.equals(finalPartitions)) {
-            result.setPartitionIds(finalPartitions);
-        }
-        if (mapContainer.getMapConfig().isStatisticsEnabled()) {
-            LocalMapStatsImpl localStats = mapServiceContext.getLocalMapStatsProvider().getLocalMapStatsImpl(name);
-            localStats.incrementOtherOperations();
-        }
+            result = mapQuerySupport.newQueryResult(initialPartitions.size());
+            if (entries != null) {
+                result.addAll(entries);
+            } else {
+                fullTableScan(initialPartitions, nodeEngine.getGroupProperties());
+            }
+            Collection<Integer> finalPartitions = mapServiceContext.getOwnedPartitions();
+            if (initialPartitions.equals(finalPartitions)) {
+                result.setPartitionIds(finalPartitions);
+            }
+            if (mapContainer.getMapConfig().isStatisticsEnabled()) {
+                LocalMapStatsImpl localStats = mapServiceContext.getLocalMapStatsProvider().getLocalMapStatsImpl(name);
+                localStats.incrementOtherOperations();
+            }
 
-        checkPartitionStateChanges(partitionService, partitionStateVersion);
+            checkPartitionStateChanges(partitionService, partitionStateVersion);
+        } finally {
+            Thread.currentThread().setName(oldName);
+        }
     }
 
     private void fullTableScan(Collection<Integer> initialPartitions, GroupProperties groupProperties)
