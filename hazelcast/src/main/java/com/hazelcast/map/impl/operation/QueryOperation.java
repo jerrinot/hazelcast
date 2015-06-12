@@ -231,12 +231,12 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
+        getLogger().info("Creating QueryOperation, CallID = " + getCallId()+", caller: " + getCallerAddress());
         name = in.readUTF();
         predicate = in.readObject();
         if (predicate instanceof PagingPredicate) {
             pagingPredicate = (PagingPredicate) predicate;
         }
-        getLogger().info("Creating QueryOperation, CallID = " + getCallId());
     }
 
     private final class PartitionCallable implements Callable<Collection<QueryableEntry>> {
