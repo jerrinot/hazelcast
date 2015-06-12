@@ -240,8 +240,14 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
 
         @Override
         public Collection<QueryableEntry> call() throws Exception {
-            MapContextQuerySupport mapContextQuerySupport = mapService.getMapServiceContext().getMapContextQuerySupport();
-            return mapContextQuerySupport.queryOnPartition(name, predicate, partition);
+            String oldName = Thread.currentThread().getName();
+            Thread.currentThread().setName(oldName + "-partition-" + partition + "-callID-" + getCallId());
+            try {
+                MapContextQuerySupport mapContextQuerySupport = mapService.getMapServiceContext().getMapContextQuerySupport();
+                return mapContextQuerySupport.queryOnPartition(name, predicate, partition);
+            } finally {
+                Thread.currentThread().setName(oldName);
+            }
         }
     }
 }
