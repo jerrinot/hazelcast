@@ -75,6 +75,7 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
 
     @Override
     public void run() throws Exception {
+        getLogger().info("Starting QueryOperation, Call ID =  " + getCallId());
         String oldName = Thread.currentThread().getName();
         String newName = oldName+"-partition-"+getPartitionId()+"-callID-"+getCallId();
         Thread.currentThread().setName(newName);
@@ -235,6 +236,7 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
         if (predicate instanceof PagingPredicate) {
             pagingPredicate = (PagingPredicate) predicate;
         }
+        getLogger().info("Creating QueryOperation, CallID = " + getCallId());
     }
 
     private final class PartitionCallable implements Callable<Collection<QueryableEntry>> {
