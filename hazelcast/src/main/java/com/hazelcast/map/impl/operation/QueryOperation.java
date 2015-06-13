@@ -224,7 +224,7 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
-        getLogger().info("Serializing QueryOperation, CallID = " + getCallId());
+//        getLogger().info("Serializing QueryOperation, CallID = " + getCallId());
         super.writeInternal(out);
         out.writeUTF(name);
         out.writeObject(predicate);
