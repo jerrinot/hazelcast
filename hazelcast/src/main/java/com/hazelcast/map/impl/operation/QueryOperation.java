@@ -223,6 +223,7 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
 
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
+        getLogger().info("Serializing QueryOperation, CallID = " + getCallId());
         super.writeInternal(out);
         out.writeUTF(name);
         out.writeObject(predicate);
@@ -231,7 +232,7 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        getLogger().info("Creating QueryOperation, CallID = " + getCallId()+", caller: " + getCallerAddress());
+        getLogger().info("Deserializing QueryOperation, CallID = " + getCallId()+", caller: " + getCallerAddress());
         name = in.readUTF();
         predicate = in.readObject();
         if (predicate instanceof PagingPredicate) {
