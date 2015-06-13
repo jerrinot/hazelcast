@@ -22,6 +22,7 @@ import com.hazelcast.nio.serialization.DefaultData;
 import java.nio.ByteBuffer;
 
 import static com.hazelcast.nio.Bits.INT_SIZE_IN_BYTES;
+import static com.hazelcast.nio.Bits.LONG_SIZE_IN_BYTES;
 
 /**
  * A Packet is a piece of data send over the line.
@@ -43,12 +44,14 @@ public final class Packet implements SocketWritable, SocketReadable {
     private static final short PERSIST_PARTITION = 3;
     private static final short PERSIST_SIZE = 4;
     private static final short PERSIST_VALUE = 5;
+    private static final short PERSIST_CALL_ID = 6;
 
     private static final short PERSIST_COMPLETED = Short.MAX_VALUE;
 
     private Data data;
     private short header;
     private int partitionId;
+    private long callId = -1;
     private transient Connection conn;
 
     // These 2 fields are only used during read/write. Otherwise they have no meaning.
@@ -67,6 +70,12 @@ public final class Packet implements SocketWritable, SocketReadable {
     public Packet(Data data, int partitionId) {
         this.data = data;
         this.partitionId = partitionId;
+    }
+
+    public Packet(Data data, int partitionId, long callId) {
+        this.data = data;
+        this.partitionId = partitionId;
+        this.callId = callId;
     }
 
     /**
@@ -96,6 +105,10 @@ public final class Packet implements SocketWritable, SocketReadable {
 
     public boolean isHeaderSet(int bit) {
         return (header & 1 << bit) != 0;
+    }
+
+    public long getCallId() {
+        return callId;
     }
 
     /**
@@ -144,6 +157,10 @@ public final class Packet implements SocketWritable, SocketReadable {
             return false;
         }
 
+        if (!writeCallId(destination)) {
+            return false;
+        }
+
         setPersistStatus(PERSIST_COMPLETED);
         return true;
     }
@@ -167,6 +184,10 @@ public final class Packet implements SocketWritable, SocketReadable {
         }
 
         if (!readValue(source)) {
+            return false;
+        }
+
+        if (!readCallId(source)) {
             return false;
         }
 
@@ -265,6 +286,17 @@ public final class Packet implements SocketWritable, SocketReadable {
         return true;
     }
 
+    private boolean readCallId(ByteBuffer source) {
+        if (!isPersistStatusSet(PERSIST_CALL_ID)) {
+            if (source.remaining() < LONG_SIZE_IN_BYTES) {
+                return false;
+            }
+            callId = source.getLong();
+            setPersistStatus(PERSIST_CALL_ID);
+        }
+        return true;
+    }
+
     private boolean writeSize(ByteBuffer destination) {
         if (!isPersistStatusSet(PERSIST_SIZE)) {
             if (destination.remaining() < INT_SIZE_IN_BYTES) {
@@ -273,6 +305,17 @@ public final class Packet implements SocketWritable, SocketReadable {
             size = data.totalSize();
             destination.putInt(size);
             setPersistStatus(PERSIST_SIZE);
+        }
+        return true;
+    }
+
+    private boolean writeCallId(ByteBuffer destination) {
+        if (!isPersistStatusSet(PERSIST_CALL_ID)) {
+            if (destination.remaining() < LONG_SIZE_IN_BYTES) {
+                return false;
+            }
+            destination.putLong(callId);
+            setPersistStatus(PERSIST_CALL_ID);
         }
         return true;
     }

@@ -356,7 +356,7 @@ public final class OperationServiceImpl implements InternalOperationService {
 
         Data data = nodeEngine.toData(op);
         int partitionId = op.getPartitionId();
-        Packet packet = new Packet(data, partitionId);
+        Packet packet = new Packet(data, partitionId, op.getCallId());
         packet.setHeader(Packet.HEADER_OP);
 
         if (op instanceof UrgentSystemOperation) {

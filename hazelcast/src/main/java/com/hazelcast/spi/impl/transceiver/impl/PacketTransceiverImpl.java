@@ -19,6 +19,7 @@ package com.hazelcast.spi.impl.transceiver.impl;
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.instance.Node;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.map.impl.operation.QueryOperation;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.ConnectionManager;
@@ -75,6 +76,10 @@ public class PacketTransceiverImpl implements PacketTransceiver {
 
     @Override
     public void receive(Packet packet) {
+        long callId = packet.getCallId();
+        if (callId > QueryOperation.ID_OFFSET) {
+            logger.info("Packet: CallID = " + callId);
+        }
         if (packet.isHeaderSet(Packet.HEADER_OP)) {
             operationExecutor.execute(packet);
         } else if (packet.isHeaderSet(Packet.HEADER_EVENT)) {

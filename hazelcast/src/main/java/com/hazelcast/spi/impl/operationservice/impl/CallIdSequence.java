@@ -17,6 +17,7 @@
 package com.hazelcast.spi.impl.operationservice.impl;
 
 import com.hazelcast.core.HazelcastOverloadException;
+import com.hazelcast.map.impl.operation.QueryOperation;
 import com.hazelcast.spi.BackupAwareOperation;
 
 import java.util.concurrent.atomic.AtomicLongArray;
@@ -117,7 +118,11 @@ public abstract class CallIdSequence {
                 return CALL_ID_LOCAL_SKIPPED;
             }
 
-            return HEAD.incrementAndGet(this);
+            long id = HEAD.incrementAndGet(this);
+            if (invocation.op instanceof QueryOperation) {
+                id += QueryOperation.ID_OFFSET;
+            }
+            return id;
         }
 
         @Override

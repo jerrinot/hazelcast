@@ -54,6 +54,7 @@ import static com.hazelcast.util.SortingUtil.newComparator;
 import static java.util.Collections.sort;
 
 public class QueryOperation extends AbstractMapOperation implements ReadonlyOperation {
+    public static final long ID_OFFSET = Long.MAX_VALUE / 2;
 
     private static final long QUERY_EXECUTION_TIMEOUT_MINUTES = 5;
 
