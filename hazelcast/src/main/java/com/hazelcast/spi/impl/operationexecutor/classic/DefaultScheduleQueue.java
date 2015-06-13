@@ -95,6 +95,9 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
 
             priorityItem = priorityQueue.poll();
             if (priorityItem != null) {
+                if (pendingNormalItem != null) {
+                    throw new AssertionError("Pending priority error is not null");
+                }
                 pendingNormalItem = normalItem;
                 return priorityItem;
             }
