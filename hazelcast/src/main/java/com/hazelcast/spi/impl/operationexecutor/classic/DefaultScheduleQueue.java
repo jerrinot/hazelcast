@@ -32,7 +32,7 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
 
     private final BlockingQueue normalQueue;
     private final ConcurrentLinkedQueue priorityQueue;
-    private Object pendingNormalItem;
+//    private Object pendingNormalItem;
 
     public DefaultScheduleQueue() {
         this(new LinkedBlockingQueue(), new ConcurrentLinkedQueue());
@@ -82,22 +82,25 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
                 return priorityItem;
             }
 
-            if (pendingNormalItem != null) {
-                Object tmp = pendingNormalItem;
-                pendingNormalItem = null;
-                return tmp;
-            }
+//            if (pendingNormalItem != null) {
+//                Object tmp = pendingNormalItem;
+//                pendingNormalItem = null;
+//                return tmp;
+//            }
 
             Object normalItem = normalQueue.take();
             if (normalItem == TRIGGER_TASK) {
                 continue;
             }
 
-            priorityItem = priorityQueue.poll();
-            if (priorityItem != null) {
-                pendingNormalItem = normalItem;
-                return priorityItem;
-            }
+//            priorityItem = priorityQueue.poll();
+//            if (priorityItem != null) {
+//                if (pendingNormalItem != null) {
+//                    throw new AssertionError("Pending priority error is not null");
+//                }
+//                pendingNormalItem = normalItem;
+//                return priorityItem;
+//            }
 
             return normalItem;
         }
