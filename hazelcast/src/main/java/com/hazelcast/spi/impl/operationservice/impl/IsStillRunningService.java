@@ -90,6 +90,14 @@ public class IsStillRunningService {
      * @param invocation The invocation to check
      */
     public void timeoutInvocationIfNotExecuting(final Invocation invocation) {
+        Operation op = invocation.op;
+        if (op instanceof TraceableIsStillExecutingOperation) {
+            return;
+        }
+        if (op instanceof IsStillExecutingOperation) {
+            return;
+        }
+
         try {
             final Operation isStillExecuting = createCheckOperation(invocation);
             final ExecutionCallback<Object> callback = new IsOperationStillRunningCallback(invocation);
