@@ -33,6 +33,9 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
     private final BlockingQueue normalQueue;
     private final ConcurrentLinkedQueue priorityQueue;
     private Object pendingNormalItem;
+    private volatile Thread consumerThread;
+    private volatile String consumerThreadName;
+    private volatile Exception savedConsumerStacktrace;
 
     public DefaultScheduleQueue() {
         this(new LinkedBlockingQueue(), new ConcurrentLinkedQueue());
@@ -75,6 +78,7 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
 
     @Override
     public Object take() throws InterruptedException {
+        assertSingleConsumer();
         ConcurrentLinkedQueue priorityQueue = this.priorityQueue;
         for (; ; ) {
             Object priorityItem = priorityQueue.poll();
@@ -100,6 +104,21 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
             }
 
             return normalItem;
+        }
+    }
+
+    private void assertSingleConsumer() {
+        Thread currentThread = Thread.currentThread();
+        if (consumerThread == null) {
+            consumerThread = currentThread;
+            consumerThreadName = currentThread.getName();
+            savedConsumerStacktrace = new Exception();
+            return;
+        }
+        if (currentThread != consumerThread) {
+            String currentThreadName = currentThread.getName();
+            throw new IllegalStateException("Multiple Consumers detected! Expected consumer: "
+                    + consumerThreadName + " actual consumer: " + currentThreadName, savedConsumerStacktrace);
         }
     }
 }
