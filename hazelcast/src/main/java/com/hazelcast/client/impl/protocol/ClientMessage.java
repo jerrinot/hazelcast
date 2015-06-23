@@ -413,6 +413,11 @@ public class ClientMessage
     }
 
     @Override
+    public void dispose() {
+        // No ned to any specific logic for cleanup
+    }
+
+    @Override
     public String toString() {
         int len = index();
         final StringBuilder sb = new StringBuilder("ClientMessage{");

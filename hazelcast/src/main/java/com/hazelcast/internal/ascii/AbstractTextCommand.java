@@ -68,6 +68,11 @@ public abstract class AbstractTextCommand implements TextCommand {
     }
 
     @Override
+    public void dispose() {
+        // No ned to any specific logic for cleanup
+    }
+
+    @Override
     public String toString() {
         return "AbstractTextCommand[" + type + "]{"
                 + "requestId="

@@ -45,4 +45,12 @@ public interface SocketWritable {
      * @return true if urgent, false otherwise.
      */
     boolean isUrgent();
+
+    /**
+     * Disposes this SocketWritable.
+     *
+     * This method is used for some cleanup works related with this instance if needed such as
+     * disposing allocated resources.
+     */
+    void dispose();
 }

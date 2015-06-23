@@ -17,6 +17,8 @@
 package com.hazelcast.nio;
 
 import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.nio.serialization.DefaultData;
+import com.hazelcast.nio.serialization.DisposableData;
 import com.hazelcast.nio.serialization.impl.DefaultData;
 
 import java.nio.ByteBuffer;
@@ -145,6 +147,9 @@ public final class Packet implements SocketWritable, SocketReadable {
         }
 
         setPersistStatus(PERSIST_COMPLETED);
+
+        dispose();
+
         return true;
     }
 
@@ -386,6 +391,13 @@ public final class Packet implements SocketWritable, SocketReadable {
 
     private boolean isPersistStatusSet(short status) {
         return this.persistStatus >= status;
+    }
+
+    @Override
+    public void dispose() {
+        if (data instanceof DisposableData) {
+            ((DisposableData) data).dispose();
+        }
     }
 
     @Override

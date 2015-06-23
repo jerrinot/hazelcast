@@ -321,8 +321,13 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     }
 
     public void shutdown() {
-        writeQueue.clear();
-        urgentWriteQueue.clear();
+        SocketWritable socketWritable;
+        while ((socketWritable = writeQueue.poll()) != null) {
+            socketWritable.dispose();
+        }
+        while ((socketWritable = urgentWriteQueue.poll()) != null) {
+            socketWritable.dispose();
+        }
 
         ShutdownTask shutdownTask = new ShutdownTask();
         offer(shutdownTask);
@@ -356,6 +361,11 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
         @Override
         public boolean isUrgent() {
             return true;
+        }
+
+        @Override
+        public void dispose() {
+            // No ned to any specific logic for cleanup
         }
     }
 
