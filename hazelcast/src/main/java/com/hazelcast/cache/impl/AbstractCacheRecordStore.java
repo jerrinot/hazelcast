@@ -315,7 +315,7 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
 
     @Override
     public void onEvict(Data key, R record) {
-        invalidateEntry(key);
+        // invalidateEntry(key);
     }
 
     protected void invalidateEntry(Data key) {
