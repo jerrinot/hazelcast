@@ -19,6 +19,7 @@ package com.hazelcast.cache.impl.client;
 import com.hazelcast.cache.impl.CachePortableHook;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.PortableReader;
 import com.hazelcast.nio.serialization.PortableWriter;
 
@@ -28,7 +29,8 @@ import java.util.List;
 
 public class CacheBatchInvalidationMessage extends CacheInvalidationMessage {
 
-    private List<CacheSingleInvalidationMessage> invalidationMessages;
+    private List<String> sourceUuids;
+    private List<Data> keys;
 
     public CacheBatchInvalidationMessage() {
 
@@ -36,27 +38,34 @@ public class CacheBatchInvalidationMessage extends CacheInvalidationMessage {
 
     public CacheBatchInvalidationMessage(String name) {
         super(name);
-        this.invalidationMessages = new ArrayList<CacheSingleInvalidationMessage>();
+        this.sourceUuids = new ArrayList<String>();
+        this.keys = new ArrayList<Data>();
     }
 
     public CacheBatchInvalidationMessage(String name, int expectedMessageCount) {
         super(name);
-        this.invalidationMessages = new ArrayList<CacheSingleInvalidationMessage>(expectedMessageCount);
+        this.sourceUuids = new ArrayList<String>(expectedMessageCount);
+        this.keys = new ArrayList<Data>(expectedMessageCount);
     }
 
-    public CacheBatchInvalidationMessage(String name,
-                                         List<CacheSingleInvalidationMessage> invalidationMessages) {
+    public CacheBatchInvalidationMessage(String name, List<String> sourceUuids, List<Data> keys) {
         super(name);
-        this.invalidationMessages = invalidationMessages;
+        this.sourceUuids = sourceUuids;
+        this.keys = keys;
     }
 
-    public CacheBatchInvalidationMessage addInvalidationMessage(CacheSingleInvalidationMessage invalidationMessage) {
-        invalidationMessages.add(invalidationMessage);
+    public CacheBatchInvalidationMessage addInvalidationMessage(String sourceUuid, Data key) {
+        sourceUuids.add(sourceUuid);
+        keys.add(key);
         return this;
     }
 
-    public List<CacheSingleInvalidationMessage> getInvalidationMessages() {
-        return invalidationMessages;
+    public List<String> getSourceUuids() {
+        return sourceUuids;
+    }
+
+    public List<Data> getKeys() {
+        return keys;
     }
 
     @Override
@@ -68,12 +77,13 @@ public class CacheBatchInvalidationMessage extends CacheInvalidationMessage {
     public void writePortable(PortableWriter writer) throws IOException {
         super.writePortable(writer);
         ObjectDataOutput out = writer.getRawDataOutput();
-        boolean hasInvalidationMessages = invalidationMessages != null;
+        boolean hasInvalidationMessages = keys != null;
         out.writeBoolean(hasInvalidationMessages);
         if (hasInvalidationMessages) {
-            out.writeInt(invalidationMessages.size());
-            for (CacheSingleInvalidationMessage invalidationMessage : invalidationMessages) {
-                out.writeObject(invalidationMessage);
+            out.writeInt(keys.size());
+            for (int i = 0; i < keys.size(); i++) {
+                out.writeUTF(sourceUuids.get(i));
+                out.writeData(keys.get(i));
             }
         }
     }
@@ -84,9 +94,11 @@ public class CacheBatchInvalidationMessage extends CacheInvalidationMessage {
         ObjectDataInput in = reader.getRawDataInput();
         if (in.readBoolean()) {
             int size = in.readInt();
-            invalidationMessages = new ArrayList<CacheSingleInvalidationMessage>(size);
+            sourceUuids = new ArrayList<String>(size);
+            keys = new ArrayList<Data>(size);
             for (int i = 0; i < size; i++) {
-                invalidationMessages.add((CacheSingleInvalidationMessage) in.readObject());
+                sourceUuids.add(in.readUTF());
+                keys.add(in.readData());
             }
         }
     }
@@ -95,7 +107,8 @@ public class CacheBatchInvalidationMessage extends CacheInvalidationMessage {
     public String toString() {
         final StringBuilder sb = new StringBuilder("CacheBatchInvalidationMessage{");
         sb.append("name='").append(name).append('\'');
-        sb.append(", invalidationMessages=").append(invalidationMessages);
+        sb.append(", sourceUuids=").append(sourceUuids);
+        sb.append(", keys=").append(keys);
         sb.append('}');
         return sb.toString();
     }

@@ -595,13 +595,15 @@ abstract class AbstractClientInternalCacheProxy<K, V>
             } else if (message instanceof CacheBatchInvalidationMessage) {
                 CacheBatchInvalidationMessage batchInvalidationMessage =
                         (CacheBatchInvalidationMessage) message;
-                List<CacheSingleInvalidationMessage> invalidationMessages =
-                        batchInvalidationMessage.getInvalidationMessages();
-                if (invalidationMessages != null) {
-                    for (CacheSingleInvalidationMessage invalidationMessage : invalidationMessages) {
-                        if (!client.getUuid().equals(invalidationMessage.getSourceUuid())) {
-                            nearCache.invalidate(invalidationMessage.getKey());
-                        }
+                List<String> sourceUuids = batchInvalidationMessage.getSourceUuids();
+                List<Data> keys = batchInvalidationMessage.getKeys();
+                Iterator<Data> keysIt = keys.iterator();
+                Iterator<String> sourceUuidsIt = sourceUuids.iterator();
+                while (keysIt.hasNext() && sourceUuidsIt.hasNext()) {
+                    Data key = keysIt.next();
+                    String sourceUuid = sourceUuidsIt.next();
+                    if (!client.getUuid().equals(sourceUuid)) {
+                        nearCache.invalidate(key);
                     }
                 }
             } else {

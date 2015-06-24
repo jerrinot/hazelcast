@@ -27,11 +27,8 @@ import com.hazelcast.client.impl.protocol.codec.CacheAddInvalidationListenerCode
 import com.hazelcast.client.impl.protocol.task.AbstractCallableMessageTask;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.nio.serialization.Data;
 
 import java.security.Permission;
-import java.util.ArrayList;
-import java.util.List;
 
 public class CacheAddInvalidationListenerTask
         extends AbstractCallableMessageTask<CacheAddInvalidationListenerCodec.RequestParameters> {
@@ -54,19 +51,16 @@ public class CacheAddInvalidationListenerTask
                     if (eventObject instanceof CacheSingleInvalidationMessage) {
                         CacheSingleInvalidationMessage message = (CacheSingleInvalidationMessage) eventObject;
                         ClientMessage eventMessage = CacheAddInvalidationListenerCodec.
-                                    encodeCacheInvalidationEvent(message.getName(), message.getKey(), message.getSourceUuid());
+                                    encodeCacheInvalidationEvent(message.getName(),
+                                                                 message.getKey(),
+                                                                 message.getSourceUuid());
                         sendClientMessage(message.getName(), eventMessage);
                     } else if (eventObject instanceof CacheBatchInvalidationMessage) {
                         CacheBatchInvalidationMessage message = (CacheBatchInvalidationMessage) eventObject;
-                        List<CacheSingleInvalidationMessage> invalidationMessages = message.getInvalidationMessages();
-                        List<Data> keys = new ArrayList<Data>(invalidationMessages.size());
-                        List<String> sourceUuids = new ArrayList<String>(invalidationMessages.size());
-                        for (CacheSingleInvalidationMessage invalidationMessage : invalidationMessages) {
-                            keys.add(invalidationMessage.getKey());
-                            sourceUuids.add(invalidationMessage.getSourceUuid());
-                        }
                         ClientMessage eventMessage = CacheAddInvalidationListenerCodec.
-                                    encodeCacheBatchInvalidationEvent(message.getName(), keys, sourceUuids);
+                                    encodeCacheBatchInvalidationEvent(message.getName(),
+                                                                      message.getKeys(),
+                                                                      message.getSourceUuids());
                         sendClientMessage(message.getName(), eventMessage);
                     }
                 }

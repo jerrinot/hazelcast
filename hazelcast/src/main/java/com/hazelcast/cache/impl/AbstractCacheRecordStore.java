@@ -173,7 +173,7 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
     protected abstract Data toHeapData(Object obj);
 
     protected MaxSizeChecker createCacheMaxSizeChecker(int size,
-                                                            EvictionConfig.MaxSizePolicy maxSizePolicy) {
+                                                       EvictionConfig.MaxSizePolicy maxSizePolicy) {
         if (maxSizePolicy == null) {
             throw new IllegalArgumentException("Max-Size policy cannot be null");
         }
