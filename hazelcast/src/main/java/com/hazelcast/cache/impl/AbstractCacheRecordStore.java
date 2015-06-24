@@ -34,6 +34,8 @@ import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.map.impl.MapEntrySet;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.impl.DefaultData;
+import com.hazelcast.nio.serialization.DefaultData;
+import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.EventRegistration;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.impl.eventservice.InternalEventService;
@@ -82,13 +84,14 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
     protected final int partitionId;
     protected final int partitionCount;
     protected final NodeEngine nodeEngine;
+    protected final InternalPartitionService partitionService;
     protected final AbstractCacheService cacheService;
     protected final CacheConfig cacheConfig;
     protected CRM records;
     protected CacheStatisticsImpl statistics;
     protected CacheLoader cacheLoader;
     protected CacheWriter cacheWriter;
-    protected boolean isEventsEnabled = true;
+    protected boolean isEventsEnabled = false;
     protected boolean isEventBatchingEnabled;
     protected ExpiryPolicy defaultExpiryPolicy;
     protected final EvictionConfig evictionConfig;
@@ -104,8 +107,9 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
                                     final AbstractCacheService cacheService) {
         this.name = name;
         this.partitionId = partitionId;
-        this.partitionCount = nodeEngine.getPartitionService().getPartitionCount();
         this.nodeEngine = nodeEngine;
+        this.partitionService = nodeEngine.getPartitionService();
+        this.partitionCount = partitionService.getPartitionCount();
         this.cacheService = cacheService;
         this.cacheConfig = cacheService.getCacheConfig(name);
         if (cacheConfig == null) {
@@ -393,27 +397,31 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
     }
 
     protected void publishEvent(CacheEventContext cacheEventContext) {
-        cacheEventContext.setCacheName(name);
-        if (isEventBatchingEnabled) {
-            final CacheEventDataImpl cacheEventData =
-                    new CacheEventDataImpl(name, cacheEventContext.getEventType(), cacheEventContext.getDataKey(),
-                                           cacheEventContext.getDataValue(), cacheEventContext.getDataOldValue(),
-                            cacheEventContext.isOldValueAvailable());
-            Set<CacheEventData> cacheEventDataSet = batchEvent.get(cacheEventContext.getEventType());
-            if (cacheEventDataSet == null) {
-                cacheEventDataSet = new HashSet<CacheEventData>();
-                batchEvent.put(cacheEventContext.getEventType(), cacheEventDataSet);
+        if (isEventsEnabled) {
+            cacheEventContext.setCacheName(name);
+            if (isEventBatchingEnabled) {
+                final CacheEventDataImpl cacheEventData =
+                        new CacheEventDataImpl(name, cacheEventContext.getEventType(), cacheEventContext.getDataKey(),
+                                cacheEventContext.getDataValue(), cacheEventContext.getDataOldValue(),
+                                cacheEventContext.isOldValueAvailable());
+                Set<CacheEventData> cacheEventDataSet = batchEvent.get(cacheEventContext.getEventType());
+                if (cacheEventDataSet == null) {
+                    cacheEventDataSet = new HashSet<CacheEventData>();
+                    batchEvent.put(cacheEventContext.getEventType(), cacheEventDataSet);
+                }
+                cacheEventDataSet.add(cacheEventData);
+            } else {
+                cacheService.publishEvent(cacheEventContext);
             }
-            cacheEventDataSet.add(cacheEventData);
-        } else {
-            cacheService.publishEvent(cacheEventContext);
         }
     }
 
     protected void publishBatchedEvents(String cacheName, CacheEventType cacheEventType, int orderKey) {
-        final Set<CacheEventData> cacheEventDatas = batchEvent.get(cacheEventType);
-        CacheEventSet ces = new CacheEventSet(cacheEventType, cacheEventDatas);
-        cacheService.publishEvent(cacheName, ces, orderKey);
+        if (isEventsEnabled) {
+            final Set<CacheEventData> cacheEventDatas = batchEvent.get(cacheEventType);
+            CacheEventSet ces = new CacheEventSet(cacheEventType, cacheEventDatas);
+            cacheService.publishEvent(cacheName, ces, orderKey);
+        }
     }
 
     protected boolean compare(Object v1, Object v2) {
