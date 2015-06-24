@@ -19,6 +19,7 @@ package com.hazelcast.nio;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.DefaultData;
 import com.hazelcast.nio.serialization.DisposableData;
+import com.hazelcast.nio.serialization.SelfWritableData;
 import com.hazelcast.nio.serialization.impl.DefaultData;
 
 import java.nio.ByteBuffer;
@@ -305,8 +306,12 @@ public final class Packet implements SocketWritable, SocketReadable {
                     done = false;
                 }
 
-                byte[] byteArray = data.toByteArray();
-                destination.put(byteArray, valueOffset, bytesWrite);
+                if (data instanceof SelfWritableData) {
+                    ((SelfWritableData) data).writeTo(destination, valueOffset, bytesWrite);
+                } else {
+                    byte[] byteArray = data.toByteArray();
+                    destination.put(byteArray, valueOffset, bytesWrite);
+                }
                 valueOffset += bytesWrite;
 
                 if (!done) {
