@@ -38,6 +38,7 @@ import com.hazelcast.spi.PostJoinAwareService;
 import com.hazelcast.util.ConcurrencyUtil;
 import com.hazelcast.util.ConstructorFunction;
 
+import javax.cache.configuration.CacheEntryListenerConfiguration;
 import javax.cache.event.CacheEntryListener;
 import java.io.Closeable;
 import java.util.Collection;
@@ -52,11 +53,21 @@ public abstract class AbstractCacheService
         implements ICacheService, PostJoinAwareService {
 
     protected final ConcurrentMap<String, CacheConfig> configs = new ConcurrentHashMap<String, CacheConfig>();
+    protected final ConcurrentMap<String, CacheInfo> cacheInfos = new ConcurrentHashMap<String, CacheInfo>();
     protected final ConcurrentMap<String, CacheStatisticsImpl> statistics = new ConcurrentHashMap<String, CacheStatisticsImpl>();
     protected final ConcurrentMap<String, Set<Closeable>> resources = new ConcurrentHashMap<String, Set<Closeable>>();
+    protected final ConcurrentMap<String, CacheEntryListener> cacheEntryListeners =
+            new ConcurrentHashMap<String, CacheEntryListener>();
     protected final ConcurrentMap<String, Closeable> closeableListeners = new ConcurrentHashMap<String, Closeable>();
     protected final ConcurrentMap<String, CacheOperationProvider> operationProviderCache =
             new ConcurrentHashMap<String, CacheOperationProvider>();
+    protected final ConstructorFunction<String, CacheInfo> cacheInfosConstructorFunction =
+            new ConstructorFunction<String, CacheInfo>() {
+                @Override
+                public CacheInfo createNew(String name) {
+                    return new CacheInfo();
+                }
+            };
     protected final ConstructorFunction<String, CacheStatisticsImpl> cacheStatisticsConstructorFunction =
             new ConstructorFunction<String, CacheStatisticsImpl>() {
                 @Override
@@ -137,21 +148,22 @@ public abstract class AbstractCacheService
     }
 
     @Override
-    public void destroyCache(String objectName, boolean isLocal, String callerUuid) {
-        CacheConfig config = deleteCacheConfig(objectName);
-        destroySegments(objectName);
+    public void destroyCache(String name, boolean isLocal, String callerUuid) {
+        CacheConfig config = deleteCacheConfig(name);
+        destroySegments(name);
 
         if (!isLocal) {
-            deregisterAllListener(objectName);
+            deregisterAllListener(name);
+            removeCacheInfo(name);
         }
-        operationProviderCache.remove(objectName);
-        setStatisticsEnabled(config, objectName, false);
-        setManagementEnabled(config, objectName, false);
-        deleteCacheConfig(objectName);
-        deleteCacheStat(objectName);
-        deleteCacheResources(objectName);
+        operationProviderCache.remove(name);
+        setStatisticsEnabled(config, name, false);
+        setManagementEnabled(config, name, false);
+        deleteCacheConfig(name);
+        deleteCacheStat(name);
+        deleteCacheResources(name);
         if (!isLocal) {
-            destroyCacheOnAllMembers(objectName, callerUuid);
+            destroyCacheOnAllMembers(name, callerUuid);
         }
     }
 
@@ -188,6 +200,14 @@ public abstract class AbstractCacheService
     @Override
     public CacheStatisticsImpl createCacheStatIfAbsent(String name) {
         return ConcurrencyUtil.getOrPutIfAbsent(statistics, name, cacheStatisticsConstructorFunction);
+    }
+
+    public CacheInfo getOrCreateCacheInfo(String name) {
+        return ConcurrencyUtil.getOrPutIfAbsent(cacheInfos, name, cacheInfosConstructorFunction);
+    }
+
+    public CacheInfo removeCacheInfo(String name) {
+        return cacheInfos.remove(name);
     }
 
     @Override
@@ -295,7 +315,7 @@ public abstract class AbstractCacheService
             case EXPIRED:
                 final CacheEventData cacheEventData =
                         new CacheEventDataImpl(cacheName, eventType, cacheEventContext.getDataKey(),
-                                cacheEventContext.getDataValue(), cacheEventContext.getDataOldValue(),
+                                               cacheEventContext.getDataValue(), cacheEventContext.getDataOldValue(),
                                                cacheEventContext.isOldValueAvailable());
                 CacheEventSet eventSet = new CacheEventSet(eventType, cacheEventContext.getCompletionId());
                 eventSet.addEventData(cacheEventData);
@@ -303,16 +323,16 @@ public abstract class AbstractCacheService
                 break;
             case EVICTED:
                 eventData = new CacheEventDataImpl(cacheName, CacheEventType.EVICTED,
-                        cacheEventContext.getDataKey(), null, null, false);
+                                                   cacheEventContext.getDataKey(), null, null, false);
                 break;
             case INVALIDATED:
                 eventData = new CacheEventDataImpl(cacheName, CacheEventType.INVALIDATED,
-                        cacheEventContext.getDataKey(), null, null, false);
+                                                   cacheEventContext.getDataKey(), null, null, false);
                 break;
             case COMPLETED:
                 CacheEventData completedEventData =
-                        new CacheEventDataImpl(cacheName, CacheEventType.COMPLETED,
-                                cacheEventContext.getDataKey(), cacheEventContext.getDataValue(), null, false);
+                        new CacheEventDataImpl(cacheName, CacheEventType.COMPLETED, cacheEventContext.getDataKey(),
+                                               cacheEventContext.getDataValue(), null, false);
                 eventSet = new CacheEventSet(eventType, cacheEventContext.getCompletionId());
                 eventSet.addEventData(completedEventData);
                 eventData = eventSet;
@@ -345,13 +365,20 @@ public abstract class AbstractCacheService
     }
 
     @Override
-    public String registerListener(String distributedObjectName, CacheEventListener listener) {
+    public String registerListener(String name, CacheEventListener listener) {
         final EventService eventService = getNodeEngine().getEventService();
         final EventRegistration registration =
-                eventService.registerListener(AbstractCacheService.SERVICE_NAME,
-                                              distributedObjectName,
-                                              listener);
+                eventService.registerListener(AbstractCacheService.SERVICE_NAME, name, listener);
         final String id = registration.getId();
+        if (listener instanceof CacheEntryListenerProvider || listener instanceof CacheEntryListener) {
+            if (listener instanceof CacheEntryListener) {
+                cacheEntryListeners.put(id, (CacheEntryListener) listener);
+            } else {
+                cacheEntryListeners.put(id, ((CacheEntryListenerProvider) listener).getCacheEntryListener());
+            }
+            CacheInfo cacheInfo = getOrCreateCacheInfo(name);
+            cacheInfo.increaseCacheEntryListenerCount();
+        }
         if (listener instanceof Closeable) {
             closeableListeners.put(id, (Closeable) listener);
         } else if (listener instanceof CacheEntryListenerProvider) {
@@ -366,6 +393,10 @@ public abstract class AbstractCacheService
     @Override
     public boolean deregisterListener(String name, String registrationId) {
         final EventService eventService = getNodeEngine().getEventService();
+        if (cacheEntryListeners.remove(registrationId) != null) {
+            CacheInfo cacheInfo = getOrCreateCacheInfo(name);
+            cacheInfo.decreaseCacheEntryListenerCount();
+        }
         boolean result = eventService.deregisterListener(SERVICE_NAME, name, registrationId);
         Closeable listener = closeableListeners.remove(registrationId);
         if (listener != null) {
@@ -387,6 +418,8 @@ public abstract class AbstractCacheService
             }
         }
         eventService.deregisterAllListeners(AbstractCacheService.SERVICE_NAME, name);
+        CacheInfo cacheInfo = getOrCreateCacheInfo(name);
+        cacheInfo.resetCacheEntryListenerCount();
     }
 
     @Override
@@ -449,4 +482,43 @@ public abstract class AbstractCacheService
         return postJoinCacheOperation;
     }
 
+    public void cacheEntryListenerRegistered(String name,
+                                             CacheEntryListenerConfiguration cacheEntryListenerConfiguration) {
+        CacheConfig cacheConfig = getCacheConfig(name);
+        if (cacheConfig == null) {
+            throw new IllegalStateException("CacheConfig does not exist!!! name: " + name);
+        }
+        cacheConfig.addCacheEntryListenerConfiguration(cacheEntryListenerConfiguration);
+        CacheInfo cacheInfo = getOrCreateCacheInfo(name);
+        cacheInfo.increaseCacheEntryListenerCount();
+    }
+
+    public void cacheEntryListenerDeregistered(String name,
+                                               CacheEntryListenerConfiguration cacheEntryListenerConfiguration) {
+        CacheConfig cacheConfig = getCacheConfig(name);
+        if (cacheConfig == null) {
+            throw new IllegalStateException("CacheConfig does not exist!!! name: " + name);
+        }
+        cacheConfig.removeCacheEntryListenerConfiguration(cacheEntryListenerConfiguration);
+        CacheInfo cacheInfo = getOrCreateCacheInfo(name);
+        cacheInfo.decreaseCacheEntryListenerCount();
+    }
+
+    public boolean isCacheEntryListenerRegistered(String name) {
+        /*
+        final EventService eventService = getNodeEngine().getEventService();
+        final Collection<EventRegistration> candidates = eventService.getRegistrations(SERVICE_NAME, name);
+        if (candidates == null || candidates.isEmpty()) {
+            return false;
+        }
+        for (EventRegistration candidate : candidates) {
+            if (cacheEntryListeners.containsKey(candidate.getId())) {
+                return true;
+            }
+        }
+        return false;
+        */
+        CacheInfo cacheInfo = getOrCreateCacheInfo(name);
+        return cacheInfo.getCacheEntryListenerCount() > 0;
+    }
 }
