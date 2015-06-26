@@ -27,8 +27,12 @@ import com.hazelcast.client.impl.protocol.codec.CacheAddInvalidationListenerCode
 import com.hazelcast.client.impl.protocol.task.AbstractCallableMessageTask;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
+import com.hazelcast.nio.serialization.Data;
 
 import java.security.Permission;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public class CacheAddInvalidationListenerTask
         extends AbstractCallableMessageTask<CacheAddInvalidationListenerCodec.RequestParameters> {
@@ -41,33 +45,58 @@ public class CacheAddInvalidationListenerTask
     protected Object call() {
         final ClientEndpoint endpoint = getEndpoint();
         CacheService cacheService = getService(CacheService.SERVICE_NAME);
-        String registrationId = cacheService.addInvalidationListener(parameters.name, new CacheEventListener() {
-            @Override
-            public void handleEvent(Object eventObject) {
-                if (!endpoint.isAlive()) {
-                    return;
-                }
-                if (eventObject instanceof CacheInvalidationMessage) {
-                    if (eventObject instanceof CacheSingleInvalidationMessage) {
-                        CacheSingleInvalidationMessage message = (CacheSingleInvalidationMessage) eventObject;
-                        ClientMessage eventMessage = CacheAddInvalidationListenerCodec.
-                                    encodeCacheInvalidationEvent(message.getName(),
-                                                                 message.getKey(),
-                                                                 message.getSourceUuid());
-                        sendClientMessage(message.getName(), eventMessage);
-                    } else if (eventObject instanceof CacheBatchInvalidationMessage) {
-                        CacheBatchInvalidationMessage message = (CacheBatchInvalidationMessage) eventObject;
-                        ClientMessage eventMessage = CacheAddInvalidationListenerCodec.
-                                    encodeCacheBatchInvalidationEvent(message.getName(),
-                                                                      message.getKeys(),
-                                                                      message.getSourceUuids());
-                        sendClientMessage(message.getName(), eventMessage);
-                    }
-                }
-            }
-        });
+        String registrationId = cacheService.addInvalidationListener(parameters.name,
+                                                                     new CacheInvalidationEventListener(endpoint));
         endpoint.setListenerRegistration(CacheService.SERVICE_NAME, parameters.name, registrationId);
         return registrationId;
+    }
+
+    private final class CacheInvalidationEventListener implements CacheEventListener {
+
+        private final ClientEndpoint endpoint;
+
+        private CacheInvalidationEventListener(ClientEndpoint endpoint) {
+            this.endpoint = endpoint;
+        }
+
+        @Override
+        public void handleEvent(Object eventObject) {
+            if (!endpoint.isAlive()) {
+                return;
+            }
+            if (eventObject instanceof CacheInvalidationMessage) {
+                if (eventObject instanceof CacheSingleInvalidationMessage) {
+                    CacheSingleInvalidationMessage message = (CacheSingleInvalidationMessage) eventObject;
+                    ClientMessage eventMessage = CacheAddInvalidationListenerCodec.
+                            encodeCacheInvalidationEvent(message.getName(),
+                                                         message.getKey(),
+                                                         message.getSourceUuid());
+                    sendClientMessage(message.getName(), eventMessage);
+                } else if (eventObject instanceof CacheBatchInvalidationMessage) {
+                    String targetUuid = endpoint.getUuid();
+                    CacheBatchInvalidationMessage message = (CacheBatchInvalidationMessage) eventObject;
+                    List<String> sourceUuids = message.getSourceUuids();
+                    List<Data> keys = message.getKeys();
+                    Iterator<String> sourceUuidsIt = sourceUuids.iterator();
+                    Iterator<Data> keysIt = keys.iterator();
+                    List<Data> filteredKeys = new ArrayList<Data>(keys.size());
+                    while (sourceUuidsIt.hasNext()) {
+                        String sourceUuid = sourceUuidsIt.next();
+                        Data key = keysIt.next();
+                        if (!targetUuid.equals(sourceUuid)) {
+                            filteredKeys.add(key);
+                        }
+                    }
+
+                    // Since we already filtered keys as source uuid, no need to send source uuid list to client
+                    ClientMessage eventMessage = CacheAddInvalidationListenerCodec.
+                            encodeCacheBatchInvalidationEvent(message.getName(),
+                                                              filteredKeys,
+                                                              null);
+                    sendClientMessage(message.getName(), eventMessage);
+                }
+            }
+        }
     }
 
     @Override

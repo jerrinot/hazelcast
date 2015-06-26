@@ -30,6 +30,6 @@ public class ParameterUtil {
     }
 
     public static int calculateDataSize(Data data) {
-        return data.totalSize();
+        return Bits.INT_SIZE_IN_BYTES + data.totalSize();
     }
 }
