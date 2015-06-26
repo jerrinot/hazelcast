@@ -221,11 +221,11 @@ public class SerializationServiceImpl implements SerializationService {
         portableContext.registerClassDefinition(cd);
     }
 
-    public final Data toData(final Object obj) {
+    public Data toData(final Object obj) {
         return toData(obj, globalPartitioningStrategy);
     }
 
-    public final Data toData(Object obj, PartitioningStrategy strategy) {
+    public Data toData(Object obj, PartitioningStrategy strategy) {
         if (obj == null) {
             return null;
         }
@@ -271,6 +271,7 @@ public class SerializationServiceImpl implements SerializationService {
         return partitionHash;
     }
 
+    public <T> T toObject(final Object object) {
     @Override
     public final <T> T toObject(final Object object) {
         if (!(object instanceof Data)) {

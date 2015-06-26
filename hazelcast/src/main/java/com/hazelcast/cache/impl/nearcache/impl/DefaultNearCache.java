@@ -26,10 +26,13 @@ import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.monitor.NearCacheStats;
 import com.hazelcast.nio.serialization.SerializationService;
+import com.hazelcast.util.ValidationUtil;
 
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static com.hazelcast.util.ValidationUtil.checkNotNull;
 
 public class DefaultNearCache<K, V> implements NearCache<K, V> {
 
@@ -114,11 +117,16 @@ public class DefaultNearCache<K, V> implements NearCache<K, V> {
 
     @Override
     public V get(K key) {
+        checkNotNull(key, "key cannot be null on get!");
+
         return nearCacheRecordStore.get(key);
     }
 
     @Override
     public void put(K key, V value) {
+        checkNotNull(key, "key cannot be null on put!");
+        checkNotNull(value, "value cannot be null on put");
+
         nearCacheRecordStore.doEvictionIfRequired();
 
         nearCacheRecordStore.put(key, value);
@@ -126,11 +134,15 @@ public class DefaultNearCache<K, V> implements NearCache<K, V> {
 
     @Override
     public boolean remove(K key) {
+        checkNotNull(key, "key cannot be null on remove!");
+
         return nearCacheRecordStore.remove(key);
     }
 
     @Override
     public void invalidate(K key) {
+        checkNotNull(key, "key cannot be null on invalidate!");
+
         nearCacheRecordStore.remove(key);
     }
 
