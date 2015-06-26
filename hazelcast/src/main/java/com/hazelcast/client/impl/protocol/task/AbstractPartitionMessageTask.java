@@ -70,7 +70,11 @@ public abstract class AbstractPartitionMessageTask<P>
     @Override
     public void onResponse(Object response) {
         beforeResponse();
-        sendResponse(response);
+        try {
+            sendResponse(response);
+        } catch (Throwable t) {
+            sendClientMessage(t);
+        }
         afterResponse();
     }
 

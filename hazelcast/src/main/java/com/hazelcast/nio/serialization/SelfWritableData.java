@@ -30,7 +30,20 @@ public interface SelfWritableData extends Data {
      * Writes itself to given {@link java.nio.ByteBuffer}.
      *
      * @param destination   the {@link java.nio.ByteBuffer} to write itself into
-     * @param offset        the offset within this data of the first byte to be read and write to destination.
+     *
+     * @return the written {@link java.nio.ByteBuffer}
+     *
+     * @throws {@link java.nio.BufferOverflowException} if there is insufficient space in the destination buffer
+     *
+     * @throws {@link java.nio.ReadOnlyBufferException} if the destination buffer is read-only
+     */
+    ByteBuffer writeTo(ByteBuffer destination);
+
+    /**
+     * Writes itself to given {@link java.nio.ByteBuffer}.
+     *
+     * @param destination   the {@link java.nio.ByteBuffer} to write itself into
+     * @param offset        the offset within this data of the first byte to be read and write to destination
      * @param length        the number of bytes to be read from this data and write to destination
      *
      * @return the written {@link java.nio.ByteBuffer}
@@ -43,5 +56,23 @@ public interface SelfWritableData extends Data {
      * @throws {@link java.nio.ReadOnlyBufferException} if the destination buffer is read-only
      */
     ByteBuffer writeTo(ByteBuffer destination, int offset, int length);
+
+    /**
+     * Writes itself to given <code>destinationObj</code> from specified <code>destinationOffset</code>.
+     *
+     * @param destinationObj    the destination object to be written
+     * @param destinationOffset the offset on the destination object to be written
+     */
+    void writeTo(Object destinationObj, long destinationOffset);
+
+    /**
+     * Writes itself to given <code>destinationObj</code> from specified <code>destinationOffset</code>.
+     *
+     * @param destinationObj    the destination object to be written
+     * @param destinationOffset the offset on the destination object to be written
+     * @param offset            the offset within this data of the first byte to be read and write to destination
+     * @param length            the number of bytes to be read from this data and write to destination
+     */
+    void writeTo(Object destinationObj, long destinationOffset, int offset, int length);
 
 }

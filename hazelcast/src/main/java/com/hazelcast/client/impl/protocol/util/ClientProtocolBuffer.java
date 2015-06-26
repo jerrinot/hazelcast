@@ -16,6 +16,9 @@
 
 package com.hazelcast.client.impl.protocol.util;
 
+import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.nio.serialization.SelfWritableData;
+
 /**
  * Interface for buffer to be used in client protocol.
  * Implemented by {@link SafeBuffer} and {@link UnsafeBuffer}
@@ -171,4 +174,20 @@ public interface ClientProtocolBuffer {
      * @throws java.lang.IllegalArgumentException if the encoded bytes are greater than maxEncodedSize.
      */
     int putStringUtf8(int index, String value, int maxEncodedSize);
+
+    /**
+     * Put a {@link Data} into the underlying buffer.
+     *
+     * @param index The index at which the {@link Data} should be copied.
+     * @param data  The {@link SelfWritableData} to be copied into the underlying buffer.
+     */
+    void putData(int index, Data data);
+
+    /**
+     * Put a {@link SelfWritableData} into the underlying buffer.
+     *
+     * @param index             The index at which the {@link SelfWritableData} should be copied.
+     * @param selfWritableData  The {@link SelfWritableData} to be copied into the underlying buffer.
+     */
+    void putSelfWritableData(int index, SelfWritableData selfWritableData);
 }

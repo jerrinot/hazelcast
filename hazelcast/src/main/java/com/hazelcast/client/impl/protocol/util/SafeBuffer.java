@@ -17,6 +17,8 @@
 package com.hazelcast.client.impl.protocol.util;
 
 import com.hazelcast.nio.Bits;
+import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.nio.serialization.SelfWritableData;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -103,7 +105,6 @@ public class SafeBuffer implements ClientProtocolBuffer {
 
     @Override
     public long getLong(int index) {
-
         return byteBuffer.getLong(index);
     }
 
@@ -141,4 +142,19 @@ public class SafeBuffer implements ClientProtocolBuffer {
         return new String(stringInBytes, UTF_8);
     }
 
+    @Override
+    public void putData(int index, Data data) {
+        if (data instanceof SelfWritableData) {
+            putSelfWritableData(index, (SelfWritableData) data);
+        } else {
+            final byte[] bytes = data.toByteArray();
+            putBytes(index, bytes);
+        }
+    }
+
+    @Override
+    public void putSelfWritableData(int index, SelfWritableData selfWritableData) {
+        byteBuffer.position(index);
+        selfWritableData.writeTo(byteBuffer);
+    }
 }

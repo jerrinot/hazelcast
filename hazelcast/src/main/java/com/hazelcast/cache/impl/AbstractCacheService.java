@@ -17,7 +17,6 @@
 package com.hazelcast.cache.impl;
 
 import com.hazelcast.cache.impl.operation.CacheDestroyOperation;
-import com.hazelcast.cache.impl.operation.CacheGetConfigOperation;
 import com.hazelcast.cache.impl.operation.PostJoinCacheOperation;
 import com.hazelcast.config.CacheConfig;
 import com.hazelcast.config.CacheSimpleConfig;
@@ -29,7 +28,6 @@ import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.MigrationEndpoint;
 import com.hazelcast.spi.EventRegistration;
 import com.hazelcast.spi.EventService;
-import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
@@ -154,7 +152,7 @@ public abstract class AbstractCacheService
 
         if (!isLocal) {
             deregisterAllListener(name);
-            removeCacheInfo(name);
+            cacheInfos.remove(name);
         }
         operationProviderCache.remove(name);
         setStatisticsEnabled(config, name, false);
@@ -206,10 +204,6 @@ public abstract class AbstractCacheService
         return ConcurrencyUtil.getOrPutIfAbsent(cacheInfos, name, cacheInfosConstructorFunction);
     }
 
-    public CacheInfo removeCacheInfo(String name) {
-        return cacheInfos.remove(name);
-    }
-
     @Override
     public void deleteCacheStat(String name) {
         statistics.remove(name);
@@ -259,16 +253,6 @@ public abstract class AbstractCacheService
             return null;
         }
         return nodeEngine.getConfig().findCacheConfig(simpleName);
-    }
-
-    protected <K, V> CacheConfig<K, V> getCacheConfigFromPartition(String cacheNameWithPrefix, String cacheName) {
-        //remote check
-        final CacheGetConfigOperation op = new CacheGetConfigOperation(cacheNameWithPrefix, cacheName);
-        int partitionId = nodeEngine.getPartitionService().getPartitionId(cacheNameWithPrefix);
-        final InternalCompletableFuture<CacheConfig> f =
-                nodeEngine.getOperationService()
-                    .invokeOnPartition(CacheService.SERVICE_NAME, op, partitionId);
-        return f.getSafely();
     }
 
     public Collection<CacheConfig> getCacheConfigs() {
@@ -504,21 +488,4 @@ public abstract class AbstractCacheService
         cacheInfo.decreaseCacheEntryListenerCount();
     }
 
-    public boolean isCacheEntryListenerRegistered(String name) {
-        /*
-        final EventService eventService = getNodeEngine().getEventService();
-        final Collection<EventRegistration> candidates = eventService.getRegistrations(SERVICE_NAME, name);
-        if (candidates == null || candidates.isEmpty()) {
-            return false;
-        }
-        for (EventRegistration candidate : candidates) {
-            if (cacheEntryListeners.containsKey(candidate.getId())) {
-                return true;
-            }
-        }
-        return false;
-        */
-        CacheInfo cacheInfo = getOrCreateCacheInfo(name);
-        return cacheInfo.getCacheEntryListenerCount() > 0;
-    }
 }
