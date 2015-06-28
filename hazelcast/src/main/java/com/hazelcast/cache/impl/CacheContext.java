@@ -18,7 +18,7 @@ package com.hazelcast.cache.impl;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CacheInfo {
+public class CacheContext {
 
     private final AtomicInteger cacheEntryListenerCount = new AtomicInteger(0);
 
@@ -40,7 +40,7 @@ public class CacheInfo {
 
     @Override
     public String toString() {
-        return "CacheInfo{"
+        return "CacheContext{"
                     + "cacheEntryListenerCount=" + cacheEntryListenerCount.get()
                + '}';
     }

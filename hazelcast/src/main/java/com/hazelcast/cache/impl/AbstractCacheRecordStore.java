@@ -88,7 +88,7 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
     protected final AbstractCacheService cacheService;
     protected final CacheConfig cacheConfig;
     protected CRM records;
-    protected CacheInfo cacheInfo;
+    protected CacheContext cacheContext;
     protected CacheStatisticsImpl statistics;
     protected CacheLoader cacheLoader;
     protected CacheWriter cacheWriter;
@@ -114,7 +114,7 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
         this.partitionCount = partitionService.getPartitionCount();
         this.cacheService = cacheService;
         this.cacheConfig = cacheService.getCacheConfig(name);
-        this.cacheInfo = cacheService.getOrCreateCacheInfo(name);
+        this.cacheContext = cacheService.getOrCreateCacheContext(name);
         if (cacheConfig == null) {
             throw new CacheNotExistsException("Cache is already destroyed or not created yet, on "
                     + nodeEngine.getLocalMember());
@@ -218,7 +218,7 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
     }
 
     protected boolean isEventsEnabled() {
-        return eventsEnabled && (cacheInfo.getCacheEntryListenerCount() > 0 || wanReplicationEnabled);
+        return eventsEnabled && (cacheContext.getCacheEntryListenerCount() > 0 || wanReplicationEnabled);
     }
 
     @Override
