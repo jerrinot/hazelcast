@@ -121,7 +121,7 @@ public class CacheService extends AbstractCacheService {
     }
 
     //region MigrationAwareService
-    @Override
+    //@Override
     public Operation prepareReplicationOperation(PartitionReplicationEvent event) {
         CachePartitionSegment segment = segments[event.getPartitionId()];
         CacheReplicationOperation op = new CacheReplicationOperation(segment, event.getReplicaIndex());
