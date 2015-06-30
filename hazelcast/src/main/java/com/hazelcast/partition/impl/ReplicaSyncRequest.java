@@ -30,12 +30,15 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.PartitionAwareOperation;
 import com.hazelcast.spi.PartitionReplicationEvent;
+import com.hazelcast.spi.SelfResponseProviderReplicationOperation;
 import com.hazelcast.spi.impl.servicemanager.ServiceInfo;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -64,6 +67,7 @@ public final class ReplicaSyncRequest extends Operation implements PartitionAwar
         InternalPartitionServiceImpl partitionService = (InternalPartitionServiceImpl) nodeEngine.getPartitionService();
         int partitionId = getPartitionId();
         int replicaIndex = getReplicaIndex();
+        long[] replicaVersions = partitionService.getPartitionReplicaVersions(partitionId);
 
         if (!partitionService.isMigrationActive()) {
             ILogger logger = getLogger();
@@ -82,9 +86,25 @@ public final class ReplicaSyncRequest extends Operation implements PartitionAwar
             List<Operation> tasks = createReplicationOperations();
             if (tasks.isEmpty()) {
                 logNoReplicaDataFound(partitionId, replicaIndex);
-                sendEmptyResponse();
+                sendEmptyResponse(replicaVersions);
             } else {
-                sendResponse(tasks);
+                List<SelfResponseProviderReplicationOperation> selfResponseProviderTasks =
+                        new ArrayList<SelfResponseProviderReplicationOperation>();
+                Iterator<Operation> taskIt = tasks.iterator();
+                while (taskIt.hasNext()) {
+                    Operation task = taskIt.next();
+                    if (task instanceof SelfResponseProviderReplicationOperation) {
+                        selfResponseProviderTasks.add((SelfResponseProviderReplicationOperation) task);
+                        taskIt.remove();
+                    }
+                }
+                sendResponse(tasks, replicaVersions, null);
+                for (SelfResponseProviderReplicationOperation selfResponseProviderTask : selfResponseProviderTasks) {
+                    List<Operation> taskList = ((List) Arrays.asList(selfResponseProviderTask));
+                    sendResponse(taskList,
+                                 replicaVersions,
+                                 selfResponseProviderTask.createReplicaSyncResponse(taskList, replicaVersions));
+                }
             }
         } finally {
             partitionService.releaseReplicaSyncPermit();
@@ -113,7 +133,7 @@ public final class ReplicaSyncRequest extends Operation implements PartitionAwar
                         + getPartitionId() + ", replicaIndex=" + getReplicaIndex() + ", replicaVersions="
                         + Arrays.toString(replicaVersions));
             }
-            sendEmptyResponse();
+            sendEmptyResponse(replicaVersions);
             return false;
         }
 
@@ -156,14 +176,16 @@ public final class ReplicaSyncRequest extends Operation implements PartitionAwar
         return tasks;
     }
 
-    private void sendEmptyResponse() throws IOException {
-        sendResponse(null);
+    private void sendEmptyResponse(long[] replicaVersions) throws IOException {
+        sendResponse(null, replicaVersions, null);
     }
 
-    private void sendResponse(List<Operation> data) throws IOException {
+    private void sendResponse(List<Operation> data,
+                              long[] replicaVersions,
+                              ReplicaSyncResponse response) throws IOException {
         NodeEngine nodeEngine = getNodeEngine();
 
-        ReplicaSyncResponse syncResponse = createResponse(data);
+        ReplicaSyncResponse syncResponse = createResponse(data, replicaVersions, response);
         Address target = getCallerAddress();
         ILogger logger = getLogger();
         if (logger.isFinestEnabled()) {
@@ -174,13 +196,13 @@ public final class ReplicaSyncRequest extends Operation implements PartitionAwar
         operationService.send(syncResponse, target);
     }
 
-    private ReplicaSyncResponse createResponse(List<Operation> data) throws IOException {
+    private ReplicaSyncResponse createResponse(List<Operation> data,
+                                               long[] replicaVersions,
+                                               ReplicaSyncResponse syncResponse) throws IOException {
         int partitionId = getPartitionId();
-        NodeEngine nodeEngine = getNodeEngine();
-        InternalPartitionService partitionService = nodeEngine.getPartitionService();
-        long[] replicaVersions = partitionService.getPartitionReplicaVersions(partitionId);
-
-        ReplicaSyncResponse syncResponse = new ReplicaSyncResponse(data, replicaVersions);
+        if (syncResponse == null) {
+            syncResponse = new ReplicaSyncResponse(data, replicaVersions);
+        }
         syncResponse.setPartitionId(partitionId).setReplicaIndex(getReplicaIndex());
         return syncResponse;
     }
