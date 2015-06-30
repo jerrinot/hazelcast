@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CacheContext {
 
     private final AtomicInteger cacheEntryListenerCount = new AtomicInteger(0);
+    private final AtomicInteger invalidationListenerCount = new AtomicInteger(0);
 
     public int getCacheEntryListenerCount() {
         return cacheEntryListenerCount.get();
@@ -38,10 +39,27 @@ public class CacheContext {
         cacheEntryListenerCount.set(0);
     }
 
+    public int getInvalidationListenerCount() {
+        return invalidationListenerCount.get();
+    }
+
+    public void increaseInvalidationListenerCount() {
+        invalidationListenerCount.incrementAndGet();
+    }
+
+    public void decreaseInvalidationListenerCount() {
+        invalidationListenerCount.decrementAndGet();
+    }
+
+    public void resetInvalidationListenerCount() {
+        invalidationListenerCount.set(0);
+    }
+
     @Override
     public String toString() {
         return "CacheContext{"
                     + "cacheEntryListenerCount=" + cacheEntryListenerCount.get()
+                    + ", invalidationListenerCount=" + invalidationListenerCount.get()
                + '}';
     }
 

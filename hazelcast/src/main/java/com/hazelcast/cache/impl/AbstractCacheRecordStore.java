@@ -221,6 +221,10 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
         return eventsEnabled && (cacheContext.getCacheEntryListenerCount() > 0 || wanReplicationEnabled);
     }
 
+    protected boolean isInvalidationEnabled() {
+        return cacheContext.getInvalidationListenerCount() > 0;
+    }
+
     @Override
     public int evictIfRequired() {
         int evictedCount = 0;
@@ -330,12 +334,14 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
         invalidateEntry(key);
     }
 
-    protected void invalidateEntry(Data key) {
-        invalidateEntry(key, SOURCE_NOT_AVAILABLE);
+    protected void invalidateEntry(Data key, String source) {
+        if (isInvalidationEnabled()) {
+            cacheService.sendInvalidationEvent(name, toHeapData(key), source);
+        }
     }
 
-    protected void invalidateEntry(Data key, String source) {
-        cacheService.sendInvalidationEvent(name, key, source);
+    protected void invalidateEntry(Data key) {
+        invalidateEntry(key, SOURCE_NOT_AVAILABLE);
     }
 
     protected void invalidateAllEntries() {
@@ -343,7 +349,7 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
     }
 
     protected void invalidateAllEntries(String source) {
-        cacheService.sendInvalidationEvent(name, null, source);
+        invalidateEntry(null, source);
     }
 
     protected void updateGetAndPutStat(boolean isPutSucceed, boolean getValue, boolean oldValueNull, long start) {
@@ -583,7 +589,7 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
             record.setValue(recordValue);
             onUpdateRecord(key, record, value, dataOldValue);
             updateHasExpiringEntry(record);
-            invalidateEntry(toHeapData(key), source);
+            invalidateEntry(key, source);
 
             if (isEventsEnabled()) {
                 publishEvent(createCacheUpdatedEvent(eventDataKey, eventDataValue, eventDataOldValue,
@@ -838,7 +844,7 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
     protected final R doPutRecord(Data key, R record, String source) {
         R oldRecord = records.put(key, record);
         if (oldRecord != null) {
-            invalidateEntry(toHeapData(key), source);
+            invalidateEntry(key, source);
         }
         return oldRecord;
     }
@@ -855,7 +861,7 @@ public abstract class AbstractCacheRecordStore<R extends CacheRecord, CRM extend
     protected R doRemoveRecord(Data key, String source) {
         R removedRecord = records.remove(key);
         if (removedRecord != null) {
-            invalidateEntry(toHeapData(key), source);
+            invalidateEntry(key, source);
         }
         return removedRecord;
     }

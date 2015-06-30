@@ -16,6 +16,7 @@
 
 package com.hazelcast.client.impl.protocol.task.cache;
 
+import com.hazelcast.cache.impl.CacheContext;
 import com.hazelcast.cache.impl.CacheEventListener;
 import com.hazelcast.cache.impl.CacheService;
 import com.hazelcast.cache.impl.client.CacheBatchInvalidationMessage;
@@ -28,6 +29,8 @@ import com.hazelcast.client.impl.protocol.task.AbstractCallableMessageTask;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.spi.EventRegistration;
+import com.hazelcast.spi.impl.RegisterDeregisterAwareEventListener;
 
 import java.security.Permission;
 import java.util.ArrayList;
@@ -45,18 +48,23 @@ public class CacheAddInvalidationListenerTask
     protected Object call() {
         final ClientEndpoint endpoint = getEndpoint();
         CacheService cacheService = getService(CacheService.SERVICE_NAME);
-        String registrationId = cacheService.addInvalidationListener(parameters.name,
-                                                                     new CacheInvalidationEventListener(endpoint));
+        CacheContext cacheContext = cacheService.getOrCreateCacheContext(parameters.name);
+        String registrationId =
+                cacheService.addInvalidationListener(parameters.name,
+                                                     new CacheInvalidationEventListener(endpoint, cacheContext));
         endpoint.setListenerRegistration(CacheService.SERVICE_NAME, parameters.name, registrationId);
         return registrationId;
     }
 
-    private final class CacheInvalidationEventListener implements CacheEventListener {
+    private final class CacheInvalidationEventListener
+            implements CacheEventListener, RegisterDeregisterAwareEventListener<CacheService> {
 
         private final ClientEndpoint endpoint;
+        private final CacheContext cacheContext;
 
-        private CacheInvalidationEventListener(ClientEndpoint endpoint) {
+        private CacheInvalidationEventListener(ClientEndpoint endpoint, CacheContext cacheContext) {
             this.endpoint = endpoint;
+            this.cacheContext = cacheContext;
         }
 
         @Override
@@ -96,6 +104,18 @@ public class CacheAddInvalidationListenerTask
                     sendClientMessage(message.getName(), eventMessage);
                 }
             }
+        }
+
+        @Override
+        public void onRegister(CacheService cacheService, String serviceName,
+                               String topic, EventRegistration registration) {
+            cacheContext.increaseInvalidationListenerCount();
+        }
+
+        @Override
+        public void onDeregister(CacheService cacheService, String serviceName,
+                                 String topic, EventRegistration registration) {
+            cacheContext.decreaseInvalidationListenerCount();
         }
     }
 

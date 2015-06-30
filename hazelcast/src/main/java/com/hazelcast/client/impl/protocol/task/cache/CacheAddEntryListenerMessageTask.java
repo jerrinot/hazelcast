@@ -16,6 +16,7 @@
 
 package com.hazelcast.client.impl.protocol.task.cache;
 
+import com.hazelcast.cache.impl.CacheContext;
 import com.hazelcast.cache.impl.CacheEventData;
 import com.hazelcast.cache.impl.CacheEventListener;
 import com.hazelcast.cache.impl.CacheEventSet;
@@ -27,6 +28,9 @@ import com.hazelcast.client.impl.protocol.task.AbstractCallableMessageTask;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.nio.serialization.DefaultData;
+import com.hazelcast.spi.EventRegistration;
+import com.hazelcast.spi.impl.RegisterDeregisterAwareEventListener;
 import com.hazelcast.nio.serialization.impl.DefaultData;
 
 import java.security.Permission;
@@ -49,22 +53,49 @@ public class CacheAddEntryListenerMessageTask
     protected Object call() {
         final ClientEndpoint endpoint = getEndpoint();
         final CacheService service = getService(CacheService.SERVICE_NAME);
-        CacheEventListener entryListener = new CacheEventListener() {
-            @Override
-            public void handleEvent(Object eventObject) {
-                if (!endpoint.isAlive()) {
-                    return;
-                }
-                if (eventObject instanceof CacheEventSet) {
-                    CacheEventSet ces = (CacheEventSet) eventObject;
-                    Data partitionKey = getPartitionKey(eventObject);
-                    ClientMessage clientMessage = CacheAddEntryListenerCodec
-                            .encodeCacheEvent(ces.getEventType().getType(), ces.getEvents(), ces.getCompletionId());
-                    sendClientMessage(partitionKey, clientMessage);
-                }
+        final CacheContext cacheContext = service.getOrCreateCacheContext(parameters.name);
+        return service.registerListener(parameters.name, new CacheEntryListener(endpoint, cacheContext));
+    }
+
+    private final class CacheEntryListener
+            implements CacheEventListener,
+                       RegisterDeregisterAwareEventListener<CacheService> {
+
+        private final ClientEndpoint endpoint;
+        private final CacheContext cacheContext;
+
+        private CacheEntryListener(ClientEndpoint endpoint, CacheContext cacheContext) {
+            this.endpoint = endpoint;
+            this.cacheContext = cacheContext;
+        }
+
+        @Override
+        public void handleEvent(Object eventObject) {
+            if (!endpoint.isAlive()) {
+                return;
             }
-        };
-        return service.registerListener(parameters.name, entryListener);
+            if (eventObject instanceof CacheEventSet) {
+                CacheEventSet ces = (CacheEventSet) eventObject;
+                Data partitionKey = getPartitionKey(eventObject);
+                ClientMessage clientMessage =
+                        CacheAddEntryListenerCodec.
+                                encodeCacheEvent(ces.getEventType().getType(), ces.getEvents(), ces.getCompletionId());
+                sendClientMessage(partitionKey, clientMessage);
+            }
+        }
+
+        @Override
+        public void onRegister(CacheService service, String serviceName,
+                               String topic, EventRegistration registration) {
+            cacheContext.increaseCacheEntryListenerCount();
+        }
+
+        @Override
+        public void onDeregister(CacheService service, String serviceName,
+                                 String topic, EventRegistration registration) {
+            cacheContext.decreaseCacheEntryListenerCount();
+        }
+
     }
 
     private Data getPartitionKey(Object eventObject) {

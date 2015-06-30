@@ -26,6 +26,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.Packet;
 import com.hazelcast.nio.serialization.Data;
+import com.hazelcast.nio.serialization.SelfDataConvertable;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.InternalCompletableFuture;
@@ -354,7 +355,12 @@ public final class OperationServiceImpl implements InternalOperationService {
             throw new IllegalArgumentException("Target is this node! -> " + target + ", op: " + op);
         }
 
-        Data data = nodeEngine.toData(op);
+        Data data;
+        if (op instanceof SelfDataConvertable) {
+            data = ((SelfDataConvertable) op).toData(nodeEngine.getSerializationService());
+        } else {
+            data = nodeEngine.toData(op);
+        }
         int partitionId = op.getPartitionId();
         Packet packet = new Packet(data, partitionId);
         packet.setHeader(Packet.HEADER_OP);

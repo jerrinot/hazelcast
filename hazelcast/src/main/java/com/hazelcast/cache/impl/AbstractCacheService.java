@@ -54,8 +54,6 @@ public abstract class AbstractCacheService
     protected final ConcurrentMap<String, CacheContext> cacheContexes = new ConcurrentHashMap<String, CacheContext>();
     protected final ConcurrentMap<String, CacheStatisticsImpl> statistics = new ConcurrentHashMap<String, CacheStatisticsImpl>();
     protected final ConcurrentMap<String, Set<Closeable>> resources = new ConcurrentHashMap<String, Set<Closeable>>();
-    protected final ConcurrentMap<String, CacheEntryListener> cacheEntryListeners =
-            new ConcurrentHashMap<String, CacheEntryListener>();
     protected final ConcurrentMap<String, Closeable> closeableListeners = new ConcurrentHashMap<String, Closeable>();
     protected final ConcurrentMap<String, CacheOperationProvider> operationProviderCache =
             new ConcurrentHashMap<String, CacheOperationProvider>();
@@ -354,15 +352,6 @@ public abstract class AbstractCacheService
         final EventRegistration registration =
                 eventService.registerListener(AbstractCacheService.SERVICE_NAME, name, listener);
         final String id = registration.getId();
-        if (listener instanceof CacheEntryListenerProvider || listener instanceof CacheEntryListener) {
-            if (listener instanceof CacheEntryListener) {
-                cacheEntryListeners.put(id, (CacheEntryListener) listener);
-            } else {
-                cacheEntryListeners.put(id, ((CacheEntryListenerProvider) listener).getCacheEntryListener());
-            }
-            CacheContext cacheContext = getOrCreateCacheContext(name);
-            cacheContext.increaseCacheEntryListenerCount();
-        }
         if (listener instanceof Closeable) {
             closeableListeners.put(id, (Closeable) listener);
         } else if (listener instanceof CacheEntryListenerProvider) {
@@ -377,10 +366,6 @@ public abstract class AbstractCacheService
     @Override
     public boolean deregisterListener(String name, String registrationId) {
         final EventService eventService = getNodeEngine().getEventService();
-        if (cacheEntryListeners.remove(registrationId) != null) {
-            CacheContext cacheContext = getOrCreateCacheContext(name);
-            cacheContext.decreaseCacheEntryListenerCount();
-        }
         boolean result = eventService.deregisterListener(SERVICE_NAME, name, registrationId);
         Closeable listener = closeableListeners.remove(registrationId);
         if (listener != null) {
@@ -404,6 +389,7 @@ public abstract class AbstractCacheService
         eventService.deregisterAllListeners(AbstractCacheService.SERVICE_NAME, name);
         CacheContext cacheContext = getOrCreateCacheContext(name);
         cacheContext.resetCacheEntryListenerCount();
+        cacheContext.resetInvalidationListenerCount();
     }
 
     @Override
@@ -473,8 +459,6 @@ public abstract class AbstractCacheService
             throw new IllegalStateException("CacheConfig does not exist!!! name: " + name);
         }
         cacheConfig.addCacheEntryListenerConfiguration(cacheEntryListenerConfiguration);
-        CacheContext cacheContext = getOrCreateCacheContext(name);
-        cacheContext.increaseCacheEntryListenerCount();
     }
 
     public void cacheEntryListenerDeregistered(String name,
@@ -484,8 +468,6 @@ public abstract class AbstractCacheService
             throw new IllegalStateException("CacheConfig does not exist!!! name: " + name);
         }
         cacheConfig.removeCacheEntryListenerConfiguration(cacheEntryListenerConfiguration);
-        CacheContext cacheContext = getOrCreateCacheContext(name);
-        cacheContext.decreaseCacheEntryListenerCount();
     }
 
 }

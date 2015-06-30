@@ -40,7 +40,7 @@ import java.util.Arrays;
 
 import static com.hazelcast.spi.impl.OperationResponseHandlerFactory.createEmptyResponseHandler;
 
-public final class Backup extends Operation implements BackupOperation, IdentifiedDataSerializable {
+public class Backup extends Operation implements BackupOperation, IdentifiedDataSerializable {
 
     private Data backupOpData;
     private Address originalCaller;

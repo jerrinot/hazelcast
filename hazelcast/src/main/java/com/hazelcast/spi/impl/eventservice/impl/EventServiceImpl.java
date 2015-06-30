@@ -380,7 +380,7 @@ public class EventServiceImpl implements InternalEventService {
                     = new ConstructorFunction<String, EventServiceSegment>() {
                 @Override
                 public EventServiceSegment createNew(String key) {
-                    return new EventServiceSegment(key);
+                    return new EventServiceSegment(key, nodeEngine.getService(key));
                 }
             };
             return ConcurrencyUtil.getOrPutIfAbsent(segments, service, func);
@@ -422,7 +422,7 @@ public class EventServiceImpl implements InternalEventService {
         final Collection<Registration> registrations = new LinkedList<Registration>();
         for (EventServiceSegment segment : segments.values()) {
             //todo: this should be moved into the Segment.
-            for (Registration reg : segment.getRegistrationIdMap().values()) {
+            for (Registration reg : (Iterable<Registration>) segment.getRegistrationIdMap().values()) {
                 if (!reg.isLocalOnly()) {
                     registrations.add(reg);
                 }

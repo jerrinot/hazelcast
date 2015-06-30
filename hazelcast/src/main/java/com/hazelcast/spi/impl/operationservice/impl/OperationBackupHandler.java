@@ -23,6 +23,7 @@ import com.hazelcast.partition.InternalPartition;
 import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.BackupAwareOperation;
 import com.hazelcast.spi.Operation;
+import com.hazelcast.spi.SelfBackupProviderBackupOperation;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.operationservice.impl.operations.Backup;
 
@@ -176,9 +177,14 @@ final class OperationBackupHandler {
                              int replicaIndex, boolean isSyncBackup) {
         Operation op = (Operation) backupAwareOp;
         Operation backupOp = newBackupOperation(backupAwareOp, replicaIndex);
-        Data backupOpData = nodeEngine.getSerializationService().toData(backupOp);
-
-        Backup backup = new Backup(backupOpData, op.getCallerAddress(), replicaVersions, isSyncBackup);
+        Backup backup;
+        if (backupOp instanceof SelfBackupProviderBackupOperation) {
+            backup = ((SelfBackupProviderBackupOperation) backupOp).
+                        createBackup(nodeEngine, backupAwareOp, replicaVersions, replicaIndex, isSyncBackup);
+        } else {
+            Data backupOpData = nodeEngine.getSerializationService().toData(backupOp);
+            backup = new Backup(backupOpData, op.getCallerAddress(), replicaVersions, isSyncBackup);
+        }
         backup.setPartitionId(op.getPartitionId())
                 .setReplicaIndex(replicaIndex)
                 .setServiceName(op.getServiceName())

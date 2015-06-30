@@ -73,7 +73,7 @@ public class EventPacketProcessor implements StripedRunnable {
         }
 
         String id = eventPacket.getEventId();
-        Registration registration = segment.getRegistrationIdMap().get(id);
+        Registration registration = (Registration) segment.getRegistrationIdMap().get(id);
         if (registration == null) {
             if (eventService.nodeEngine.isActive()) {
                 if (eventService.logger.isFinestEnabled()) {

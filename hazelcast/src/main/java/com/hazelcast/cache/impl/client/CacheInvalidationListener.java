@@ -16,17 +16,24 @@
 
 package com.hazelcast.cache.impl.client;
 
+import com.hazelcast.cache.impl.CacheContext;
 import com.hazelcast.cache.impl.CacheEventListener;
+import com.hazelcast.cache.impl.CacheService;
 import com.hazelcast.client.ClientEndpoint;
+import com.hazelcast.spi.EventRegistration;
+import com.hazelcast.spi.impl.RegisterDeregisterAwareEventListener;
 
-public final class CacheInvalidationListener implements CacheEventListener {
+public final class CacheInvalidationListener
+        implements CacheEventListener, RegisterDeregisterAwareEventListener<CacheService> {
 
     private final ClientEndpoint endpoint;
     private final int callId;
+    private final CacheContext cacheContext;
 
-    public CacheInvalidationListener(ClientEndpoint endpoint, int callId) {
+    public CacheInvalidationListener(ClientEndpoint endpoint, int callId, CacheContext cacheContext) {
         this.endpoint = endpoint;
         this.callId = callId;
+        this.cacheContext = cacheContext;
     }
 
     @Override
@@ -37,6 +44,18 @@ public final class CacheInvalidationListener implements CacheEventListener {
                 endpoint.sendEvent(message.getName(), message, callId);
             }
         }
+    }
+
+    @Override
+    public void onRegister(CacheService cacheService, String serviceName,
+                           String topic, EventRegistration registration) {
+        cacheContext.increaseInvalidationListenerCount();
+    }
+
+    @Override
+    public void onDeregister(CacheService cacheService, String serviceName,
+                             String topic, EventRegistration registration) {
+        cacheContext.decreaseInvalidationListenerCount();
     }
 
 }
