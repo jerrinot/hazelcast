@@ -28,7 +28,7 @@ import com.hazelcast.spi.RemoteService;
 
 import java.util.Collection;
 
-public interface ICacheService extends ManagedService, RemoteService, // MigrationAwareService,
+public interface ICacheService extends ManagedService, RemoteService, MigrationAwareService,
             EventPublishingService<Object, CacheEventListener> {
 
     /**
