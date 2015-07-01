@@ -70,7 +70,7 @@ public abstract class AuthenticationBaseMessageTask<P>
     }
 
     private void handleEndpointNotCreatedConnectionNotAlive() {
-        logger.warning("Dropped: " + clientMessage + " -> endpoint not created for AuthenticationRequest, connection not alive");
+        logger.warning("Dropped clientMessage -> endpoint not created for AuthenticationRequest, connection not alive");
     }
 
     @Override

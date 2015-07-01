@@ -44,7 +44,6 @@ public abstract class AbstractMessageTask<P>
         implements MessageTask, SecureRequest {
 
     protected final P parameters;
-    protected final ClientMessage clientMessage;
 
     protected final Connection connection;
     protected final ClientEndpoint endpoint;
@@ -53,11 +52,12 @@ public abstract class AbstractMessageTask<P>
     protected final ILogger logger;
     protected final ClientEndpointManager endpointManager;
     protected final ClientEngineImpl clientEngine;
+    protected final int partitionId;
+    protected final int correlationId;
 
     private final Node node;
 
     protected AbstractMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
-        this.clientMessage = clientMessage;
         this.logger = node.getLogger(getClass());
         this.node = node;
         this.nodeEngine = node.nodeEngine;
@@ -67,6 +67,10 @@ public abstract class AbstractMessageTask<P>
         this.clientEngine = node.clientEngine;
         this.endpointManager = clientEngine.getEndpointManager();
         this.endpoint = getEndpoint();
+        this.partitionId = clientMessage.getPartitionId();
+        this.correlationId = clientMessage.getCorrelationId();
+
+        clientMessage.clearBuffer();
     }
 
     @SuppressWarnings("unchecked")
@@ -84,7 +88,7 @@ public abstract class AbstractMessageTask<P>
 
     @Override
     public int getPartitionId() {
-        return clientMessage.getPartitionId();
+        return partitionId;
     }
 
     @Override
@@ -129,7 +133,7 @@ public abstract class AbstractMessageTask<P>
         } else {
             exception = new HazelcastInstanceNotActiveException();
         }
-        endpoint.sendResponse(exception, clientMessage.getCorrelationId());
+        endpoint.sendResponse(exception, correlationId);
         endpointManager.removeEndpoint(endpoint);
     }
 
@@ -208,7 +212,7 @@ public abstract class AbstractMessageTask<P>
     }
 
     protected void sendClientMessage(ClientMessage resultClientMessage) {
-        resultClientMessage.setCorrelationId(clientMessage.getCorrelationId());
+        resultClientMessage.setCorrelationId(correlationId);
         resultClientMessage.addFlag(ClientMessage.BEGIN_AND_END_FLAGS);
         resultClientMessage.setVersion(ClientMessage.VERSION);
         final Connection connection = endpoint.getConnection();
