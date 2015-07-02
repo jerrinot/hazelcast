@@ -30,18 +30,21 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
 
     private static final int SYSTEM_STATE_CHECK_INTERVAL_IN_MSECS = 5000;
     private static final float PERCENTAGE = 100.0F;
-    private static final float MAJOR_GC_STW_TIME_PERCENTAGE_THRESHOLD = 10.0F;
 
     private final NodeEngineImpl nodeEngine;
     private final ExecutionService executionService;
     private final NodeExtension nodeExtension;
     private ScheduledFuture systemStateCheckerScheduler;
     private final SystemState systemState = new SystemState();
+    private final boolean enabled;
+    private final float gcStwPercentage;
 
     SystemActionAdviserImpl(NodeEngineImpl nodeEngine, ExecutionService executionService) {
         this.nodeEngine = nodeEngine;
         this.executionService = executionService;
         this.nodeExtension = nodeEngine.getNode().getNodeExtension();
+        this.enabled = nodeEngine.getGroupProperties().BACKPRESSURE_DYNAMIC_ENABLED.getBoolean();
+        this.gcStwPercentage = nodeEngine.getGroupProperties().BACKPRESSURE_DYNAMIC_GC_STW_PERCENTAGE.getInteger();
     }
 
     @Override
@@ -54,9 +57,9 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
         }
         if (systemState.prevUpdateTime > 0) {
             long updateTimeDiff = systemState.lastUpdateTime - systemState.prevUpdateTime;
-            long majorGcTimeDiff = systemState.lastMajorGcTime - systemState.prevMajorGcTime;
-            // Major GC time takes to much of total time, so sync backups should be forced.
-            if (((majorGcTimeDiff * PERCENTAGE) / updateTimeDiff) > MAJOR_GC_STW_TIME_PERCENTAGE_THRESHOLD) {
+            long totalGcTimeDiff = systemState.lastTotalGcTime - systemState.prevTotalGcTime;
+            // GC time takes to much of total time, so sync backups should be forced.
+            if (((totalGcTimeDiff * PERCENTAGE) / updateTimeDiff) > gcStwPercentage) {
                 return true;
             }
         }
@@ -65,13 +68,15 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
 
     @Override
     public void start() {
-        systemStateCheckerScheduler =
-                executionService.scheduleAtFixedRate(
-                        "SystemActionAdviser:systemStateChecker",
-                        new SystemStateChecker(),
-                        SYSTEM_STATE_CHECK_INTERVAL_IN_MSECS,
-                        SYSTEM_STATE_CHECK_INTERVAL_IN_MSECS,
-                        TimeUnit.MILLISECONDS);
+        if (enabled) {
+            systemStateCheckerScheduler =
+                    executionService.scheduleAtFixedRate(
+                            "SystemActionAdviser:systemStateChecker",
+                            new SystemStateChecker(),
+                            SYSTEM_STATE_CHECK_INTERVAL_IN_MSECS,
+                            SYSTEM_STATE_CHECK_INTERVAL_IN_MSECS,
+                            TimeUnit.MILLISECONDS);
+        }
     }
 
     @Override
@@ -90,12 +95,17 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
             long updateTime = Clock.currentTimeMillis();
             long minorGcTime = gcStats.getMinorCollectionTime();
             long majorGcTime = gcStats.getMajorCollectionTime();
+            long unknownGcTime = gcStats.getUnknownCollectionTime();
             systemState.prevUpdateTime = systemState.lastUpdateTime;
             systemState.prevMinorGcTime = systemState.lastMinorGcTime;
             systemState.prevMajorGcTime = systemState.lastMajorGcTime;
+            systemState.prevUnknownGcTime = systemState.lastUnknownGcTime;
+            systemState.prevTotalGcTime = systemState.lastTotalGcTime;
             systemState.lastUpdateTime = updateTime;
             systemState.lastMinorGcTime = minorGcTime;
             systemState.lastMajorGcTime = majorGcTime;
+            systemState.lastUnknownGcTime = unknownGcTime;
+            systemState.lastTotalGcTime = minorGcTime + majorGcTime + unknownGcTime;
         }
 
     }
@@ -105,9 +115,13 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
         private volatile long prevUpdateTime;
         private volatile long prevMinorGcTime;
         private volatile long prevMajorGcTime;
+        private volatile long prevUnknownGcTime;
+        private volatile long prevTotalGcTime;
         private volatile long lastUpdateTime;
         private volatile long lastMinorGcTime;
         private volatile long lastMajorGcTime;
+        private volatile long lastUnknownGcTime;
+        private volatile long lastTotalGcTime;
 
         @Override
         public String toString() {
@@ -115,9 +129,13 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
                      + "prevUpdateTime=" + prevUpdateTime
                      + ", prevMinorGcTime=" + prevMinorGcTime
                      + ", prevMajorGcTime=" + prevMajorGcTime
+                     + ", prevUnknownGcTime=" + prevUnknownGcTime
+                     + ", prevTotalGcTime=" + prevTotalGcTime
                      + ", lastUpdateTime=" + lastUpdateTime
-                     + ", lastMajorGcTime=" + lastMinorGcTime
+                     + ", lastMinorGcTime=" + lastMinorGcTime
                      + ", lastMajorGcTime=" + lastMajorGcTime
+                     + ", lastUnknownGcTime=" + lastUnknownGcTime
+                     + ", lastTotalGcTime=" + lastTotalGcTime
                      + '}';
         }
 
