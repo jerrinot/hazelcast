@@ -33,6 +33,7 @@ import com.hazelcast.quorum.impl.QuorumServiceImpl;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.PostJoinAwareService;
+import com.hazelcast.spi.SystemActionAdviser;
 import com.hazelcast.spi.impl.servicemanager.ServiceInfo;
 import com.hazelcast.spi.SharedService;
 import com.hazelcast.internal.storage.DataRef;
@@ -80,6 +81,7 @@ public class NodeEngineImpl implements NodeEngine {
     private final WanReplicationService wanReplicationService;
     private final PacketTransceiver packetTransceiver;
     private final QuorumServiceImpl quorumService;
+    private final SystemActionAdviser systemActionAdviser;
 
     public NodeEngineImpl(Node node) {
         this.node = node;
@@ -87,14 +89,15 @@ public class NodeEngineImpl implements NodeEngine {
         this.proxyService = new ProxyServiceImpl(this);
         this.serviceManager = new ServiceManagerImpl(this);
         this.executionService = new ExecutionServiceImpl(this);
-        this.operationService = new OperationServiceImpl(this);
+        this.systemActionAdviser = new SystemActionAdviserImpl(this, executionService);
+        this.operationService = new OperationServiceImpl(this, systemActionAdviser);
         this.eventService = new EventServiceImpl(this);
         this.waitNotifyService = new WaitNotifyServiceImpl(this);
         this.transactionManagerService = new TransactionManagerServiceImpl(this);
         this.wanReplicationService = node.getNodeExtension().createService(WanReplicationService.class);
         this.packetTransceiver = new PacketTransceiverImpl(
                 node, logger, operationService, eventService, wanReplicationService, executionService);
-        quorumService = new QuorumServiceImpl(this);
+        this.quorumService = new QuorumServiceImpl(this);
     }
 
     public PacketTransceiver getPacketTransceiver() {
@@ -104,6 +107,7 @@ public class NodeEngineImpl implements NodeEngine {
     public void start() {
         serviceManager.start();
         proxyService.init();
+        systemActionAdviser.start();
     }
 
     @Override
@@ -303,6 +307,11 @@ public class NodeEngineImpl implements NodeEngine {
         return node.getNodeExtension().getNativeDataStorage();
     }
 
+    @Override
+    public SystemActionAdviser getSystemActionAdviser() {
+        return systemActionAdviser;
+    }
+
     public void reset() {
         waitNotifyService.reset();
         operationService.reset();
@@ -317,5 +326,6 @@ public class NodeEngineImpl implements NodeEngine {
         operationService.shutdown();
         wanReplicationService.shutdown();
         executionService.shutdown();
+        systemActionAdviser.shutdown();
     }
 }

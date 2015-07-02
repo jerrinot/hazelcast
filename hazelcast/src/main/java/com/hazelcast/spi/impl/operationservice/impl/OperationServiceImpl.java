@@ -34,6 +34,7 @@ import com.hazelcast.spi.InvocationBuilder;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationFactory;
 import com.hazelcast.spi.OperationService;
+import com.hazelcast.spi.SystemActionAdviser;
 import com.hazelcast.spi.UrgentSystemOperation;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.PartitionSpecificRunnable;
@@ -104,7 +105,7 @@ public final class OperationServiceImpl implements InternalOperationService {
     private final SlowOperationDetector slowOperationDetector;
     private final IsStillRunningService isStillRunningService;
 
-    public OperationServiceImpl(NodeEngineImpl nodeEngine) {
+    public OperationServiceImpl(NodeEngineImpl nodeEngine, SystemActionAdviser systemActionAdviser) {
         this.nodeEngine = nodeEngine;
         this.node = nodeEngine.getNode();
         this.logger = node.getLogger(OperationService.class);
@@ -119,7 +120,7 @@ public final class OperationServiceImpl implements InternalOperationService {
         int concurrencyLevel = reallyMultiCore ? coreSize * CORE_SIZE_FACTOR : CONCURRENCY_LEVEL;
 
         this.invocationsRegistry = new InvocationRegistry(nodeEngine, logger, backpressureRegulator, concurrencyLevel);
-        this.operationBackupHandler = new OperationBackupHandler(this);
+        this.operationBackupHandler = new OperationBackupHandler(this, systemActionAdviser);
 
         this.operationExecutor = new ClassicOperationExecutor(
                 groupProperties,

@@ -24,6 +24,7 @@ import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.spi.BackupAwareOperation;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.SelfBackupProviderBackupOperation;
+import com.hazelcast.spi.SystemActionAdviser;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.operationservice.impl.operations.Backup;
 
@@ -40,12 +41,14 @@ final class OperationBackupHandler {
     private final OperationServiceImpl operationService;
     private final NodeEngineImpl nodeEngine;
     private final BackpressureRegulator backpressureRegulator;
+    private final SystemActionAdviser systemActionAdviser;
 
-    public OperationBackupHandler(OperationServiceImpl operationService) {
+    public OperationBackupHandler(OperationServiceImpl operationService, SystemActionAdviser systemActionAdviser) {
         this.operationService = operationService;
         this.node = operationService.node;
         this.nodeEngine = operationService.nodeEngine;
         this.backpressureRegulator = operationService.backpressureRegulator;
+        this.systemActionAdviser = systemActionAdviser;
     }
 
     public int backup(BackupAwareOperation backupAwareOp) throws Exception {
@@ -61,7 +64,8 @@ final class OperationBackupHandler {
         long[] replicaVersions = partitionService.incrementPartitionReplicaVersions(op.getPartitionId(),
                 requestedTotalBackups);
 
-        boolean syncForced = backpressureRegulator.isSyncForced(backupAwareOp);
+        boolean syncForced =
+                systemActionAdviser.shouldForceSyncBackups() || backpressureRegulator.isSyncForced(backupAwareOp);
 
         int syncBackups = syncBackups(requestedSyncBackups, requestedAsyncBackups, syncForced);
         int asyncBackups = asyncBackups(requestedSyncBackups, requestedAsyncBackups, syncForced);

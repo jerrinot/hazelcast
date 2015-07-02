@@ -249,4 +249,7 @@ public interface NodeEngine {
      * @return the offheap storage.
      */
     Storage<DataRef> getOffHeapStorage();
+
+    SystemActionAdviser getSystemActionAdviser();
+
 }
