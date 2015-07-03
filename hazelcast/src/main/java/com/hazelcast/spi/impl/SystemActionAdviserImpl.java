@@ -49,6 +49,9 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
 
     @Override
     public boolean shouldForceSyncBackups() {
+        if (!enabled) {
+            return false;
+        }
         long now = Clock.currentTimeMillis();
         // System is under high load so system state cannot be updated in time.
         // So sync backups should be forced.
