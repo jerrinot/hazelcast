@@ -350,11 +350,17 @@ public class GroupProperties {
     public static final String PROP_BACKPRESSURE_MAX_CONCURRENT_INVOCATIONS_PER_PARTITION
             = "hazelcast.backpressure.max.concurrent.invocations.per.partition";
 
-    public static final String PROP_BACKPRESSURE_DYNAMIC_ENABLED
-            = "hazelcast.backpressure.dynamic.enabled";
+    public static final String PROP_SYSTEM_ADVISER_ENABLED
+            = "hazelcast.system.adviser.enabled";
 
-    public static final String PROP_BACKPRESSURE_DYNAMIC_GC_STW_PERCENTAGE
-            = "hazelcast.backpressure.dynamic.gc.stw.percentage";
+    public static final String PROP_SYSTEM_ADVISER_CHECK_FREQUENCY_SECONDS
+            = "hazelcast.system.adviser.check.freq.seconds";
+
+    public static final String PROP_SYSTEM_ADVISER_GC_STW_PERCENTAGE
+            = "hazelcast.system.adviser.gc.stw.percentage";
+
+    public static final String PROP_SYSTEM_ADVISER_GC_STW_DELTA
+            = "hazelcast.system.adviser.gc.stw.delta";
 
     /**
      * Run Query Evaluations for multiple partitions in parallel.
@@ -597,8 +603,11 @@ public class GroupProperties {
     public final GroupProperty BACKPRESSURE_SYNCWINDOW;
     public final GroupProperty BACKPRESSURE_BACKOFF_TIMEOUT_MILLIS;
     public final GroupProperty BACKPRESSURE_MAX_CONCURRENT_INVOCATIONS_PER_PARTITION;
-    public final GroupProperty BACKPRESSURE_DYNAMIC_ENABLED;
-    public final GroupProperty BACKPRESSURE_DYNAMIC_GC_STW_PERCENTAGE;
+
+    public final GroupProperty SYSTEM_ADVISER_ENABLED;
+    public final GroupProperty SYSTEM_ADVISER_CHECK_FREQUENCY_SECONDS;
+    public final GroupProperty SYSTEM_ADVISER_GC_STW_PERCENTAGE;
+    public final GroupProperty SYSTEM_ADVISER_GC_STW_DELTA;
 
     public final GroupProperty QUERY_RESULT_SIZE_LIMIT;
     public final GroupProperty QUERY_MAX_LOCAL_PARTITION_LIMIT_FOR_PRE_CHECK;
@@ -732,10 +741,15 @@ public class GroupProperties {
                 = new GroupProperty(config, PROP_BACKPRESSURE_MAX_CONCURRENT_INVOCATIONS_PER_PARTITION, "100");
         BACKPRESSURE_BACKOFF_TIMEOUT_MILLIS
                 = new GroupProperty(config, PROP_BACKPRESSURE_BACKOFF_TIMEOUT_MILLIS, "60000");
-        BACKPRESSURE_DYNAMIC_ENABLED
-                = new GroupProperty(config, PROP_BACKPRESSURE_DYNAMIC_ENABLED, "false");
-        BACKPRESSURE_DYNAMIC_GC_STW_PERCENTAGE
-                = new GroupProperty(config, PROP_BACKPRESSURE_DYNAMIC_GC_STW_PERCENTAGE, "10");
+
+        SYSTEM_ADVISER_ENABLED
+                = new GroupProperty(config, PROP_SYSTEM_ADVISER_ENABLED, "false");
+        SYSTEM_ADVISER_CHECK_FREQUENCY_SECONDS
+                = new GroupProperty(config, PROP_SYSTEM_ADVISER_CHECK_FREQUENCY_SECONDS, "5");
+        SYSTEM_ADVISER_GC_STW_PERCENTAGE
+                = new GroupProperty(config, PROP_SYSTEM_ADVISER_GC_STW_PERCENTAGE, "10");
+        SYSTEM_ADVISER_GC_STW_DELTA
+                = new GroupProperty(config, PROP_SYSTEM_ADVISER_GC_STW_DELTA, "5");
 
         QUERY_RESULT_SIZE_LIMIT = new GroupProperty(config, PROP_QUERY_RESULT_SIZE_LIMIT, "-1");
         QUERY_MAX_LOCAL_PARTITION_LIMIT_FOR_PRE_CHECK
@@ -796,6 +810,14 @@ public class GroupProperties {
 
         public long getLong() {
             return Long.parseLong(this.value);
+        }
+
+        public float getFloat() {
+            return Float.parseFloat(this.value);
+        }
+
+        public double getDouble() {
+            return Double.parseDouble(this.value);
         }
 
         @Override

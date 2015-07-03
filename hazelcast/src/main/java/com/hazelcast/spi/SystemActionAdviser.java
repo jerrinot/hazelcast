@@ -18,6 +18,8 @@ package com.hazelcast.spi;
 
 public interface SystemActionAdviser {
 
+    boolean isSystemStateOK();
+
     boolean shouldForceSyncBackups();
 
     void start();

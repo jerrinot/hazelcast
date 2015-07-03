@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 
 class SystemActionAdviserImpl implements SystemActionAdviser {
 
-    private static final int SYSTEM_STATE_CHECK_INTERVAL_IN_MSECS = 5000;
     private static final float PERCENTAGE = 100.0F;
 
     private final NodeEngineImpl nodeEngine;
@@ -37,14 +36,26 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
     private ScheduledFuture systemStateCheckerScheduler;
     private final SystemState systemState = new SystemState();
     private final boolean enabled;
+    private final int checkFreqSeconds;
     private final float gcStwPercentage;
+    private final float gcStwDelta;
 
     SystemActionAdviserImpl(NodeEngineImpl nodeEngine, ExecutionService executionService) {
         this.nodeEngine = nodeEngine;
         this.executionService = executionService;
         this.nodeExtension = nodeEngine.getNode().getNodeExtension();
-        this.enabled = nodeEngine.getGroupProperties().BACKPRESSURE_DYNAMIC_ENABLED.getBoolean();
-        this.gcStwPercentage = nodeEngine.getGroupProperties().BACKPRESSURE_DYNAMIC_GC_STW_PERCENTAGE.getInteger();
+        this.enabled = nodeEngine.getGroupProperties().SYSTEM_ADVISER_ENABLED.getBoolean();
+        this.checkFreqSeconds = nodeEngine.getGroupProperties().SYSTEM_ADVISER_CHECK_FREQUENCY_SECONDS.getInteger();
+        this.gcStwPercentage = nodeEngine.getGroupProperties().SYSTEM_ADVISER_GC_STW_PERCENTAGE.getFloat();
+        this.gcStwDelta = nodeEngine.getGroupProperties().SYSTEM_ADVISER_GC_STW_DELTA.getFloat();
+    }
+
+    @Override
+    public boolean isSystemStateOK() {
+        if (!enabled) {
+            return true;
+        }
+        return checkSystemState();
     }
 
     @Override
@@ -52,21 +63,29 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
         if (!enabled) {
             return false;
         }
+        return !checkSystemState();
+    }
+
+    protected boolean checkSystemState() {
         long now = Clock.currentTimeMillis();
-        // System is under high load so system state cannot be updated in time.
-        // So sync backups should be forced.
-        if (now - systemState.lastUpdateTime > (2 * SYSTEM_STATE_CHECK_INTERVAL_IN_MSECS + 1000)) {
-            return true;
+        // System is under high load and system state cannot be updated in time.
+        // So this means that system state is NOT OK.
+        if (now - systemState.lastUpdateTime > ((2 * checkFreqSeconds + 1) * 1000)) {
+            systemState.ok = false;
         }
-        if (systemState.prevUpdateTime > 0) {
-            long updateTimeDiff = systemState.lastUpdateTime - systemState.prevUpdateTime;
-            long totalGcTimeDiff = systemState.lastTotalGcTime - systemState.prevTotalGcTime;
-            // GC time takes to much of total time, so sync backups should be forced.
-            if (((totalGcTimeDiff * PERCENTAGE) / updateTimeDiff) > gcStwPercentage) {
-                return true;
-            }
+        return systemState.ok;
+    }
+
+    protected void updateSystemState() {
+        long updateTimeDiff = systemState.lastUpdateTime - systemState.prevUpdateTime;
+        long totalGcTimeDiff = systemState.lastTotalGcTime - systemState.prevTotalGcTime;
+        if (((totalGcTimeDiff * PERCENTAGE) / updateTimeDiff) > gcStwPercentage + gcStwDelta) {
+            // GC STW takes more time then threshold, so system state is NOT OK
+            systemState.ok = false;
+        } else if (((totalGcTimeDiff * PERCENTAGE) / updateTimeDiff) < gcStwPercentage - gcStwDelta) {
+            // GC STW takes less time then threshold, so system state is OK
+            systemState.ok = true;
         }
-        return false;
     }
 
     @Override
@@ -76,9 +95,9 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
                     executionService.scheduleAtFixedRate(
                             "SystemActionAdviser:systemStateChecker",
                             new SystemStateChecker(),
-                            SYSTEM_STATE_CHECK_INTERVAL_IN_MSECS,
-                            SYSTEM_STATE_CHECK_INTERVAL_IN_MSECS,
-                            TimeUnit.MILLISECONDS);
+                            checkFreqSeconds,
+                            checkFreqSeconds,
+                            TimeUnit.SECONDS);
         }
     }
 
@@ -109,6 +128,8 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
             systemState.lastMajorGcTime = majorGcTime;
             systemState.lastUnknownGcTime = unknownGcTime;
             systemState.lastTotalGcTime = minorGcTime + majorGcTime + unknownGcTime;
+
+            updateSystemState();
         }
 
     }
@@ -125,6 +146,7 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
         private volatile long lastMajorGcTime;
         private volatile long lastUnknownGcTime;
         private volatile long lastTotalGcTime;
+        private volatile boolean ok = true;
 
         @Override
         public String toString() {
@@ -139,6 +161,7 @@ class SystemActionAdviserImpl implements SystemActionAdviser {
                      + ", lastMajorGcTime=" + lastMajorGcTime
                      + ", lastUnknownGcTime=" + lastUnknownGcTime
                      + ", lastTotalGcTime=" + lastTotalGcTime
+                     + ", ok=" + ok
                      + '}';
         }
 
