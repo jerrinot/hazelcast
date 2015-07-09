@@ -46,6 +46,7 @@ import com.hazelcast.spi.impl.operationexecutor.slowoperationdetector.SlowOperat
 import com.hazelcast.spi.impl.operationservice.InternalOperationService;
 import com.hazelcast.spi.impl.operationservice.impl.responses.Response;
 import com.hazelcast.util.EmptyStatement;
+import com.hazelcast.util.SamplingLogger;
 import com.hazelcast.util.counters.MwCounter;
 import com.hazelcast.util.executor.ExecutorType;
 import com.hazelcast.util.executor.ManagedExecutorService;
@@ -57,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
 
 import static com.hazelcast.spi.InvocationBuilder.DEFAULT_CALL_TIMEOUT;
 import static com.hazelcast.spi.InvocationBuilder.DEFAULT_DESERIALIZE_RESULT;
@@ -119,10 +121,13 @@ public final class OperationServiceImpl implements InternalOperationService {
     private final SlowOperationDetector slowOperationDetector;
     private final IsStillRunningService isStillRunningService;
 
+    private final SamplingLogger samplingLogger;
+
     public OperationServiceImpl(NodeEngineImpl nodeEngine, SystemActionAdviser systemActionAdviser) {
         this.nodeEngine = nodeEngine;
         this.node = nodeEngine.getNode();
         this.logger = node.getLogger(OperationService.class);
+        this.samplingLogger = new SamplingLogger(logger, 200);
         this.metricsRegistry = nodeEngine.getMetricsRegistry();
 
         this.invocationLogger = nodeEngine.getLogger(Invocation.class);
@@ -373,6 +378,7 @@ public final class OperationServiceImpl implements InternalOperationService {
         packet.setHeader(Packet.HEADER_OP);
 
         if (op instanceof UrgentSystemOperation) {
+            samplingLogger.log(Level.WARNING, "Scheduling urgent operation " + op + " to be sent to " + target);
             packet.setHeader(Packet.HEADER_URGENT);
         }
 
@@ -396,6 +402,7 @@ public final class OperationServiceImpl implements InternalOperationService {
         packet.setHeader(Packet.HEADER_RESPONSE);
 
         if (response.isUrgent()) {
+            samplingLogger.log(Level.WARNING, "Scheduling urgent response " + response + " to be sent to " + target);
             packet.setHeader(Packet.HEADER_URGENT);
         }
 
