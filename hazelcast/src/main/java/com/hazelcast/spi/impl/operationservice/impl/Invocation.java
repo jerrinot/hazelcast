@@ -22,6 +22,8 @@ import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
+import com.hazelcast.nio.Connection;
+import com.hazelcast.nio.ConnectionManager;
 import com.hazelcast.partition.InternalPartition;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.ExecutionService;
@@ -49,12 +51,12 @@ import static com.hazelcast.spi.ExecutionService.ASYNC_EXECUTOR;
 import static com.hazelcast.spi.OperationAccessor.setCallTimeout;
 import static com.hazelcast.spi.OperationAccessor.setCallerAddress;
 import static com.hazelcast.spi.OperationAccessor.setInvocationTime;
-import static com.hazelcast.spi.impl.operationutil.Operations.isJoinOperation;
-import static com.hazelcast.spi.impl.operationutil.Operations.isMigrationOperation;
-import static com.hazelcast.spi.impl.operationutil.Operations.isWanReplicationOperation;
 import static com.hazelcast.spi.impl.operationservice.impl.InternalResponse.INTERRUPTED_RESPONSE;
 import static com.hazelcast.spi.impl.operationservice.impl.InternalResponse.NULL_RESPONSE;
 import static com.hazelcast.spi.impl.operationservice.impl.InternalResponse.WAIT_RESPONSE;
+import static com.hazelcast.spi.impl.operationutil.Operations.isJoinOperation;
+import static com.hazelcast.spi.impl.operationutil.Operations.isMigrationOperation;
+import static com.hazelcast.spi.impl.operationutil.Operations.isWanReplicationOperation;
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.util.logging.Level.WARNING;
@@ -418,6 +420,8 @@ abstract class Invocation implements OperationResponseHandler, Runnable {
     @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "VO_VOLATILE_INCREMENT",
             justification = "We have the guarantee that only a single thread at any given time can change the volatile field")
     void notifyCallTimeout() {
+        operationService.callTimeoutCount.inc();
+
         if (logger.isFinestEnabled()) {
             logger.finest("Call timed-out during wait-notify phase, retrying call: " + toString());
         }
@@ -478,6 +482,8 @@ abstract class Invocation implements OperationResponseHandler, Runnable {
     }
 
     Object newOperationTimeoutException(long totalTimeoutMs) {
+        operationService.operationTimeoutCount.inc();
+
         boolean hasResponse = this.pendingResponse != null;
         int backupsExpected = this.backupsExpected;
         int backupsCompleted = this.backupsCompleted;
@@ -502,6 +508,8 @@ abstract class Invocation implements OperationResponseHandler, Runnable {
     }
 
     private void handleRetry(Object cause) {
+        operationService.retryCount.inc();
+
         if (invokeCount > LOG_MAX_INVOCATION_COUNT && invokeCount % LOG_INVOCATION_COUNT_MOD == 0) {
             if (logger.isLoggable(WARNING)) {
                 logger.warning("Retrying invocation: " + toString() + ", Reason: " + cause);
@@ -573,6 +581,14 @@ abstract class Invocation implements OperationResponseHandler, Runnable {
 
     @Override
     public String toString() {
+        String connectionStr = null;
+        Address invTarget = this.invTarget;
+        if (invTarget != null) {
+            ConnectionManager connectionManager = operationService.nodeEngine.getNode().getConnectionManager();
+            Connection connection = connectionManager.getConnection(invTarget);
+            connectionStr = connection == null ? null : connection.toString();
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append("Invocation");
         sb.append("{ serviceName='").append(serviceName).append('\'');
@@ -586,6 +602,7 @@ abstract class Invocation implements OperationResponseHandler, Runnable {
         sb.append(", target=").append(invTarget);
         sb.append(", backupsExpected=").append(backupsExpected);
         sb.append(", backupsCompleted=").append(backupsCompleted);
+        sb.append(", connection=").append(connectionStr);
         sb.append('}');
         return sb.toString();
     }

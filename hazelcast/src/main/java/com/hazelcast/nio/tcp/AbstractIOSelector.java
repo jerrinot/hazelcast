@@ -17,6 +17,7 @@
 package com.hazelcast.nio.tcp;
 
 import com.hazelcast.core.HazelcastException;
+import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 
@@ -33,9 +34,10 @@ public abstract class AbstractIOSelector extends Thread implements IOSelector {
     private static final int SELECT_WAIT_TIME_MILLIS = 5000;
     private static final int SELECT_FAILURE_PAUSE_MILLIS = 1000;
 
-    private final ILogger logger;
+    @Probe(name = "selectorQueueSize")
+    protected final Queue<Runnable> selectorQueue = new ConcurrentLinkedQueue<Runnable>();
 
-    private final Queue<Runnable> selectorQueue = new ConcurrentLinkedQueue<Runnable>();
+    private final ILogger logger;
 
     private final int waitTime;
 
@@ -45,6 +47,8 @@ public abstract class AbstractIOSelector extends Thread implements IOSelector {
 
     // field doesn't need to be volatile, is only accessed by the IOSelector-thread.
     private boolean running = true;
+
+    private volatile long lastSelectTimeMs;
 
     public AbstractIOSelector(ThreadGroup threadGroup, String threadName, ILogger logger,
                               IOSelectorOutOfMemoryHandler oomeHandler) {
@@ -85,6 +89,12 @@ public abstract class AbstractIOSelector extends Thread implements IOSelector {
     public final void addTaskAndWakeup(Runnable task) {
         selectorQueue.add(task);
         selector.wakeup();
+    }
+
+    // shows how long this probe has been idle.
+    @Probe
+    private long idleTime() {
+        return Math.max(System.currentTimeMillis() - lastSelectTimeMs, 0);
     }
 
     private void processSelectionQueue() {
@@ -131,6 +141,8 @@ public abstract class AbstractIOSelector extends Thread implements IOSelector {
 
                 try {
                     int selectedKeyCount = selector.select(waitTime);
+                    lastSelectTimeMs = System.currentTimeMillis();
+
                     if (selectedKeyCount == 0) {
                         continue;
                     }

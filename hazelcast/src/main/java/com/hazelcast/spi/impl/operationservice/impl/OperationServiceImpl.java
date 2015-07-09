@@ -21,6 +21,8 @@ import com.hazelcast.instance.GroupProperties;
 import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.instance.Node;
 import com.hazelcast.internal.management.dto.SlowOperationDTO;
+import com.hazelcast.internal.metrics.MetricsRegistry;
+import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.Connection;
@@ -44,6 +46,7 @@ import com.hazelcast.spi.impl.operationexecutor.slowoperationdetector.SlowOperat
 import com.hazelcast.spi.impl.operationservice.InternalOperationService;
 import com.hazelcast.spi.impl.operationservice.impl.responses.Response;
 import com.hazelcast.util.EmptyStatement;
+import com.hazelcast.util.counters.MwCounter;
 import com.hazelcast.util.executor.ExecutorType;
 import com.hazelcast.util.executor.ManagedExecutorService;
 
@@ -60,7 +63,6 @@ import static com.hazelcast.spi.InvocationBuilder.DEFAULT_DESERIALIZE_RESULT;
 import static com.hazelcast.spi.InvocationBuilder.DEFAULT_REPLICA_INDEX;
 import static com.hazelcast.spi.InvocationBuilder.DEFAULT_TRY_COUNT;
 import static com.hazelcast.spi.InvocationBuilder.DEFAULT_TRY_PAUSE_MILLIS;
-import static java.lang.String.format;
 
 /**
  * This is the implementation of the {@link com.hazelcast.spi.impl.operationservice.InternalOperationService}.
@@ -93,9 +95,21 @@ public final class OperationServiceImpl implements InternalOperationService {
     final OperationExecutor operationExecutor;
     final ILogger invocationLogger;
     final ManagedExecutorService asyncExecutor;
-    final AtomicLong executedOperationsCount = new AtomicLong();
+
+    @Probe(name = "completed.count")
+    final AtomicLong completedOperationsCount = new AtomicLong();
+
+    @Probe(name = "operationTimeoutCount")
+    final MwCounter operationTimeoutCount = MwCounter.newMwCounter();
+
+    @Probe(name = "callTimeoutCount")
+    final MwCounter callTimeoutCount = MwCounter.newMwCounter();
+
+    @Probe(name = "retryCount")
+    final MwCounter retryCount = MwCounter.newMwCounter();
 
     final NodeEngineImpl nodeEngine;
+    final MetricsRegistry metricsRegistry;
     final Node node;
     final ILogger logger;
     final OperationBackupHandler operationBackupHandler;
@@ -109,6 +123,8 @@ public final class OperationServiceImpl implements InternalOperationService {
         this.nodeEngine = nodeEngine;
         this.node = nodeEngine.getNode();
         this.logger = node.getLogger(OperationService.class);
+        this.metricsRegistry = nodeEngine.getMetricsRegistry();
+
         this.invocationLogger = nodeEngine.getLogger(Invocation.class);
         GroupProperties groupProperties = node.getGroupProperties();
         this.defaultCallTimeoutMillis = groupProperties.OPERATION_CALL_TIMEOUT_MILLIS.getLong();
@@ -129,7 +145,8 @@ public final class OperationServiceImpl implements InternalOperationService {
                 new OperationRunnerFactoryImpl(this),
                 new ResponsePacketHandlerImpl(this),
                 node.getHazelcastThreadGroup(),
-                node.getNodeExtension()
+                node.getNodeExtension(),
+                metricsRegistry
         );
 
         this.isStillRunningService = new IsStillRunningService(operationExecutor, nodeEngine, logger);
@@ -139,6 +156,8 @@ public final class OperationServiceImpl implements InternalOperationService {
                 ASYNC_QUEUE_CAPACITY, ExecutorType.CONCRETE);
 
         this.slowOperationDetector = initSlowOperationDetector();
+
+        nodeEngine.getMetricsRegistry().scanAndRegister(this, "operation");
     }
 
     private SlowOperationDetector initSlowOperationDetector() {
@@ -155,13 +174,6 @@ public final class OperationServiceImpl implements InternalOperationService {
 
     @Override
     public void dumpPerformanceMetrics(StringBuffer sb) {
-        sb.append("invocationsPending=")
-                .append(invocationsRegistry.getInvocationUsagePercentage()).append('\n');
-        sb.append("invocationsUsed=")
-                .append(format("%.2f", invocationsRegistry.getInvocationUsagePercentage())).append("%\n");
-        sb.append("invocationsMax=")
-                .append(backpressureRegulator.getMaxConcurrentInvocations()).append('\n');
-        operationExecutor.dumpPerformanceMetrics(sb);
     }
 
     @Override
@@ -174,16 +186,6 @@ public final class OperationServiceImpl implements InternalOperationService {
     }
 
     @Override
-    public int getPendingInvocationCount() {
-        return invocationsRegistry.size();
-    }
-
-    @Override
-    public double getInvocationUsagePercentage() {
-        return invocationsRegistry.getInvocationUsagePercentage();
-    }
-
-    @Override
     public int getPartitionOperationThreadCount() {
         return operationExecutor.getPartitionOperationThreadCount();
     }
@@ -193,6 +195,7 @@ public final class OperationServiceImpl implements InternalOperationService {
         return operationExecutor.getGenericOperationThreadCount();
     }
 
+    @Probe(name = "running.count")
     @Override
     public int getRunningOperationsCount() {
         return operationExecutor.getRunningOperationCount();
@@ -200,7 +203,7 @@ public final class OperationServiceImpl implements InternalOperationService {
 
     @Override
     public long getExecutedOperationCount() {
-        return executedOperationsCount.get();
+        return completedOperationsCount.get();
     }
 
     @Override
@@ -208,16 +211,19 @@ public final class OperationServiceImpl implements InternalOperationService {
         return invocationsRegistry.size();
     }
 
+    @Probe(name = "response-queue.size")
     @Override
     public int getResponseQueueSize() {
         return operationExecutor.getResponseQueueSize();
     }
 
+    @Probe(name = "queue.size")
     @Override
     public int getOperationExecutorQueueSize() {
         return operationExecutor.getOperationExecutorQueueSize();
     }
 
+    @Probe(name = "priority-queue.size")
     @Override
     public int getPriorityOperationExecutorQueueSize() {
         return operationExecutor.getPriorityOperationExecutorQueueSize();

@@ -19,6 +19,7 @@ package com.hazelcast.spi.impl.operationexecutor.classic;
 import com.hazelcast.instance.GroupProperties;
 import com.hazelcast.instance.HazelcastThreadGroup;
 import com.hazelcast.instance.NodeExtension;
+import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingService;
 import com.hazelcast.nio.Address;
@@ -78,6 +79,7 @@ public final class ClassicOperationExecutor implements OperationExecutor {
     private final NodeExtension nodeExtension;
     private final HazelcastThreadGroup threadGroup;
     private final OperationRunner adHocOperationRunner;
+    private final MetricsRegistry metricsRegistry;
 
     public ClassicOperationExecutor(GroupProperties properties,
                                     LoggingService loggerService,
@@ -85,10 +87,12 @@ public final class ClassicOperationExecutor implements OperationExecutor {
                                     OperationRunnerFactory operationRunnerFactory,
                                     ResponsePacketHandler responsePacketHandler,
                                     HazelcastThreadGroup hazelcastThreadGroup,
-                                    NodeExtension nodeExtension) {
+                                    NodeExtension nodeExtension,
+                                    MetricsRegistry metricsRegistry) {
         this.thisAddress = thisAddress;
         this.nodeExtension = nodeExtension;
         this.threadGroup = hazelcastThreadGroup;
+        this.metricsRegistry = metricsRegistry;
         this.logger = loggerService.getLogger(ClassicOperationExecutor.class);
         this.responsePacketHandler = responsePacketHandler;
         this.genericScheduleQueue = new DefaultScheduleQueue();
@@ -105,6 +109,10 @@ public final class ClassicOperationExecutor implements OperationExecutor {
 
         logger.info("Starting with " + genericOperationThreads.length + " generic operation threads and "
                 + partitionOperationThreads.length + " partition operation threads.");
+    }
+
+    private void registerThreadSensors(OperationThread operationThread) {
+
     }
 
     private OperationRunner[] initPartitionOperationRunners(GroupProperties properties, OperationRunnerFactory handlerFactory) {
@@ -148,6 +156,8 @@ public final class ClassicOperationExecutor implements OperationExecutor {
 
             threads[threadId] = operationThread;
             operationThread.start();
+
+            metricsRegistry.scanAndRegister(operationThread, "operation." + operationThread.getName());
         }
 
         // we need to assign the PartitionOperationThreads to all OperationRunners they own
@@ -178,6 +188,8 @@ public final class ClassicOperationExecutor implements OperationExecutor {
             operationThread.start();
 
             operationRunner.setCurrentThread(operationThread);
+
+            metricsRegistry.scanAndRegister(operationThread, "operation." + operationThread.getName());
         }
 
         return threads;
@@ -445,24 +457,6 @@ public final class ClassicOperationExecutor implements OperationExecutor {
                 Thread.currentThread().interrupt();
             }
         }
-    }
-
-    @Override
-    public void dumpPerformanceMetrics(StringBuffer sb) {
-        for (PartitionOperationThread operationThread : partitionOperationThreads) {
-            sb.append(operationThread.getName())
-                    .append(" processedCount=").append(operationThread.processedCount)
-                    .append(" pendingCount=").append(operationThread.scheduleQueue.size())
-                    .append('\n');
-        }
-        sb.append("pending generic operations ").append(genericScheduleQueue.size()).append('\n');
-        for (GenericOperationThread operationThread : genericOperationThreads) {
-            sb.append(operationThread.getName())
-                    .append(" processedCount=").append(operationThread.processedCount).append('\n');
-        }
-        sb.append(responseThread.getName())
-                .append(" processedCount=").append(responseThread.processedResponses)
-                .append(" pendingCount=").append(responseThread.workQueue.size()).append('\n');
     }
 
     @Override
