@@ -2,7 +2,6 @@ package com.hazelcast.client.impl.protocol.util;
 
 import com.hazelcast.nio.Bits;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.nio.serialization.DefaultData;
 import com.hazelcast.nio.serialization.DisposableData;
 import com.hazelcast.nio.serialization.SelfWritableData;
 import com.hazelcast.nio.serialization.impl.DefaultData;

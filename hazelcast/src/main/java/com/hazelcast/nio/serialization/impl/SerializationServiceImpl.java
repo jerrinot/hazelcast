@@ -271,9 +271,8 @@ public class SerializationServiceImpl implements SerializationService {
         return partitionHash;
     }
 
-    public <T> T toObject(final Object object) {
     @Override
-    public final <T> T toObject(final Object object) {
+    public <T> T toObject(final Object object) {
         if (!(object instanceof Data)) {
             return (T) object;
         }
