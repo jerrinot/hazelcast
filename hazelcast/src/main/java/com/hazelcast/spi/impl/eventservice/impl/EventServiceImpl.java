@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -78,6 +79,11 @@ public class EventServiceImpl implements InternalEventService {
     private final ConcurrentMap<String, EventServiceSegment> segments;
     private final StripedExecutor eventExecutor;
     private final int eventQueueTimeoutMs;
+
+    // TODO Get through group property
+    private final boolean batchLocalEventDispatchEnabled =
+            Boolean.getBoolean("hazelcast.event.batchLocalEventDispatch.enabled");
+    
     private final int eventThreadCount;
     private final int eventQueueCapacity;
     private final AtomicLong totalFailures = new AtomicLong();
@@ -294,20 +300,40 @@ public class EventServiceImpl implements InternalEventService {
     @Override
     public void publishEvent(String serviceName, Collection<EventRegistration> registrations, Object event, int orderKey) {
         Data eventData = null;
-        for (EventRegistration registration : registrations) {
-            if (!(registration instanceof Registration)) {
-                throw new IllegalArgumentException();
-            }
-            if (isLocal(registration)) {
-                executeLocal(serviceName, event, registration, orderKey);
-                continue;
-            }
+        if (batchLocalEventDispatchEnabled) {
+            List localListeners = new ArrayList(registrations.size());
+            for (EventRegistration registration : registrations) {
+                if (!(registration instanceof Registration)) {
+                    throw new IllegalArgumentException();
+                }
+                if (isLocal(registration)) {
+                    localListeners.add(((Registration) registration).getListener());
+                    continue;
+                }
 
-            if (eventData == null) {
-                eventData = nodeEngine.toData(event);
+                if (eventData == null) {
+                    eventData = nodeEngine.toData(event);
+                }
+                EventPacket eventPacket = new EventPacket(registration.getId(), serviceName, eventData);
+                sendEventPacket(registration.getSubscriber(), eventPacket, orderKey);
             }
-            EventPacket eventPacket = new EventPacket(registration.getId(), serviceName, eventData);
-            sendEventPacket(registration.getSubscriber(), eventPacket, orderKey);
+            executeLocalBatch(serviceName, event, localListeners, orderKey);
+        } else {
+            for (EventRegistration registration : registrations) {
+                if (!(registration instanceof Registration)) {
+                    throw new IllegalArgumentException();
+                }
+                if (isLocal(registration)) {
+                    executeLocal(serviceName, event, registration, orderKey);
+                    continue;
+                }
+
+                if (eventData == null) {
+                    eventData = nodeEngine.toData(event);
+                }
+                EventPacket eventPacket = new EventPacket(registration.getId(), serviceName, eventData);
+                sendEventPacket(registration.getSubscriber(), eventPacket, orderKey);
+            }
         }
     }
 
@@ -334,8 +360,9 @@ public class EventServiceImpl implements InternalEventService {
             Registration reg = (Registration) registration;
             try {
                 if (reg.getListener() != null) {
-                    eventExecutor.execute(new LocalEventDispatcher(this, serviceName, event, reg.getListener()
-                            , orderKey, eventQueueTimeoutMs));
+                    eventExecutor.execute(
+                            new LocalEventDispatcher(this, serviceName, event, reg.getListener(),
+                                                     orderKey, eventQueueTimeoutMs));
                 } else {
                     logger.warning("Something seems wrong! Listener instance is null! -> " + reg);
                 }
@@ -343,6 +370,20 @@ public class EventServiceImpl implements InternalEventService {
                 if (eventExecutor.isLive()) {
                     logFailure("EventQueue overloaded! %s failed to publish to %s:%s",
                             event, reg.getServiceName(), reg.getTopic());
+                }
+            }
+        }
+    }
+
+    private void executeLocalBatch(String serviceName, Object event, Collection listeners, int orderKey) {
+        if (nodeEngine.isActive()) {
+            try {
+                eventExecutor.execute(
+                        new BatchLocalEventDispatcher(this, serviceName, event, listeners,
+                                                      orderKey, eventQueueTimeoutMs));
+            } catch (RejectedExecutionException e) {
+                if (eventExecutor.isLive()) {
+                    logFailure("EventQueue overloaded! %s failed to publish to %s", event, serviceName);
                 }
             }
         }
