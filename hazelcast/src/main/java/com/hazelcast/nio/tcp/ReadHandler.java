@@ -23,6 +23,7 @@ import com.hazelcast.util.Clock;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 
@@ -33,7 +34,7 @@ import static com.hazelcast.util.StringUtil.bytesToString;
  */
 public final class ReadHandler extends AbstractSelectionHandler {
 
-    private final ByteBuffer inputBuffer;
+    private ByteBuffer inputBuffer;
 
     private SocketReader socketReader;
 
@@ -141,12 +142,15 @@ public final class ReadHandler extends AbstractSelectionHandler {
                     writeHandler.setProtocol(Protocols.CLUSTER);
                     socketReader = new SocketPacketReader(connection);
                 } else if (Protocols.CLIENT_BINARY.equals(protocol)) {
+                    adjustBufferSizesForClientConnection();
                     writeHandler.setProtocol(Protocols.CLIENT_BINARY);
                     socketReader = new SocketClientDataReader(connection);
                 } else if (Protocols.CLIENT_BINARY_NEW.equals(protocol)) {
+                    adjustBufferSizesForClientConnection();
                     writeHandler.setProtocol(Protocols.CLIENT_BINARY_NEW);
                     socketReader = new SocketClientMessageReader(connection, socketChannel);
                 } else {
+                    adjustBufferSizesForClientConnection();
                     writeHandler.setProtocol(Protocols.TEXT);
                     inputBuffer.put(protocolBuffer.array());
                     socketReader = new SocketTextReader(connection);
@@ -156,6 +160,19 @@ public final class ReadHandler extends AbstractSelectionHandler {
             if (socketReader == null) {
                 throw new IOException("Could not initialize SocketReader!");
             }
+        }
+    }
+
+    private void adjustBufferSizesForClientConnection() {
+        if (connectionManager.socketClientReceiveBufferSize == connectionManager.socketReceiveBufferSize) {
+            return;
+        }
+        inputBuffer = ByteBuffer.allocate(connectionManager.socketClientReceiveBufferSize);
+        try {
+            connection.getSocketChannelWrapper().socket().setReceiveBufferSize(connectionManager.socketClientReceiveBufferSize);
+        } catch (SocketException e) {
+            logger.finest("Failed to adjust TCP receive buffer of " + connection + " to "
+                    + connectionManager.socketClientReceiveBufferSize + " kB." , e);
         }
     }
 

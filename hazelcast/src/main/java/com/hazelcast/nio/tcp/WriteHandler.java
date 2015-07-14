@@ -23,6 +23,7 @@ import com.hazelcast.util.Clock;
 import com.hazelcast.util.EmptyStatement;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.util.Queue;
@@ -44,7 +45,7 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
     private final Queue<SocketWritable> writeQueue = new ConcurrentLinkedQueue<SocketWritable>();
     private final Queue<SocketWritable> urgentWriteQueue = new ConcurrentLinkedQueue<SocketWritable>();
     private final AtomicBoolean scheduled = new AtomicBoolean(false);
-    private final ByteBuffer outputBuffer;
+    private ByteBuffer outputBuffer;
     private SocketWritable currentPacket;
     private SocketWriter socketWriter;
     private volatile long lastHandle;
@@ -93,12 +94,29 @@ public final class WriteHandler extends AbstractSelectionHandler implements Runn
                 outputBuffer.put(stringToBytes(Protocols.CLUSTER));
                 registerOp(SelectionKey.OP_WRITE);
             } else if (Protocols.CLIENT_BINARY.equals(protocol)) {
+                adjustBufferSizesForClientConnection();
                 socketWriter = new SocketClientDataWriter();
             } else if (Protocols.CLIENT_BINARY_NEW.equals(protocol)) {
+                adjustBufferSizesForClientConnection();
                 socketWriter = new SocketClientMessageWriter();
             } else {
+                adjustBufferSizesForClientConnection();
                 socketWriter = new SocketTextWriter(connection);
             }
+        }
+    }
+
+    private void adjustBufferSizesForClientConnection()  {
+        if (connectionManager.socketClientSendBufferSize == connectionManager.socketSendBufferSize) {
+            return;
+        }
+
+        outputBuffer = ByteBuffer.allocate(connectionManager.socketClientSendBufferSize);
+        try {
+            connection.getSocketChannelWrapper().socket().setSendBufferSize(connectionManager.socketClientSendBufferSize);
+        } catch (SocketException e) {
+            logger.finest("Failed to adjust TCP sendbuffer of " + connection + " to "
+                    + connectionManager.socketClientSendBufferSize + " kB." , e);
         }
     }
 

@@ -84,6 +84,10 @@ public interface IOService {
 
     int getSocketSendBufferSize();
 
+    int getSocketClientReceiveBufferSize();
+
+    int getSocketClientSendBufferSize();
+
     int getSocketLingerSeconds();
 
     int getSocketConnectTimeoutSeconds();
