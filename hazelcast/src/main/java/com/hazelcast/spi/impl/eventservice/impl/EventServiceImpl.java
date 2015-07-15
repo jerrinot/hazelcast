@@ -114,9 +114,13 @@ public class EventServiceImpl implements InternalEventService {
             public void run() {
                 long[] offeredTasksPerWorker = eventExecutor.getOfferedTasksPerWorker();
                 StringBuilder sb = new StringBuilder("Offered tasks per worker: ");
+                long total = 0;
                 for (int i = 0; i < offeredTasksPerWorker.length; i++) {
-                    sb.append("Worker: ").append(i).append(", Offered Tasks: ").append(offeredTasksPerWorker[i]).append(", ");
+                    long workerStats = offeredTasksPerWorker[i];
+                    sb.append("Worker: ").append(i).append(", Offered Tasks: ").append(workerStats).append(", ");
+                    total += workerStats;
                 }
+                sb.append(" Total: ").append(total);
                 logger.info(sb.toString());
             }
         }, 5, 5, TimeUnit.SECONDS);
