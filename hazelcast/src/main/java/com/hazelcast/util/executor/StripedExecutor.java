@@ -61,6 +61,14 @@ public final class StripedExecutor implements Executor {
         }
     }
 
+    public long[] getOfferedTasksPerWorker() {
+        long[] acceptedTasks = new long[size];
+        for (int i = 0; i < size; i++) {
+            acceptedTasks[i] = workers[i].getTaskCount();
+        }
+        return acceptedTasks;
+    }
+
     /**
      * Returns the total number of tasks pending to be executed.
      *
@@ -131,6 +139,7 @@ public final class StripedExecutor implements Executor {
     }
 
     private final class Worker extends Thread {
+        private final AtomicLong counter = new AtomicLong();
 
         private final BlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(maximumQueueSize);
 
@@ -140,7 +149,12 @@ public final class StripedExecutor implements Executor {
                     + THREAD_ID_GENERATOR.incrementAndGet());
         }
 
+        private long getTaskCount() {
+            return counter.get();
+        }
+
         private void schedule(Runnable command) {
+            counter.incrementAndGet();
             long timeout = 0;
             TimeUnit timeUnit = TimeUnit.SECONDS;
             if (command instanceof TimeoutRunnable) {

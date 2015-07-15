@@ -108,6 +108,18 @@ public class EventServiceImpl implements InternalEventService {
         this.deregistrationExceptionHandler
                 = new FutureUtilExceptionHandler(logger, "Member left while de-registering listener...");
         this.segments = new ConcurrentHashMap<String, EventServiceSegment>();
+
+        nodeEngine.getExecutionService().scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                long[] offeredTasksPerWorker = eventExecutor.getOfferedTasksPerWorker();
+                StringBuilder sb = new StringBuilder("Offered tasks per worker: ");
+                for (int i = 0; i < offeredTasksPerWorker.length; i++) {
+                    sb.append("Worker: ").append(i).append(", Offered Tasks: ").append(offeredTasksPerWorker[i]).append(", ");
+                }
+                logger.info(sb.toString());
+            }
+        }, 5, 5, TimeUnit.SECONDS);
     }
 
     @Override
