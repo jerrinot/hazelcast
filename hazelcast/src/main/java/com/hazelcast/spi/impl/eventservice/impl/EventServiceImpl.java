@@ -113,14 +113,33 @@ public class EventServiceImpl implements InternalEventService {
             @Override
             public void run() {
                 long[] offeredTasksPerWorker = eventExecutor.getOfferedTasksPerWorker();
-                StringBuilder sb = new StringBuilder("Offered tasks per worker: ");
+                long[] rejectedTasksPerWorker = eventExecutor.getRejectedTasksPerWorker();
+                long[] runnableTimePerWorker = eventExecutor.getRunnableTimePerWorker();
+
+                StringBuilder sb = new StringBuilder("Offered tasks per worker: \n");
                 long total = 0;
                 for (int i = 0; i < offeredTasksPerWorker.length; i++) {
                     long workerStats = offeredTasksPerWorker[i];
                     sb.append("Worker: ").append(i).append(", Offered Tasks: ").append(workerStats).append(", ");
                     total += workerStats;
                 }
-                sb.append(" Total: ").append(total);
+                sb.append(" Total Offered Tasks: ").append(total).append("\n");
+
+                total = 0;
+                for (int i = 0; i < rejectedTasksPerWorker.length; i++) {
+                    long workerStats = rejectedTasksPerWorker[i];
+                    sb.append("Worker: ").append(i).append(", Rejected Tasks: ").append(workerStats).append(", ");
+                    total += workerStats;
+                }
+                sb.append(" Total Rejected Tasks: ").append(total).append("\n");
+
+                total = 0;
+                for (int i = 0; i < runnableTimePerWorker.length; i++) {
+                    long workerStats = TimeUnit.NANOSECONDS.toMillis(runnableTimePerWorker[i]);
+                    sb.append("Worker: ").append(i).append(", Runnable Time in ms: ").append(workerStats).append(", ");
+                    total += workerStats;
+                }
+                sb.append(" Total Runnable Time: ").append(total).append("\n");
                 logger.info(sb.toString());
             }
         }, 5, 5, TimeUnit.SECONDS);

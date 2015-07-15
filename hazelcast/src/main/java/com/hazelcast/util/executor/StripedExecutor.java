@@ -64,9 +64,25 @@ public final class StripedExecutor implements Executor {
     public long[] getOfferedTasksPerWorker() {
         long[] acceptedTasks = new long[size];
         for (int i = 0; i < size; i++) {
-            acceptedTasks[i] = workers[i].getTaskCount();
+            acceptedTasks[i] = workers[i].getOfferedCount();
         }
         return acceptedTasks;
+    }
+
+    public long[] getRejectedTasksPerWorker() {
+        long[] rejectedTasks = new long[size];
+        for (int i = 0; i < size; i++) {
+            rejectedTasks[i] = workers[i].getRejectedCount();
+        }
+        return rejectedTasks;
+    }
+
+    public long[] getRunnableTimePerWorker() {
+        long[] runnableTime = new long[size];
+        for (int i = 0; i < size; i++) {
+            runnableTime[i] = workers[i].totalTime;
+        }
+        return runnableTime;
     }
 
     /**
@@ -139,7 +155,9 @@ public final class StripedExecutor implements Executor {
     }
 
     private final class Worker extends Thread {
-        private final AtomicLong counter = new AtomicLong();
+        private final AtomicLong offeredCounter = new AtomicLong();
+        private final AtomicLong rejectedCounter = new AtomicLong();
+        private volatile long totalTime;
 
         private final BlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(maximumQueueSize);
 
@@ -149,12 +167,16 @@ public final class StripedExecutor implements Executor {
                     + THREAD_ID_GENERATOR.incrementAndGet());
         }
 
-        private long getTaskCount() {
-            return counter.get();
+        private long getOfferedCount() {
+            return offeredCounter.get();
+        }
+
+        private long getRejectedCount() {
+            return rejectedCounter.get();
         }
 
         private void schedule(Runnable command) {
-            counter.incrementAndGet();
+            offeredCounter.incrementAndGet();
             long timeout = 0;
             TimeUnit timeUnit = TimeUnit.SECONDS;
             if (command instanceof TimeoutRunnable) {
@@ -171,6 +193,7 @@ public final class StripedExecutor implements Executor {
                     offered = workQueue.offer(command, timeout, timeUnit);
                 }
             } catch (InterruptedException e) {
+                rejectedCounter.incrementAndGet();
                 throw new RejectedExecutionException("Thread is interrupted while offering work");
             }
 
@@ -201,7 +224,10 @@ public final class StripedExecutor implements Executor {
 
         private void process(Runnable task) {
             try {
+                long startTime = System.nanoTime();
                 task.run();
+                long delta = System.nanoTime() - startTime;
+                totalTime += delta;
             } catch (Throwable e) {
                 OutOfMemoryErrorDispatcher.inspectOutputMemoryError(e);
                 logger.severe(getName() + " caught an exception while processing task:" + task, e);
