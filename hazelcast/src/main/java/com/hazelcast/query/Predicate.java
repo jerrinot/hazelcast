@@ -30,6 +30,6 @@ public interface Predicate<K, V> extends Serializable {
 
     boolean apply(Map.Entry<K, V> mapEntry);
 
-    Predicate<K, V> accept(Optimizer optimizer);
+//    Predicate<K, V> accept(Optimizer optimizer);
 
 }
