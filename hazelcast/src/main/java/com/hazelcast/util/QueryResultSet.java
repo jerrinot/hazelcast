@@ -39,7 +39,7 @@ import static java.util.Collections.newSetFromMap;
  */
 public class QueryResultSet extends AbstractSet implements IdentifiedDataSerializable {
 
-    private final Set<QueryResultEntry> entries = newSetFromMap(new ConcurrentHashMap<QueryResultEntry, Boolean>());
+    private Set<QueryResultEntry> entries;
     private final SerializationService serializationService;
 
     private IterationType iterationType;
@@ -52,6 +52,7 @@ public class QueryResultSet extends AbstractSet implements IdentifiedDataSeriali
     public QueryResultSet(SerializationService serializationService, IterationType iterationType, boolean data) {
         this.serializationService = serializationService;
         this.iterationType = iterationType;
+        this.entries = newSetFromMap(new ConcurrentHashMap<QueryResultEntry, Boolean>());
         this.data = data;
     }
 
@@ -112,6 +113,7 @@ public class QueryResultSet extends AbstractSet implements IdentifiedDataSeriali
         data = in.readBoolean();
         iterationType = IterationType.valueOf(in.readUTF());
         int size = in.readInt();
+        entries = newSetFromMap(new ConcurrentHashMap<QueryResultEntry, Boolean>(size));
         for (int i = 0; i < size; i++) {
             entries.add((QueryResultEntry) in.readObject());
         }
