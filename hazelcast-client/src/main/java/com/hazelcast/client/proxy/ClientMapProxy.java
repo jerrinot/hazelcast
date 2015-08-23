@@ -762,8 +762,8 @@ public class ClientMapProxy<K, V> extends ClientProxy implements IMap<K, V> {
         MapEntrySetRequest request = new MapEntrySetRequest(name);
         MapEntrySet result = invoke(request);
 
-        Set<Entry<K, V>> entrySet = new HashSet<Entry<K, V>>();
         Set<Entry<Data, Data>> entries = result.getEntrySet();
+        Set<Entry<K, V>> entrySet = new HashSet<Entry<K, V>>(entries.size());
         for (Entry<Data, Data> dataEntry : entries) {
             Data keyData = dataEntry.getKey();
             Data valueData = dataEntry.getValue();
