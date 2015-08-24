@@ -78,14 +78,17 @@ abstract class AbstractMapQueryRequest extends InvocationClientRequest implement
         getEndpoint().sendResponse(result, getCallId());
     }
 
-    private BitSet invokeOnMembers(QueryResultSet result, Predicate predicate, int partitionCount) throws InterruptedException, ExecutionException {
+    private BitSet invokeOnMembers(QueryResultSet result, Predicate predicate, int partitionCount)
+            throws InterruptedException, ExecutionException {
         Collection<Member> members = getClientEngine().getClusterService().getMembers();
         List<Future> futures = createInvocations(members, predicate);
         BitSet finishedPartitions = collectResults(result, futures, partitionCount);
         return finishedPartitions;
     }
 
-    private void invokeOnMissingPartitions(QueryResultSet result, Predicate predicate, BitSet finishedPartitions, int partitionCount) throws InterruptedException, ExecutionException {
+    private void invokeOnMissingPartitions(QueryResultSet result, Predicate predicate,
+                                           BitSet finishedPartitions, int partitionCount)
+            throws InterruptedException, ExecutionException {
         if (hasMissingPartitions(finishedPartitions, partitionCount)) {
             List<Integer> missingList = findMissingPartitions(finishedPartitions, partitionCount);
             List<Future> missingFutures = new ArrayList<Future>(missingList.size());
