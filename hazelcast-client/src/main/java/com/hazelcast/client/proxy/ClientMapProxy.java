@@ -35,10 +35,12 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.core.IMapEvent;
 import com.hazelcast.core.MapEvent;
 import com.hazelcast.core.Member;
+import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.map.EntryProcessor;
 import com.hazelcast.map.MapInterceptor;
 import com.hazelcast.map.MapPartitionLostEvent;
+import com.hazelcast.map.impl.LazyMapEntry;
 import com.hazelcast.map.impl.ListenerAdapter;
 import com.hazelcast.map.impl.MapEntrySet;
 import com.hazelcast.map.impl.MapKeySet;
@@ -819,12 +821,12 @@ public class ClientMapProxy<K, V> extends ClientProxy implements IMap<K, V> {
         MapQueryRequest request = new MapQueryRequest(name, predicate, IterationType.ENTRY);
         QueryResultSet result = invoke(request);
         if (pagingPredicate == null) {
+            SerializationService serializationService = getContext().getSerializationService();
             InflatableSet<Entry<K, V>> entrySet = new InflatableSet<Entry<K, V>>(result.size());
             for (Object data : result) {
                 AbstractMap.SimpleImmutableEntry<Data, Data> dataEntry = (AbstractMap.SimpleImmutableEntry<Data, Data>) data;
-                K key = toObject(dataEntry.getKey());
-                V value = toObject(dataEntry.getValue());
-                entrySet.add(new AbstractMap.SimpleEntry<K, V>(key, value));
+                LazyMapEntry entry = new LazyMapEntry(dataEntry.getKey(), dataEntry.getValue(), serializationService);
+                entrySet.add(entry);
             }
             entrySet.close();
             return entrySet;
