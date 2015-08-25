@@ -18,6 +18,8 @@ package com.hazelcast.util;
 
 import com.hazelcast.nio.UnsafeHelper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.jpountz.xxhash.XXHash32;
+import net.jpountz.xxhash.XXHashFactory;
 import sun.misc.Unsafe;
 
 import java.nio.ByteOrder;
@@ -31,6 +33,15 @@ public final class HashUtil {
 
     private static final boolean LITTLE_ENDIAN = ByteOrder.LITTLE_ENDIAN == ByteOrder.nativeOrder();
     private static final int DEFAULT_MURMUR_SEED = 0x01000193;
+    private static final int DEFAULT_XXHASH_SEED = DEFAULT_MURMUR_SEED;
+
+    private static final XXHashFactory xxHashFactory = XXHashFactory.fastestInstance();
+    private static final XXHash32 xxHash32 = xxHashFactory.hash32();
+
+
+    public static int xxHash_x86_32(byte[] data, int offset, int len) {
+        return xxHash32.hash(data, offset, len, DEFAULT_XXHASH_SEED);
+    }
 
     public static int MurmurHash3_x86_32(byte[] data, int offset, int len) {
         return MurmurHash3_x86_32(data, offset, len, DEFAULT_MURMUR_SEED);

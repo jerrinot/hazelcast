@@ -31,6 +31,8 @@ import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import com.hazelcast.util.Clock;
+import net.jpountz.xxhash.XXHash32;
+import net.jpountz.xxhash.XXHashFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -78,6 +80,14 @@ public class BasicMapTest extends HazelcastTestSupport {
 
     private HazelcastInstance getInstance() {
         return instances[rand.nextInt(instanceCount)];
+    }
+
+    @Test
+    public void foo() {
+        XXHashFactory xxHashFactory = XXHashFactory.fastestInstance();
+        XXHash32 xxHash32 = xxHashFactory.hash32();
+
+        System.out.println(xxHash32.toString());
     }
 
     @Test

@@ -140,7 +140,7 @@ public class HeapData implements Data {
 
     @Override
     public int hashCode() {
-        return HashUtil.MurmurHash3_x86_32(payload, DATA_OFFSET, dataSize());
+        return HashUtil.xxHash_x86_32(payload, DATA_OFFSET, dataSize());
     }
 
     @Override
