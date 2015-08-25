@@ -191,7 +191,7 @@ public final class NonBlockingWriteHandler extends AbstractSelectionHandler impl
     }
 
     private void configureBuffers(int size) {
-        outputBuffer = ByteBuffer.allocate(size);
+        outputBuffer = ByteBuffer.allocateDirect(size);
         try {
             connection.setSendBufferSize(size);
         } catch (SocketException e) {
