@@ -65,7 +65,7 @@ abstract class AbstractMapQueryRequest extends InvocationClientRequest implement
 
     @Override
     protected final void invoke() {
-        QueryResultSet result = new QueryResultSet(null, iterationType, true);
+        QueryResultSet result = new QueryResultSet(null, iterationType, true, true);
         try {
             Predicate predicate = getPredicate();
             int partitionCount = getClientEngine().getPartitionService().getPartitionCount();

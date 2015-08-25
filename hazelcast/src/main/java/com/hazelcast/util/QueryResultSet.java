@@ -27,6 +27,8 @@ import com.hazelcast.query.impl.QueryResultEntry;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -39,7 +41,7 @@ import static java.util.Collections.newSetFromMap;
  */
 public class QueryResultSet extends AbstractSet implements IdentifiedDataSerializable {
 
-    private final Set<QueryResultEntry> entries = newSetFromMap(new ConcurrentHashMap<QueryResultEntry, Boolean>());
+    private Collection<QueryResultEntry> entries;
     private final SerializationService serializationService;
 
     private IterationType iterationType;
@@ -53,6 +55,14 @@ public class QueryResultSet extends AbstractSet implements IdentifiedDataSeriali
         this.serializationService = serializationService;
         this.iterationType = iterationType;
         this.data = data;
+        this.entries = newSetFromMap(new ConcurrentHashMap<QueryResultEntry, Boolean>());
+    }
+
+    public QueryResultSet(SerializationService serializationService, IterationType iterationType, boolean data, boolean ignoreDuplicates) {
+        this.serializationService = serializationService;
+        this.iterationType = iterationType;
+        this.data = data;
+        this.entries = new ArrayList<QueryResultEntry>();
     }
 
     @SuppressWarnings("unchecked")
@@ -102,6 +112,7 @@ public class QueryResultSet extends AbstractSet implements IdentifiedDataSeriali
         out.writeBoolean(data);
         out.writeUTF(iterationType.toString());
         out.writeInt(entries.size());
+        out.writeInt(entries instanceof ArrayList ? 0 : 1);
         for (QueryResultEntry queryResultEntry : entries) {
             out.writeObject(queryResultEntry);
         }
@@ -112,6 +123,9 @@ public class QueryResultSet extends AbstractSet implements IdentifiedDataSeriali
         data = in.readBoolean();
         iterationType = IterationType.valueOf(in.readUTF());
         int size = in.readInt();
+        int type = in.readInt();
+        entries = (type == 0 ? new ArrayList<QueryResultEntry>(size) :
+                newSetFromMap(new ConcurrentHashMap<QueryResultEntry, Boolean>(size)));
         for (int i = 0; i < size; i++) {
             entries.add((QueryResultEntry) in.readObject());
         }
