@@ -59,10 +59,8 @@ public class SetAdapter<E>
             throws IOException {
 
         int size = in.readInt();
-        Set<E> set = new HashSet<E>(size);
         for (int i = 0; i < size; i++) {
-            set.add((E) in.readObject());
+            add((E) in.readObject());
         }
-        addAll(set);
     }
 }

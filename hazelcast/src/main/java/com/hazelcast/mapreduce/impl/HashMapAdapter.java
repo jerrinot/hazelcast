@@ -78,12 +78,10 @@ public class HashMapAdapter<K, V>
             throws IOException {
 
         int size = in.readInt();
-        Map<K, V> map = new HashMap<K, V>(size);
         for (int i = 0; i < size; i++) {
             K key = in.readObject();
             V value = in.readObject();
-            map.put(key, value);
+            put(key, value);
         }
-        putAll(map);
     }
 }
