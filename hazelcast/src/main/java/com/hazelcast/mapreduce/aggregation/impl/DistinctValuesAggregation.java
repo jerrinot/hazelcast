@@ -104,7 +104,7 @@ public class DistinctValuesAggregation<Key, Value, DistinctType>
     private static class DistinctValuesCombiner<DistinctType>
             extends Combiner<DistinctType, Set<DistinctType>> {
 
-        private final Set<DistinctType> distinctValues = new HashSet<DistinctType>();
+        private Set<DistinctType> distinctValues = new SetAdapter<DistinctType>();
 
         @Override
         public void combine(DistinctType value) {
@@ -113,10 +113,9 @@ public class DistinctValuesAggregation<Key, Value, DistinctType>
 
         @Override
         public Set<DistinctType> finalizeChunk() {
-            Set<DistinctType> distinctValues = new SetAdapter<DistinctType>();
-            distinctValues.addAll(this.distinctValues);
-            this.distinctValues.clear();
-            return distinctValues;
+            Set<DistinctType> currentValues = distinctValues;
+            distinctValues = new SetAdapter<DistinctType>();
+            return currentValues;
         }
     }
 
