@@ -355,7 +355,6 @@ public class JobSupervisor {
         DefaultContext<K, V> newContext = new DefaultContext<K, V>(configuration.getCombinerFactory(), mapCombineTask);
 
         if (context.compareAndSet(null, newContext)) {
-            newContext.requestStart();
             return newContext;
         }
         return context.get();
