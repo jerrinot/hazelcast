@@ -49,12 +49,6 @@ final class DataSerializer implements StreamSerializer<DataSerializable> {
     private static final String FACTORY_ID = "com.hazelcast.DataSerializerHook";
 
     private final Map<Integer, DataSerializableFactory> factories = new HashMap<Integer, DataSerializableFactory>();
-    private final ThreadLocal<Map<Integer, DataSerializableFactory>> threadLocalCache = new ThreadLocal<Map<Integer, DataSerializableFactory>>(){
-        @Override
-        protected Map<Integer, DataSerializableFactory> initialValue() {
-            return new HashMap<Integer, DataSerializableFactory>();
-        }
-    };
 
     DataSerializer(Map<Integer, ? extends DataSerializableFactory> dataSerializableFactories, ClassLoader classLoader) {
         try {
@@ -109,17 +103,10 @@ final class DataSerializer implements StreamSerializer<DataSerializable> {
             // BasicOperationService::extractOperationCallId
             if (identified) {
                 factoryId = in.readInt();
-                Map<Integer, DataSerializableFactory> factoryCache = threadLocalCache.get();
-                DataSerializableFactory dsf = factoryCache.get(factoryId);
+                final DataSerializableFactory dsf = factories.get(factoryId);
                 if (dsf == null) {
-                    dsf = factories.get(factoryId);
-                    if (dsf == null) {
-                        throw new HazelcastSerializationException("No DataSerializerFactory registered for namespace: " + factoryId);
-                    } else {
-                        factoryCache.put(factoryId, dsf);
-                    }
+                    throw new HazelcastSerializationException("No DataSerializerFactory registered for namespace: " + factoryId);
                 }
-
                 id = in.readInt();
                 ds = dsf.create(id);
                 if (ds == null) {
