@@ -38,7 +38,7 @@ import java.util.Map;
 class KeyValueSourceFacade<K, V>
         extends KeyValueSource<K, V> {
 
-    private static final int UPDATE_PROCESSED_RECORDS_INTERVAL = 1000;
+    private static final int UPDATE_PROCESSED_RECORDS_INTERVAL = 1000000;
 
     private final ILogger logger;
 
