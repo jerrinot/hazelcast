@@ -43,6 +43,11 @@ public class FireNotificationOperation
     }
 
     @Override
+    public boolean returnsResponse() {
+        return false;
+    }
+
+    @Override
     public Object getResponse() {
         return Boolean.TRUE;
     }
