@@ -225,7 +225,6 @@ public class MapReduceService
 
     public void sendNotification(Address address, MapReduceNotification notification) {
         try {
-            String name = MapReduceUtil.buildExecutorName(notification.getName());
             ProcessingOperation operation = new FireNotificationOperation(notification);
             MapReduceUtil.executeOperation(operation, address, this, nodeEngine);
         } catch (Exception e) {
