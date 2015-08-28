@@ -131,6 +131,9 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
         if (mappingPhase.processingPartitionNecessary(keyPreSelectorId, partitionService)) {
             mappingPhase.executeMappingPhase(keyValueSource, mapper, context);
         }
+
+        context.waitUntilQueueDrained();
+
         if (mapper instanceof LifecycleMapper) {
             ((LifecycleMapper) mapper).finalized(context);
         }
@@ -140,11 +143,11 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
         }
     }
 
-    void onEmit(DefaultContext<KeyOut, ValueOut> context, int partitionId) {
+    void onEmit(DefaultContext<KeyOut, ValueOut> context, int partitionId, int currentChunkSize) {
         // If we have a reducer let's test for chunk size otherwise
         // we need to collect all values locally and wait for final request
         if (supervisor.getConfiguration().getReducerFactory() != null) {
-            if (context.getCollected() == chunkSize) {
+            if (currentChunkSize == chunkSize) {
                 Map<KeyOut, Chunk> chunkMap = context.requestChunk();
 
                 // Wrap into IntermediateChunkNotification object
@@ -249,12 +252,18 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
         if (delegate.open(nodeEngine)) {
             DefaultContext<KeyOut, ValueOut> context = supervisor.getOrCreateContext(this);
             processMapping(partitionId, context, delegate, partitionProcessor);
+            context.waitUntilQueueDrained();
             delegate.close();
             finalizeMapping(partitionId, context);
         } else {
             // Partition assignment might not be ready yet, postpone the processing and retry later
             postponePartitionProcessing(partitionId);
         }
+    }
+
+    public void stopContext() {
+        DefaultContext<KeyOut, ValueOut> context = supervisor.getOrCreateContext(this);
+        context.requestStop();
     }
 
     /**
@@ -277,7 +286,11 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
                 handleProcessorThrowable(e);
             }
 
-            processPartitions(delegate);
+            try {
+                processPartitions(delegate);
+            } finally {
+                stopContext();
+            }
         }
 
         private void processPartitions(KeyValueSource<KeyIn, ValueIn> delegate) {
@@ -361,6 +374,8 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
                 processPartitionMapping(delegate, partitionId, false);
             } catch (Throwable t) {
                 handleProcessorThrowable(t);
+            } finally {
+                stopContext();
             }
         }
     }

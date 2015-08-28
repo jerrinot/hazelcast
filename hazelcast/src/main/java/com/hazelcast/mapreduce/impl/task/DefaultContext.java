@@ -29,6 +29,9 @@ import com.hazelcast.util.IConcurrentMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import static com.hazelcast.util.ConcurrentReferenceHashMap.ReferenceType.STRONG;
 /**
@@ -42,7 +45,7 @@ import static com.hazelcast.util.ConcurrentReferenceHashMap.ReferenceType.STRONG
  * @param <ValueIn>
  */
 public class DefaultContext<KeyIn, ValueIn>
-        implements Context<KeyIn, ValueIn> {
+        implements Context<KeyIn, ValueIn>, Runnable {
 
     private static final AtomicIntegerFieldUpdater<DefaultContext> COLLECTED_UPDATER = AtomicIntegerFieldUpdater
             .newUpdater(DefaultContext.class, "collected");
@@ -66,9 +69,18 @@ public class DefaultContext<KeyIn, ValueIn>
 
     private volatile int partitionId;
 
+    private final BlockingQueue<KeyIn> keyQueue = new LinkedBlockingQueue<KeyIn>();
+    private final BlockingQueue<ValueIn> valueQueue = new LinkedBlockingQueue<ValueIn>();
+
+    private static final Object END_KEY = new Object();
+    private final Semaphore semaphore = new Semaphore(0);
+    private final Thread runnerThread;
+    private volatile boolean endRequested;
+
     protected DefaultContext(CombinerFactory<KeyIn, ValueIn, ?> combinerFactory, MapCombineTask mapCombineTask) {
         this.mapCombineTask = mapCombineTask;
         this.combinerFactory = combinerFactory != null ? combinerFactory : new CollectingCombinerFactory<KeyIn, ValueIn>();
+        this.runnerThread = new Thread(this);
     }
 
     public void setPartitionId(int partitionId) {
@@ -77,10 +89,36 @@ public class DefaultContext<KeyIn, ValueIn>
 
     @Override
     public void emit(KeyIn key, ValueIn value) {
-        Combiner<ValueIn, ?> combiner = getOrCreateCombiner(key);
-        combiner.combine(value);
-        COLLECTED_UPDATER.incrementAndGet(this);
-        mapCombineTask.onEmit(this, partitionId);
+        try {
+            valueQueue.put(value);
+            keyQueue.put(key);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @Override
+    public void run() {
+        while (!endRequested) {
+            try {
+                process();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    public void process() throws InterruptedException {
+        KeyIn key = keyQueue.take();
+        if (key == END_KEY) {
+            semaphore.release();
+        } else {
+            ValueIn value = valueQueue.poll();
+            Combiner<ValueIn, ?> combiner = getOrCreateCombiner(key);
+            combiner.combine(value);
+            int currentChunkSize = COLLECTED_UPDATER.incrementAndGet(this);
+            mapCombineTask.onEmit(this, partitionId, currentChunkSize);
+        }
     }
 
     public <Chunk> Map<KeyIn, Chunk> requestChunk() {
@@ -99,10 +137,6 @@ public class DefaultContext<KeyIn, ValueIn>
         return chunkMap;
     }
 
-    public int getCollected() {
-        return collected;
-    }
-
     public void finalizeCombiners() {
         for (Combiner<ValueIn, ?> combiner : combiners.values()) {
             combiner.finalizeCombine();
@@ -111,6 +145,30 @@ public class DefaultContext<KeyIn, ValueIn>
 
     public Combiner<ValueIn, ?> getOrCreateCombiner(KeyIn key) {
         return combiners.applyIfAbsent(key , combinerFunction);
+    }
+
+    public void waitUntilQueueDrained() {
+        try {
+            keyQueue.put((KeyIn) END_KEY);
+            semaphore.acquire();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public void requestStart() {
+        runnerThread.start();
+    }
+
+    public void requestStop() {
+        waitUntilQueueDrained();
+        endRequested = true;
+        runnerThread.interrupt();
+        try {
+            runnerThread.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
