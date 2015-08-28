@@ -114,7 +114,7 @@ public class DistinctValuesAggregation<Key, Value, DistinctType>
         @Override
         public Set<DistinctType> finalizeChunk() {
             Set<DistinctType> currentValues = distinctValues;
-            distinctValues = new SetAdapter<DistinctType>();
+            distinctValues = new SetAdapter<DistinctType>(currentValues.size());
             return currentValues;
         }
     }

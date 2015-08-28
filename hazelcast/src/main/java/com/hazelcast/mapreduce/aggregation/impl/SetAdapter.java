@@ -34,6 +34,14 @@ public class SetAdapter<E>
         extends HashSet<E>
         implements IdentifiedDataSerializable {
 
+    public SetAdapter() {
+
+    }
+
+    public SetAdapter(int size) {
+        super(size);
+    }
+
     @Override
     public int getFactoryId() {
         return AggregationsDataSerializerHook.F_ID;
