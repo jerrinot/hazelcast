@@ -34,7 +34,7 @@ public class JobTrackerConfig {
     /**
      * Default value of chunk size.
      */
-    public static final int DEFAULT_CHUNK_SIZE = 1000;
+    public static final int DEFAULT_CHUNK_SIZE = 50 * 1000;
     /**
      * Default value of Queue size.
      */
