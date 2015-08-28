@@ -227,7 +227,7 @@ public class MapReduceService
         try {
             String name = MapReduceUtil.buildExecutorName(notification.getName());
             ProcessingOperation operation = new FireNotificationOperation(notification);
-            processRequest(address, operation);
+            MapReduceUtil.executeOperation(operation, address, this, nodeEngine);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
