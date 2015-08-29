@@ -42,7 +42,7 @@ public class JobTrackerConfig {
     /**
      * Default boolean value of communication statics.define how a map reduce job behaves
      */
-    public static final boolean DEFAULT_COMMUNICATE_STATS = true;
+    public static final boolean DEFAULT_COMMUNICATE_STATS = false;
     /**
      * Define how a map reduce job behaves.
      */

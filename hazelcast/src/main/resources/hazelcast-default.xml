@@ -214,7 +214,7 @@
         <queue-size>0</queue-size>
         <retry-count>0</retry-count>
         <chunk-size>1000</chunk-size>
-        <communicate-stats>true</communicate-stats>
+        <communicate-stats>false</communicate-stats>
         <topology-changed-strategy>CANCEL_RUNNING_OPERATION</topology-changed-strategy>
     </jobtracker>
 
