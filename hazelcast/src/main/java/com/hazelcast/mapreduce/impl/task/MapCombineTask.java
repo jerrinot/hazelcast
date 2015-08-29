@@ -16,6 +16,7 @@
 
 package com.hazelcast.mapreduce.impl.task;
 
+import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.mapreduce.KeyValueSource;
 import com.hazelcast.mapreduce.LifecycleMapper;
 import com.hazelcast.mapreduce.Mapper;
@@ -89,7 +90,13 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
         this.nodeEngine = configuration.getNodeEngine();
         this.partitionService = nodeEngine.getPartitionService();
         this.mapReduceService = supervisor.getMapReduceService();
-        this.keyValueSource = configuration.getKeyValueSource();
+        this.keyValueSource = cloneObject(configuration.getKeyValueSource());
+    }
+
+    private <T> T cloneObject(T blueprint) {
+        SerializationService serializationService = nodeEngine.getSerializationService();
+        T clone = serializationService.toObject(serializationService.toData(blueprint));
+        return clone;
     }
 
     public String getName() {
