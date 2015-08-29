@@ -274,9 +274,9 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
         @Override
         public void run() {
             KeyValueSource<KeyIn, ValueIn> delegate = keyValueSource;
-            if (supervisor.getConfiguration().isCommunicateStats()) {
-                delegate = new KeyValueSourceFacade<KeyIn, ValueIn>(keyValueSource, supervisor);
-            }
+//            if (supervisor.getConfiguration().isCommunicateStats()) {
+//                delegate = new KeyValueSourceFacade<KeyIn, ValueIn>(keyValueSource, supervisor);
+//            }
 
             try {
                 // Force warmup of partition table!
@@ -362,9 +362,9 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
                 int partitionId = result.getPartitionId();
 
                 KeyValueSource<KeyIn, ValueIn> delegate = keyValueSource;
-                if (supervisor.getConfiguration().isCommunicateStats()) {
-                    delegate = new KeyValueSourceFacade<KeyIn, ValueIn>(keyValueSource, supervisor);
-                }
+//                if (supervisor.getConfiguration().isCommunicateStats()) {
+//                    delegate = new KeyValueSourceFacade<KeyIn, ValueIn>(keyValueSource, supervisor);
+//                }
 
                 processPartitionMapping(delegate, partitionId, false);
             } catch (Throwable t) {
