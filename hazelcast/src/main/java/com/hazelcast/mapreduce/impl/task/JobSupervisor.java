@@ -110,6 +110,7 @@ public class JobSupervisor {
     public void startTasks(MappingPhase mappingPhase) {
         // Start map-combiner tasks
         jobTracker.registerMapCombineTask(new MapCombineTask(configuration, this, mappingPhase));
+        jobTracker.registerMapCombineTask(new MapCombineTask(configuration, this, mappingPhase));
     }
 
     public void onNotification(MapReduceNotification notification) {

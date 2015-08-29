@@ -140,11 +140,11 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
         }
     }
 
-    void onEmit(DefaultContext<KeyOut, ValueOut> context, int partitionId) {
+    void onEmit(DefaultContext<KeyOut, ValueOut> context, int partitionId, int currentChunkSize) {
         // If we have a reducer let's test for chunk size otherwise
         // we need to collect all values locally and wait for final request
         if (supervisor.getConfiguration().getReducerFactory() != null) {
-            if (context.getCollected() == chunkSize) {
+            if (currentChunkSize == chunkSize) {
                 Map<KeyOut, Chunk> chunkMap = context.requestChunk();
 
                 // Wrap into IntermediateChunkNotification object
