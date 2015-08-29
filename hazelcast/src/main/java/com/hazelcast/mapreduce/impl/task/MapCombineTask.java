@@ -174,10 +174,10 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
     private void finalizeMapping(int partitionId, DefaultContext<KeyOut, ValueOut> context)
             throws Exception {
 
-        mapReduceService
-                .processRequestAsync(supervisor.getJobOwner(), new RequestPartitionReducing(name, jobId, partitionId));
+        RequestPartitionResult result = mapReduceService
+                .processRequest(supervisor.getJobOwner(), new RequestPartitionReducing(name, jobId, partitionId));
 
-//        if (result.getResultState() == SUCCESSFUL) {
+        if (result.getResultState() == SUCCESSFUL) {
             // If we have a reducer defined just send it over
             if (supervisor.getConfiguration().getReducerFactory() != null) {
                 // Request a possible last chunk of data
@@ -189,7 +189,7 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
                     finalizeProcessing(partitionId);
                 }
             }
-//        }
+        }
     }
 
     private void finalizeProcessing(int partitionId)
