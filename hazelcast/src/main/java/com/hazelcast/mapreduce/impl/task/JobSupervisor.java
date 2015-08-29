@@ -41,6 +41,7 @@ import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.executor.ManagedExecutorService;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -69,7 +70,7 @@ public class JobSupervisor {
 
     private final ConcurrentMap<Object, Reducer> reducers = new ConcurrentHashMap<Object, Reducer>();
     private final ConcurrentMap<Integer, Set<Address>> remoteReducers = new ConcurrentHashMap<Integer, Set<Address>>();
-    private final AtomicReference<DefaultContext> context = new AtomicReference<DefaultContext>();
+    private final Set<DefaultContext> context = Collections.newSetFromMap(new ConcurrentHashMap<DefaultContext, Boolean>());
     private final ConcurrentMap<Object, Address> keyAssignments = new ConcurrentHashMap<Object, Address>();
 
     private final Address jobOwner;
@@ -229,25 +230,24 @@ public class JobSupervisor {
     }
 
     public Map<Object, Object> getJobResults() {
-        DefaultContext currentContext = context.get();
-
-        Map<Object, Object> result;
-        if (configuration.getReducerFactory() != null) {
-            int mapSize = MapReduceUtil.mapSize(reducers.size());
-            result = new HashMapAdapter<Object, Object>(mapSize);
-            for (Map.Entry<Object, Reducer> entry : reducers.entrySet()) {
-                Object reducedResults = entry.getValue().finalizeReduce();
-                if (reducedResults != null) {
-                    result.put(entry.getKey(), reducedResults);
+        Map<Object, Object> result = new HashMapAdapter<Object, Object>();
+        for (DefaultContext currentContext : context) {
+            if (configuration.getReducerFactory() != null) {
+                for (Map.Entry<Object, Reducer> entry : reducers.entrySet()) {
+                    Object reducedResults = entry.getValue().finalizeReduce();
+                    if (reducedResults != null) {
+                        result.put(entry.getKey(), reducedResults);
+                    }
                 }
+            } else {
+                // Request a possible last chunk of data
+                result.putAll(currentContext.requestChunk());
             }
-        } else {
-            // Request a possible last chunk of data
-            result = currentContext.requestChunk();
+
+            // Finalize local combiners
+            currentContext.finalizeCombiners();
         }
 
-        // Finalize local combiners
-        currentContext.finalizeCombiners();
 
         return result;
     }
@@ -352,13 +352,10 @@ public class JobSupervisor {
         }
     }
 
-    public <K, V> DefaultContext<K, V> getOrCreateContext(MapCombineTask mapCombineTask) {
+    public <K, V> DefaultContext<K, V> createContext(MapCombineTask mapCombineTask) {
         DefaultContext<K, V> newContext = new DefaultContext<K, V>(configuration.getCombinerFactory(), mapCombineTask);
-
-        if (context.compareAndSet(null, newContext)) {
-            return newContext;
-        }
-        return context.get();
+        context.add(newContext);
+        return newContext;
     }
 
     public void registerReducerEventInterests(int partitionId, Set<Address> remoteReducers) {

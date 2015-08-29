@@ -77,6 +77,7 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
     private final String name;
     private final String jobId;
     private final int chunkSize;
+    private final DefaultContext<KeyOut, ValueOut> context;
 
     public MapCombineTask(JobTaskConfiguration configuration, JobSupervisor supervisor,
                           MappingPhase<KeyIn, ValueIn, KeyOut, ValueOut> mappingPhase) {
@@ -91,6 +92,7 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
         this.partitionService = nodeEngine.getPartitionService();
         this.mapReduceService = supervisor.getMapReduceService();
         this.keyValueSource = cloneObject(configuration.getKeyValueSource());
+        this.context = supervisor.createContext(this);
     }
 
     private <T> T cloneObject(T blueprint) {
@@ -254,7 +256,6 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
             throws Exception {
         delegate.reset();
         if (delegate.open(nodeEngine)) {
-            DefaultContext<KeyOut, ValueOut> context = supervisor.getOrCreateContext(this);
             processMapping(partitionId, context, delegate, partitionProcessor);
             delegate.close();
             finalizeMapping(partitionId, context);
