@@ -52,7 +52,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static com.hazelcast.mapreduce.JobPartitionState.State.REDUCING;
 import static com.hazelcast.mapreduce.impl.MapReduceUtil.createJobProcessInformation;
@@ -110,8 +109,9 @@ public class JobSupervisor {
 
     public void startTasks(MappingPhase mappingPhase) {
         // Start map-combiner tasks
-        jobTracker.registerMapCombineTask(new MapCombineTask(configuration, this, mappingPhase));
-        jobTracker.registerMapCombineTask(new MapCombineTask(configuration, this, mappingPhase));
+        for (int i = 0; i < JobTaskConfiguration.DEFAULT_PARALLELISM; i++) {
+            jobTracker.registerMapCombineTask(new MapCombineTask(configuration, this, mappingPhase));
+        }
     }
 
     public void onNotification(MapReduceNotification notification) {
