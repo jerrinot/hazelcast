@@ -41,6 +41,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -270,6 +271,7 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
      */
     private class PartitionProcessor
             implements Runnable {
+        private Future<RequestPartitionResult> nextPartitionFuture;
 
         @Override
         public void run() {
@@ -317,8 +319,15 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
 
         private Integer findNewPartitionProcessing() {
             try {
-                RequestPartitionResult result = mapReduceService
-                        .processRequest(supervisor.getJobOwner(), new RequestPartitionMapping(name, jobId));
+                RequestPartitionResult result;
+                if (nextPartitionFuture == null) {
+                    result = mapReduceService
+                            .processRequest(supervisor.getJobOwner(), new RequestPartitionMapping(name, jobId));
+                } else {
+                    result = nextPartitionFuture.get();
+                }
+                nextPartitionFuture = mapReduceService
+                        .processRequestAsync(supervisor.getJobOwner(), new RequestPartitionMapping(name, jobId));
 
                 // JobSupervisor doesn't exists anymore on jobOwner, job done?
                 if (result.getResultState() == NO_SUPERVISOR) {

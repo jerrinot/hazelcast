@@ -216,11 +216,18 @@ public class MapReduceService
     public <R> R processRequest(Address address, ProcessingOperation processingOperation)
             throws ExecutionException, InterruptedException {
 
+        Future<R> future = processRequestAsync(address, processingOperation);
+        return future.get();
+    }
+
+    public <R> Future<R> processRequestAsync(Address address, ProcessingOperation processingOperation)
+            throws ExecutionException, InterruptedException {
+
         InvocationBuilder invocation = nodeEngine.getOperationService()
-                                                 .createInvocationBuilder(SERVICE_NAME, processingOperation, address);
+                .createInvocationBuilder(SERVICE_NAME, processingOperation, address);
 
         Future<R> future = invocation.invoke();
-        return future.get();
+        return future;
     }
 
     public void sendNotification(Address address, MapReduceNotification notification) {
