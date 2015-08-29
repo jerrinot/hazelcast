@@ -24,11 +24,16 @@ import com.hazelcast.mapreduce.TopologyChangedStrategy;
 import com.hazelcast.nio.Address;
 import com.hazelcast.spi.NodeEngine;
 
+import static java.lang.Math.min;
+import static java.lang.Runtime.getRuntime;
+
 /**
  * This class contains all configuration settings for a given map reduce job. This class is immutable and values
  * are set after the job itself is emitted to the job owner.
  */
 public class JobTaskConfiguration {
+    private static final int MAXIMUM_PARALLELISM = 16;
+    public static final int DEFAULT_PARALLELISM = min(MAXIMUM_PARALLELISM, getRuntime().availableProcessors());
 
     private final Address jobOwner;
     private final int chunkSize;

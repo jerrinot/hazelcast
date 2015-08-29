@@ -41,6 +41,7 @@ import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.executor.ManagedExecutorService;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -51,7 +52,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static com.hazelcast.mapreduce.JobPartitionState.State.REDUCING;
 import static com.hazelcast.mapreduce.impl.MapReduceUtil.createJobProcessInformation;
@@ -69,7 +69,7 @@ public class JobSupervisor {
 
     private final ConcurrentMap<Object, Reducer> reducers = new ConcurrentHashMap<Object, Reducer>();
     private final ConcurrentMap<Integer, Set<Address>> remoteReducers = new ConcurrentHashMap<Integer, Set<Address>>();
-    private final AtomicReference<DefaultContext> context = new AtomicReference<DefaultContext>();
+    private final Set<DefaultContext> context = Collections.newSetFromMap(new ConcurrentHashMap<DefaultContext, Boolean>());
     private final ConcurrentMap<Object, Address> keyAssignments = new ConcurrentHashMap<Object, Address>();
 
     private final Address jobOwner;
@@ -109,7 +109,9 @@ public class JobSupervisor {
 
     public void startTasks(MappingPhase mappingPhase) {
         // Start map-combiner tasks
-        jobTracker.registerMapCombineTask(new MapCombineTask(configuration, this, mappingPhase));
+        for (int i = 0; i < JobTaskConfiguration.DEFAULT_PARALLELISM; i++) {
+            jobTracker.registerMapCombineTask(new MapCombineTask(configuration, this, mappingPhase));
+        }
     }
 
     public void onNotification(MapReduceNotification notification) {
@@ -228,25 +230,24 @@ public class JobSupervisor {
     }
 
     public Map<Object, Object> getJobResults() {
-        DefaultContext currentContext = context.get();
-
-        Map<Object, Object> result;
-        if (configuration.getReducerFactory() != null) {
-            int mapSize = MapReduceUtil.mapSize(reducers.size());
-            result = new HashMapAdapter<Object, Object>(mapSize);
-            for (Map.Entry<Object, Reducer> entry : reducers.entrySet()) {
-                Object reducedResults = entry.getValue().finalizeReduce();
-                if (reducedResults != null) {
-                    result.put(entry.getKey(), reducedResults);
+        Map<Object, Object> result = new HashMapAdapter<Object, Object>();
+        for (DefaultContext currentContext : context) {
+            if (configuration.getReducerFactory() != null) {
+                for (Map.Entry<Object, Reducer> entry : reducers.entrySet()) {
+                    Object reducedResults = entry.getValue().finalizeReduce();
+                    if (reducedResults != null) {
+                        result.put(entry.getKey(), reducedResults);
+                    }
                 }
+            } else {
+                // Request a possible last chunk of data
+                result.putAll(currentContext.requestChunk());
             }
-        } else {
-            // Request a possible last chunk of data
-            result = currentContext.requestChunk();
+
+            // Finalize local combiners
+            currentContext.finalizeCombiners();
         }
 
-        // Finalize local combiners
-        currentContext.finalizeCombiners();
 
         return result;
     }
@@ -351,13 +352,10 @@ public class JobSupervisor {
         }
     }
 
-    public <K, V> DefaultContext<K, V> getOrCreateContext(MapCombineTask mapCombineTask) {
+    public <K, V> DefaultContext<K, V> createContext(MapCombineTask mapCombineTask) {
         DefaultContext<K, V> newContext = new DefaultContext<K, V>(configuration.getCombinerFactory(), mapCombineTask);
-
-        if (context.compareAndSet(null, newContext)) {
-            return newContext;
-        }
-        return context.get();
+        context.add(newContext);
+        return newContext;
     }
 
     public void registerReducerEventInterests(int partitionId, Set<Address> remoteReducers) {

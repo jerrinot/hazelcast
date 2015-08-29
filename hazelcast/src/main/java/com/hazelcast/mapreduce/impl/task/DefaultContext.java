@@ -79,8 +79,8 @@ public class DefaultContext<KeyIn, ValueIn>
     public void emit(KeyIn key, ValueIn value) {
         Combiner<ValueIn, ?> combiner = getOrCreateCombiner(key);
         combiner.combine(value);
-        COLLECTED_UPDATER.incrementAndGet(this);
-        mapCombineTask.onEmit(this, partitionId);
+        int currentChunkSize = COLLECTED_UPDATER.incrementAndGet(this);
+        mapCombineTask.onEmit(this, partitionId, currentChunkSize);
     }
 
     public <Chunk> Map<KeyIn, Chunk> requestChunk() {

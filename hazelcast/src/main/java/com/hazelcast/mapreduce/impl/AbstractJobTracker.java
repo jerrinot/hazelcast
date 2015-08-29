@@ -101,18 +101,12 @@ public abstract class AbstractJobTracker
 
     public <KeyIn, ValueIn, KeyOut, ValueOut, Chunk> void registerMapCombineTask(
             MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> mapCombineTask) {
-        if (mapCombineTasks.putIfAbsent(mapCombineTask.getJobId(), mapCombineTask) == null) {
-            mapCombineTask.process();
-        }
+        mapCombineTasks.put(mapCombineTask.getJobId(), mapCombineTask);
+        mapCombineTask.process();
     }
 
     public MapCombineTask unregisterMapCombineTask(String jobId) {
         return mapCombineTasks.remove(jobId);
-    }
-
-    public <KeyIn, ValueIn, KeyOut, ValueOut, Chunk> MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> getMapCombineTask(
-            String jobId) {
-        return mapCombineTasks.get(jobId);
     }
 
 }

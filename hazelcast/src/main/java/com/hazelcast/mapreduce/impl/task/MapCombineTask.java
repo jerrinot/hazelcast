@@ -16,6 +16,7 @@
 
 package com.hazelcast.mapreduce.impl.task;
 
+import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.mapreduce.KeyValueSource;
 import com.hazelcast.mapreduce.LifecycleMapper;
 import com.hazelcast.mapreduce.Mapper;
@@ -76,6 +77,7 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
     private final String name;
     private final String jobId;
     private final int chunkSize;
+    private final DefaultContext<KeyOut, ValueOut> context;
 
     public MapCombineTask(JobTaskConfiguration configuration, JobSupervisor supervisor,
                           MappingPhase<KeyIn, ValueIn, KeyOut, ValueOut> mappingPhase) {
@@ -89,7 +91,14 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
         this.nodeEngine = configuration.getNodeEngine();
         this.partitionService = nodeEngine.getPartitionService();
         this.mapReduceService = supervisor.getMapReduceService();
-        this.keyValueSource = configuration.getKeyValueSource();
+        this.keyValueSource = cloneObject(configuration.getKeyValueSource());
+        this.context = supervisor.createContext(this);
+    }
+
+    private <T> T cloneObject(T blueprint) {
+        SerializationService serializationService = nodeEngine.getSerializationService();
+        T clone = serializationService.toObject(serializationService.toData(blueprint));
+        return clone;
     }
 
     public String getName() {
@@ -140,11 +149,11 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
         }
     }
 
-    void onEmit(DefaultContext<KeyOut, ValueOut> context, int partitionId) {
+    void onEmit(DefaultContext<KeyOut, ValueOut> context, int partitionId, int currentChunkSize) {
         // If we have a reducer let's test for chunk size otherwise
         // we need to collect all values locally and wait for final request
         if (supervisor.getConfiguration().getReducerFactory() != null) {
-            if (context.getCollected() == chunkSize) {
+            if (currentChunkSize == chunkSize) {
                 Map<KeyOut, Chunk> chunkMap = context.requestChunk();
 
                 // Wrap into IntermediateChunkNotification object
@@ -247,7 +256,6 @@ public class MapCombineTask<KeyIn, ValueIn, KeyOut, ValueOut, Chunk> {
             throws Exception {
         delegate.reset();
         if (delegate.open(nodeEngine)) {
-            DefaultContext<KeyOut, ValueOut> context = supervisor.getOrCreateContext(this);
             processMapping(partitionId, context, delegate, partitionProcessor);
             delegate.close();
             finalizeMapping(partitionId, context);
