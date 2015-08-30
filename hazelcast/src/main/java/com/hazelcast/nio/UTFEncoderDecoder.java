@@ -131,9 +131,6 @@ public final class UTFEncoderDecoder {
                     isBufferObjectDataOutput ? (BufferObjectDataOutput) out : null;
             final char[] value = getCharArray(str);
 
-            int i;
-            int c;
-            int bufferPos = 0;
             int utfLength = 0;
             int utfLengthLimit;
             int pos = 0;
@@ -161,7 +158,6 @@ public final class UTFEncoderDecoder {
                 }
 
                 utfLengthLimit = utfLength;
-
                 out.writeShort(utfLength);
 
                 if (ASCII_AWARE) {
@@ -172,77 +168,15 @@ public final class UTFEncoderDecoder {
             }
 
             if (buffer.length >= utfLengthLimit) {
-                for (i = beginIndex; i < endIndex; i++) {
-                    c = value[i];
-                    if (!(c <= 0x007F && c >= 0x0001)) {
-                        break;
-                    }
-                    buffer[bufferPos++] = (byte) c;
-                }
-
-                for (; i < endIndex; i++) {
-                    c = value[i];
-                    if (c <= 0x007F && c >= 0x0001) {
-                        buffer[bufferPos++] = (byte) c;
-                    } else if (c > 0x07FF) {
-                        buffer[bufferPos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
-                        buffer[bufferPos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
-                        buffer[bufferPos++] = (byte) (0x80 | ((c) & 0x3F));
-                    } else {
-                        buffer[bufferPos++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
-                        buffer[bufferPos++] = (byte) (0x80 | ((c) & 0x3F));
-                    }
-                }
-
-                out.write(buffer, 0, bufferPos);
-
-                if (isBufferObjectDataOutput) {
-                    utfLength = bufferPos;
-                }
+                utfLength = writeDirectly(out, beginIndex, endIndex, buffer, isBufferObjectDataOutput, value, utfLength);
             } else {
-                for (i = beginIndex; i < endIndex; i++) {
-                    c = value[i];
-                    if (!(c <= 0x007F && c >= 0x0001)) {
-                        break;
-                    }
-                    bufferPos = buffering(buffer, bufferPos, (byte) c, out);
-                }
-
-                if (isBufferObjectDataOutput) {
-                    utfLength = i - beginIndex;
-                }
-
-                for (; i < endIndex; i++) {
-                    c = value[i];
-                    if (c <= 0x007F && c >= 0x0001) {
-                        bufferPos = buffering(buffer, bufferPos, (byte) c, out);
-                        if (isBufferObjectDataOutput) {
-                            utfLength++;
-                        }
-                    } else if (c > 0x07FF) {
-                        bufferPos = buffering(buffer, bufferPos,
-                                (byte) (0xE0 | ((c >> 12) & 0x0F)), out);
-                        bufferPos = buffering(buffer, bufferPos,
-                                (byte) (0x80 | ((c >> 6) & 0x3F)), out);
-                        bufferPos = buffering(buffer, bufferPos,
-                                (byte) (0x80 | ((c) & 0x3F)), out);
-                        if (isBufferObjectDataOutput) {
-                            utfLength += 3;
-                        }
-                    } else {
-                        bufferPos = buffering(buffer, bufferPos,
-                                (byte) (0xC0 | ((c >> 6) & 0x1F)), out);
-                        bufferPos = buffering(buffer, bufferPos,
-                                (byte) (0x80 | ((c) & 0x3F)), out);
-                        if (isBufferObjectDataOutput) {
-                            utfLength += 2;
-                        }
-                    }
-                }
-                int length = bufferPos % buffer.length;
-                out.write(buffer, 0, length == 0 ? buffer.length : length);
+                utfLength = writeWithBuffering(out, beginIndex, endIndex, buffer, isBufferObjectDataOutput, value, utfLength);
             }
 
+            writeLength(str, isBufferObjectDataOutput, bufferObjectDataOutput, utfLength, pos);
+        }
+
+        private void writeLength(String str, boolean isBufferObjectDataOutput, BufferObjectDataOutput bufferObjectDataOutput, int utfLength, int pos) throws IOException {
             if (isBufferObjectDataOutput) {
                 if (utfLength > 65535) {
                     throw new UTFDataFormatException(
@@ -257,6 +191,88 @@ public final class UTFEncoderDecoder {
                     bufferObjectDataOutput.writeBoolean(pos + 2, utfLength == str.length());
                 }
             }
+        }
+
+        private int writeWithBuffering(DataOutput out, int beginIndex, int endIndex, byte[] buffer, boolean isBufferObjectDataOutput, char[] value, int utfLength) throws IOException {
+            int bufferPos = 0;
+            int i;
+            int c;
+            for (i = beginIndex; i < endIndex; i++) {
+                c = value[i];
+                if (!(c <= 0x007F && c >= 0x0001)) {
+                    break;
+                }
+                bufferPos = buffering(buffer, bufferPos, (byte) c, out);
+            }
+
+            if (isBufferObjectDataOutput) {
+                utfLength = i - beginIndex;
+            }
+
+            for (; i < endIndex; i++) {
+                c = value[i];
+                if (c <= 0x007F && c >= 0x0001) {
+                    bufferPos = buffering(buffer, bufferPos, (byte) c, out);
+                    if (isBufferObjectDataOutput) {
+                        utfLength++;
+                    }
+                } else if (c > 0x07FF) {
+                    bufferPos = buffering(buffer, bufferPos,
+                            (byte) (0xE0 | ((c >> 12) & 0x0F)), out);
+                    bufferPos = buffering(buffer, bufferPos,
+                            (byte) (0x80 | ((c >> 6) & 0x3F)), out);
+                    bufferPos = buffering(buffer, bufferPos,
+                            (byte) (0x80 | ((c) & 0x3F)), out);
+                    if (isBufferObjectDataOutput) {
+                        utfLength += 3;
+                    }
+                } else {
+                    bufferPos = buffering(buffer, bufferPos,
+                            (byte) (0xC0 | ((c >> 6) & 0x1F)), out);
+                    bufferPos = buffering(buffer, bufferPos,
+                            (byte) (0x80 | ((c) & 0x3F)), out);
+                    if (isBufferObjectDataOutput) {
+                        utfLength += 2;
+                    }
+                }
+            }
+            int length = bufferPos % buffer.length;
+            out.write(buffer, 0, length == 0 ? buffer.length : length);
+            return utfLength;
+        }
+
+        private int writeDirectly(DataOutput out, int beginIndex, int endIndex, byte[] buffer, boolean isBufferObjectDataOutput, char[] value, int utfLength) throws IOException {
+            int bufferPos = 0;
+            int i;
+            int c;
+            for (i = beginIndex; i < endIndex; i++) {
+                c = value[i];
+                if (!(c <= 0x007F && c >= 0x0001)) {
+                    break;
+                }
+                buffer[bufferPos++] = (byte) c;
+            }
+
+            for (; i < endIndex; i++) {
+                c = value[i];
+                if (c <= 0x007F && c >= 0x0001) {
+                    buffer[bufferPos++] = (byte) c;
+                } else if (c > 0x07FF) {
+                    buffer[bufferPos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
+                    buffer[bufferPos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
+                    buffer[bufferPos++] = (byte) (0x80 | ((c) & 0x3F));
+                } else {
+                    buffer[bufferPos++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
+                    buffer[bufferPos++] = (byte) (0x80 | ((c) & 0x3F));
+                }
+            }
+
+            out.write(buffer, 0, bufferPos);
+
+            if (isBufferObjectDataOutput) {
+                utfLength = bufferPos;
+            }
+            return utfLength;
         }
 
         protected abstract boolean isAvailable();
@@ -547,70 +563,84 @@ public final class UTFEncoderDecoder {
         in.readFully(buffer, 1, minUtfLenght);
 
         if (allAscii) {
-            while (bufferPos != bufferLimit) {
-                data[charArrCount++] = (char) (buffer[bufferPos++] & 0xFF);
-            }
-
-            for (readCount = bufferPos - 1; readCount < utfLength; readCount++) {
-                bufferPos = buffered(buffer, bufferPos, utfLength, readCount, in);
-                data[charArrCount++] = (char) (buffer[0] & 0xFF);
-            }
+            readAllAscii(in, data, buffer, utfLength, bufferLimit, bufferPos, charArrCount);
         } else {
+            readNonAscii(in, data, beginIndex, buffer, utfLength, bufferLimit, bufferPos, charArrCount);
+        }
+    }
+
+    private void readNonAscii(DataInput in, char[] data, int beginIndex, byte[] buffer, int utfLength, int bufferLimit, int bufferPos, int charArrCount) throws IOException {
+        int c1;
+        int readCount;
+        int cTemp;
+        int c2;
+        int c3;
+        c1 = buffer[bufferPos++] & 0xFF;
+        while (bufferPos != bufferLimit) {
+            if (c1 > 127) {
+                break;
+            }
+            data[charArrCount++] = (char) c1;
             c1 = buffer[bufferPos++] & 0xFF;
-            while (bufferPos != bufferLimit) {
-                if (c1 > 127) {
-                    break;
-                }
+        }
+
+        bufferPos--;
+        readCount = bufferPos - 1;
+
+        while (readCount < utfLength) {
+            bufferPos = buffered(buffer, bufferPos, utfLength, readCount++, in);
+            c1 = buffer[0] & 0xFF;
+            cTemp = c1 >> 4;
+            if (cTemp >> 3 == 0) {
+                // ((cTemp & 0xF8) == 0) or (cTemp <= 7 && cTemp >= 0)
+                /* 0xxxxxxx */
                 data[charArrCount++] = (char) c1;
-                c1 = buffer[bufferPos++] & 0xFF;
-            }
-
-            bufferPos--;
-            readCount = bufferPos - 1;
-
-            while (readCount < utfLength) {
-                bufferPos = buffered(buffer, bufferPos, utfLength, readCount++, in);
-                c1 = buffer[0] & 0xFF;
-                cTemp = c1 >> 4;
-                if (cTemp >> 3 == 0) {
-                    // ((cTemp & 0xF8) == 0) or (cTemp <= 7 && cTemp >= 0)
-                    /* 0xxxxxxx */
-                    data[charArrCount++] = (char) c1;
-                } else if (cTemp == 12 || cTemp == 13) {
-                    /* 110x xxxx 10xx xxxx */
-                    if (readCount + 1 > utfLength) {
-                        throw new UTFDataFormatException(
-                                "malformed input: partial character at end");
-                    }
-                    bufferPos = buffered(buffer, bufferPos, utfLength, readCount++, in);
-                    c2 = buffer[0] & 0xFF;
-                    if ((c2 & 0xC0) != 0x80) {
-                        throw new UTFDataFormatException(
-                                "malformed input around byte " + beginIndex + readCount + 1);
-                    }
-                    data[charArrCount++] = (char) (((c1 & 0x1F) << 6) | (c2 & 0x3F));
-                } else if (cTemp == 14) {
-                    /* 1110 xxxx 10xx xxxx 10xx xxxx */
-                    if (readCount + 2 > utfLength) {
-                        throw new UTFDataFormatException(
-                                "malformed input: partial character at end");
-                    }
-                    bufferPos = buffered(buffer, bufferPos, utfLength, readCount++, in);
-                    c2 = buffer[0] & 0xFF;
-                    bufferPos = buffered(buffer, bufferPos, utfLength, readCount++, in);
-                    c3 = buffer[0] & 0xFF;
-                    if (((c2 & 0xC0) != 0x80) || ((c3 & 0xC0) != 0x80)) {
-                        throw new UTFDataFormatException(
-                                "malformed input around byte " + (beginIndex + readCount + 1));
-                    }
-                    data[charArrCount++] = (char) (((c1 & 0x0F) << 12)
-                            | ((c2 & 0x3F) << 6) | ((c3 & 0x3F)));
-                } else {
-                    /* 10xx xxxx, 1111 xxxx */
+            } else if (cTemp == 12 || cTemp == 13) {
+                /* 110x xxxx 10xx xxxx */
+                if (readCount + 1 > utfLength) {
                     throw new UTFDataFormatException(
-                            "malformed input around byte " + (beginIndex + readCount));
+                            "malformed input: partial character at end");
                 }
+                bufferPos = buffered(buffer, bufferPos, utfLength, readCount++, in);
+                c2 = buffer[0] & 0xFF;
+                if ((c2 & 0xC0) != 0x80) {
+                    throw new UTFDataFormatException(
+                            "malformed input around byte " + beginIndex + readCount + 1);
+                }
+                data[charArrCount++] = (char) (((c1 & 0x1F) << 6) | (c2 & 0x3F));
+            } else if (cTemp == 14) {
+                /* 1110 xxxx 10xx xxxx 10xx xxxx */
+                if (readCount + 2 > utfLength) {
+                    throw new UTFDataFormatException(
+                            "malformed input: partial character at end");
+                }
+                bufferPos = buffered(buffer, bufferPos, utfLength, readCount++, in);
+                c2 = buffer[0] & 0xFF;
+                bufferPos = buffered(buffer, bufferPos, utfLength, readCount++, in);
+                c3 = buffer[0] & 0xFF;
+                if (((c2 & 0xC0) != 0x80) || ((c3 & 0xC0) != 0x80)) {
+                    throw new UTFDataFormatException(
+                            "malformed input around byte " + (beginIndex + readCount + 1));
+                }
+                data[charArrCount++] = (char) (((c1 & 0x0F) << 12)
+                        | ((c2 & 0x3F) << 6) | ((c3 & 0x3F)));
+            } else {
+                /* 10xx xxxx, 1111 xxxx */
+                throw new UTFDataFormatException(
+                        "malformed input around byte " + (beginIndex + readCount));
             }
+        }
+    }
+
+    private void readAllAscii(DataInput in, char[] data, byte[] buffer, int utfLength, int bufferLimit, int bufferPos, int charArrCount) throws IOException {
+        int readCount;
+        while (bufferPos != bufferLimit) {
+            data[charArrCount++] = (char) (buffer[bufferPos++] & 0xFF);
+        }
+
+        for (readCount = bufferPos - 1; readCount < utfLength; readCount++) {
+            bufferPos = buffered(buffer, bufferPos, utfLength, readCount, in);
+            data[charArrCount++] = (char) (buffer[0] & 0xFF);
         }
     }
     //CHECKSTYLE:ON
