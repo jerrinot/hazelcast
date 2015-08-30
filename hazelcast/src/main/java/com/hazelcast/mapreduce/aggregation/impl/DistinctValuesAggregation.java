@@ -196,7 +196,7 @@ public class DistinctValuesAggregation<Key, Value, DistinctType>
 
         @Override
         public void map(Key key, Value value, Context<Integer, DistinctType> context) {
-            int mappingKey = key(key);
+            int mappingKey = key();
             entry.key = key;
             entry.value = value;
             DistinctType valueOut = supplier.apply(entry);
@@ -229,12 +229,11 @@ public class DistinctValuesAggregation<Key, Value, DistinctType>
             supplier = in.readObject();
         }
 
-        private int key(Key key) {
-            return key.hashCode() % DEFAULT_DISTRIBUTION_FACTOR;
-//            if (keyPosition >= DISTRIBUTION_KEYS.length) {
-//                keyPosition = 0;
-//            }
-//            return keyPosition++;
+        private int key() {
+            if (keyPosition >= DISTRIBUTION_KEYS.length) {
+                keyPosition = 0;
+            }
+            return keyPosition++;
         }
     }
 
