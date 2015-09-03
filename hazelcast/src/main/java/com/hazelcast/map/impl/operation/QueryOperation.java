@@ -28,7 +28,11 @@ import com.hazelcast.partition.InternalPartitionService;
 import com.hazelcast.query.PagingPredicate;
 import com.hazelcast.query.PagingPredicateAccessor;
 import com.hazelcast.query.Predicate;
+import com.hazelcast.query.Visitable;
 import com.hazelcast.query.impl.QueryableEntry;
+import com.hazelcast.query.impl.predicates.BetweenVisitor;
+import com.hazelcast.query.impl.predicates.FlatteningVisitor;
+import com.hazelcast.query.impl.predicates.Visitor;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.NodeEngine;
@@ -62,6 +66,9 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
 
     private QueryResult result;
 
+    private Visitor visitor1 = new FlatteningVisitor();
+    private Visitor visitor2 = new BetweenVisitor();
+
     public QueryOperation() {
     }
 
@@ -79,6 +86,11 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
 
     @Override
     public void run() throws Exception {
+        if (predicate instanceof Visitable) {
+            ((Visitable) predicate).accept(visitor1);
+            ((Visitable) predicate).accept(visitor2);
+        }
+
         InternalPartitionService partitionService = getNodeEngine().getPartitionService();
         NodeEngine nodeEngine = getNodeEngine();
         MapServiceContext mapServiceContext = mapService.getMapServiceContext();
