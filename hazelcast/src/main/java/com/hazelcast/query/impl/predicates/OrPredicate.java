@@ -36,7 +36,7 @@ import java.util.Set;
  */
 public class OrPredicate implements IndexAwarePredicate, DataSerializable {
 
-    private Predicate[] predicates;
+    protected Predicate[] predicates;
 
     public OrPredicate() {
     }
