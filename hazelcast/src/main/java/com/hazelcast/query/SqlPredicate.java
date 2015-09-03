@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.Set;
 
 import com.hazelcast.query.impl.predicates.AbstractPredicate;
+import com.hazelcast.query.impl.predicates.Visitor;
+
 import static com.hazelcast.query.Predicates.and;
 import static com.hazelcast.query.Predicates.between;
 import static com.hazelcast.query.Predicates.equal;
@@ -47,7 +49,7 @@ import static com.hazelcast.query.Predicates.regex;
  * This class contains methods related to conversion of sql query to predicate.
  */
 
-public class SqlPredicate extends AbstractPredicate implements IndexAwarePredicate {
+public class SqlPredicate extends AbstractPredicate implements IndexAwarePredicate, Visitable {
 
     private static final long serialVersionUID = 1;
 
@@ -320,5 +322,12 @@ public class SqlPredicate extends AbstractPredicate implements IndexAwarePredica
     @Override
     public int hashCode() {
         return sql.hashCode();
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+        if (predicate instanceof Visitable) {
+            ((Visitable) predicate).accept(visitor);
+        }
     }
 }
