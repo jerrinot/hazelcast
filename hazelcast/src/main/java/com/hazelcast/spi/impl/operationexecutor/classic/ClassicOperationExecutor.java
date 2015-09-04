@@ -143,7 +143,7 @@ public final class ClassicOperationExecutor implements OperationExecutor {
             PartitionOperationThread operationThread = new PartitionOperationThread(threadName, threadId, null, logger,
                     threadGroup, nodeExtension, partitionOperationRunners);
 
-            SingleConsumerScheduleQueue scheduleQueue = new SingleConsumerScheduleQueue(operationThread);
+            DefaultScheduleQueue scheduleQueue = new DefaultScheduleQueue();
             operationThread.scheduleQueue = scheduleQueue;
 
             threads[threadId] = operationThread;
