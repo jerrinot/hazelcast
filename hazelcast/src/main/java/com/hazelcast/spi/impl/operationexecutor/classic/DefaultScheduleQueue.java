@@ -31,7 +31,7 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
     };
 
     private final BlockingQueue normalQueue;
-    private final ConcurrentLinkedQueue priorityQueue;
+//    private final ConcurrentLinkedQueue priorityQueue;
 
     public DefaultScheduleQueue() {
         this(new LinkedBlockingQueue(), new ConcurrentLinkedQueue());
@@ -39,7 +39,7 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
 
     public DefaultScheduleQueue(BlockingQueue normalQueue, ConcurrentLinkedQueue priorityQueue) {
         this.normalQueue = checkNotNull(normalQueue, "normalQueue");
-        this.priorityQueue = checkNotNull(priorityQueue, "priorityQueue");
+//        this.priorityQueue = checkNotNull(priorityQueue, "priorityQueue");
     }
 
     @Override
@@ -52,9 +52,9 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
     @Override
     public void addUrgent(Object task) {
         checkNotNull(task, "task can't be null");
-
-        priorityQueue.add(task);
-        normalQueue.add(TRIGGER_TASK);
+        normalQueue.add(task);
+//        priorityQueue.add(task);
+//        normalQueue.add(TRIGGER_TASK);
     }
 
     @Override
@@ -64,29 +64,16 @@ public final class DefaultScheduleQueue implements ScheduleQueue {
 
     @Override
     public int prioritySize() {
-        return priorityQueue.size();
+        return 0;
     }
 
     @Override
     public int size() {
-        return normalQueue.size() + priorityQueue.size();
+        return normalQueue.size();
     }
 
     @Override
     public Object take() throws InterruptedException {
-        ConcurrentLinkedQueue priorityQueue = this.priorityQueue;
-        for (; ; ) {
-            Object priorityItem = priorityQueue.poll();
-            if (priorityItem != null) {
-                return priorityItem;
-            }
-
-            Object normalItem = normalQueue.take();
-            if (normalItem == TRIGGER_TASK) {
-                continue;
-            }
-
-            return normalItem;
-        }
+        return normalQueue.take();
     }
 }
