@@ -44,7 +44,7 @@ import static com.hazelcast.util.counters.SwCounter.newSwCounter;
 public abstract class OperationThread extends HazelcastManagedThread {
 
     final int threadId;
-    final ScheduleQueue scheduleQueue;
+    ScheduleQueue scheduleQueue;
 
     // All these counters are updated by this OperationThread (so a single writer) and are read by the MetricsRegistry.
     @Probe
