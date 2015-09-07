@@ -21,6 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.query.impl.QueryContext;
 import com.hazelcast.query.impl.QueryableEntry;
+import com.hazelcast.query.impl.predicates.Visitor;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ import java.util.Set;
 /**
  * This class provides functionality to build predicate.
  */
-public class PredicateBuilder implements IndexAwarePredicate, DataSerializable {
+public class PredicateBuilder implements IndexAwarePredicate, DataSerializable, Visitable {
 
     List<Predicate> lsPredicates = new ArrayList<Predicate>();
 
@@ -124,5 +125,17 @@ public class PredicateBuilder implements IndexAwarePredicate, DataSerializable {
         sb.append(lsPredicates.size() == 0 ? "" : lsPredicates.get(0));
         sb.append("\n}");
         return sb.toString();
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+        Predicate p = lsPredicates.get(0);
+        if (p instanceof Visitable) {
+            ((Visitable) p).accept(visitor);
+        }
+    }
+
+    public Predicate getPredicate() {
+        return lsPredicates.get(0);
     }
 }

@@ -20,6 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.query.Predicate;
+import com.hazelcast.query.Visitable;
 
 import java.io.IOException;
 import java.util.Map;
@@ -27,8 +28,8 @@ import java.util.Map;
 /**
  * Not Predicate
  */
-public class NotPredicate implements Predicate, DataSerializable {
-    private Predicate predicate;
+public class NotPredicate implements Predicate, DataSerializable, Visitable {
+    protected Predicate predicate;
 
     public NotPredicate(Predicate predicate) {
         this.predicate = predicate;
@@ -55,5 +56,12 @@ public class NotPredicate implements Predicate, DataSerializable {
     @Override
     public String toString() {
         return "NOT(" + predicate + ")";
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+        if (predicate instanceof Visitable) {
+            ((Visitable) predicate).accept(visitor);
+        }
     }
 }
