@@ -65,10 +65,14 @@ public class OrResultSet extends AbstractSet<QueryableEntry> {
 
     @Override
     public int size() {
+        int size = 0;
         if (indexedResults.isEmpty()) {
-            return 0;
+            return size;
         } else {
-            return indexedResults.get(0).size();
+            for (Set<QueryableEntry> set : indexedResults) {
+                size += set.size();
+            }
+            return size;
         }
     }
 }
