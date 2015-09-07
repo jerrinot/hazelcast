@@ -28,7 +28,7 @@ import java.util.Map;
 /**
  * Not Predicate
  */
-public class NotPredicate implements Predicate, DataSerializable, Visitable {
+public class NotPredicate implements Predicate, DataSerializable, Visitable, Accountable {
     protected Predicate predicate;
 
     public NotPredicate(Predicate predicate) {
@@ -62,6 +62,15 @@ public class NotPredicate implements Predicate, DataSerializable, Visitable {
     public void accept(Visitor visitor) {
         if (predicate instanceof Visitable) {
             ((Visitable) predicate).accept(visitor);
+        }
+    }
+
+    @Override
+    public long getCost() {
+        if (predicate instanceof Accountable) {
+            return ((Accountable) predicate).getCost();
+        } else {
+            return Accountable.NORMAL_COST;
         }
     }
 }
