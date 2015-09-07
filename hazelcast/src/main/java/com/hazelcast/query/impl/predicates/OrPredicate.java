@@ -35,7 +35,7 @@ import java.util.Set;
 /**
  * Or Predicate
  */
-public class OrPredicate implements IndexAwarePredicate, DataSerializable, Visitable {
+public class OrPredicate implements IndexAwarePredicate, DataSerializable, Visitable, Accountable {
 
     protected Predicate[] predicates;
 
@@ -131,5 +131,23 @@ public class OrPredicate implements IndexAwarePredicate, DataSerializable, Visit
             }
         }
         visitor.visit(this);
+    }
+
+    @Override
+    public long getCost() {
+        if (predicates == null) {
+            return Accountable.LOST_COST;
+        }
+        long cost = 0;
+        for (Predicate p : predicates) {
+            long currentCost;
+            if (p instanceof Accountable) {
+                currentCost = ((Accountable) p).getCost();
+            } else {
+                currentCost = Accountable.NORMAL_COST;
+            }
+            cost += currentCost;
+        }
+        return cost;
     }
 }

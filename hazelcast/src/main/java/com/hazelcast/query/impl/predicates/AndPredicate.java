@@ -27,6 +27,7 @@ import com.hazelcast.query.impl.QueryContext;
 import com.hazelcast.query.impl.QueryableEntry;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,7 @@ import java.util.Set;
 /**
  * And Predicate
  */
-public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visitable {
+public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visitable, Accountable {
 
     private static final ThreadLocal<Integer> level = new ThreadLocal<Integer>(){
         @Override
@@ -104,6 +105,8 @@ public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visi
         if (smallestIndexedResult == null) {
             return null;
         }
+
+        Collections.sort(lsNoIndexPredicates, CostComparator.INSTANCE);
 
         level.set(currentLevel);
         if (currentLevel == 0) {
@@ -180,5 +183,23 @@ public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visi
         for (int i = 0; i < size; i++) {
             predicates[i] = in.readObject();
         }
+    }
+
+    @Override
+    public long getCost() {
+        if (predicates == null) {
+            return Accountable.LOST_COST;
+        }
+        long cost = 0;
+        for (Predicate p : predicates) {
+            long currentCost;
+            if (p instanceof Accountable) {
+                currentCost = ((Accountable) p).getCost();
+            } else {
+                currentCost = Accountable.NORMAL_COST;
+            }
+            cost += currentCost;
+        }
+        return cost;
     }
 }
