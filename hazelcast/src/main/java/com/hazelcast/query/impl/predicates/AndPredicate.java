@@ -37,6 +37,13 @@ import java.util.Set;
  */
 public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visitable {
 
+    private static final ThreadLocal<Integer> level = new ThreadLocal<Integer>(){
+        @Override
+        protected Integer initialValue() {
+            return 0;
+        }
+    };
+
     protected Predicate[] predicates;
 
     public AndPredicate() {
@@ -58,21 +65,30 @@ public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visi
 
     @Override
     public Set<QueryableEntry> filter(QueryContext queryContext) {
+        int currentLevel = level.get();
+        level.set(currentLevel + 1);
+
         Set<QueryableEntry> smallestIndexedResult = null;
         List<Set<QueryableEntry>> otherIndexedResults = new LinkedList<Set<QueryableEntry>>();
         List<Predicate> lsNoIndexPredicates = null;
+
+        String smallestPredicateString = "none";
+        StringBuilder indexSqls = new StringBuilder();
         for (Predicate predicate : predicates) {
             boolean indexed = false;
             if (predicate instanceof IndexAwarePredicate) {
                 IndexAwarePredicate iap = (IndexAwarePredicate) predicate;
                 if (iap.isIndexed(queryContext)) {
+                    indexSqls.append(iap.toString()).append(", ");
                     indexed = true;
                     Set<QueryableEntry> s = iap.filter(queryContext);
                     if (smallestIndexedResult == null) {
                         smallestIndexedResult = s;
+                        smallestPredicateString = iap.toString();
                     } else if (s.size() < smallestIndexedResult.size()) {
                         otherIndexedResults.add(smallestIndexedResult);
                         smallestIndexedResult = s;
+                        smallestPredicateString = iap.toString();
                     } else {
                         otherIndexedResults.add(s);
                     }
@@ -87,6 +103,26 @@ public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visi
         }
         if (smallestIndexedResult == null) {
             return null;
+        }
+
+        level.set(currentLevel);
+        if (currentLevel == 0) {
+            StringBuilder sb = new StringBuilder("Smallest Index result has: ");
+            sb.append(smallestIndexedResult.size()).append(" items. It's from this query: ");
+            sb.append(smallestPredicateString).append("Other predicates: ");
+            for (Predicate p : lsNoIndexPredicates) {
+                sb.append(p).append(", ");
+            }
+            sb.append('\n');
+            sb.append("There are " + otherIndexedResults.size() + " already indexed results. Types: ");
+            for (Set<QueryableEntry> entries : otherIndexedResults) {
+                sb.append(entries.getClass());
+            }
+            sb.append('\n');
+            sb.append("Index results coming from queries: ").append(indexSqls).append('\n');
+            sb.append('\n');
+            System.out.println(sb.toString());
+
         }
         return new AndResultSet(smallestIndexedResult, otherIndexedResults, lsNoIndexPredicates);
     }

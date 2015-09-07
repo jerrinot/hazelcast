@@ -250,7 +250,7 @@ public class OptimizerTest {
 
     @Test
     public void testComplexQuery() {
-        SqlPredicate p = new SqlPredicate(query1);
+        SqlPredicate p = new SqlPredicate(query3);
 //        Predicate p = complexQueryAsPredicate();
         System.out.println("Before: \n" + p);
         optimize(p);
