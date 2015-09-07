@@ -59,10 +59,11 @@ public class NotPredicate implements Predicate, DataSerializable, Visitable, Acc
     }
 
     @Override
-    public void accept(Visitor visitor) {
+    public Predicate accept(Visitor visitor) {
         if (predicate instanceof Visitable) {
-            ((Visitable) predicate).accept(visitor);
+            predicate = ((Visitable) predicate).accept(visitor);
         }
+        return visitor.visit(this);
     }
 
     @Override

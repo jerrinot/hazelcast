@@ -128,11 +128,13 @@ public class PredicateBuilder implements IndexAwarePredicate, DataSerializable, 
     }
 
     @Override
-    public void accept(Visitor visitor) {
+    public Predicate accept(Visitor visitor) {
         Predicate p = lsPredicates.get(0);
         if (p instanceof Visitable) {
-            ((Visitable) p).accept(visitor);
+            Predicate transformed = ((Visitable) p).accept(visitor);
+            lsPredicates.set(0, transformed);
         }
+        return visitor.visit(this);
     }
 
     public Predicate getPredicate() {

@@ -87,8 +87,10 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
     @Override
     public void run() throws Exception {
         if (predicate instanceof Visitable) {
-            ((Visitable) predicate).accept(visitor1);
-            ((Visitable) predicate).accept(visitor2);
+            predicate = ((Visitable) predicate).accept(visitor1);
+        }
+        if (predicate instanceof Visitable) {
+            predicate = ((Visitable) predicate).accept(visitor2);
         }
 
         InternalPartitionService partitionService = getNodeEngine().getPartitionService();

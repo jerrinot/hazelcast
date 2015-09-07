@@ -20,6 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.query.Predicate;
+import com.hazelcast.query.Visitable;
 import com.hazelcast.query.impl.IndexImpl;
 
 import java.io.IOException;
@@ -32,7 +33,7 @@ import static com.hazelcast.query.impl.predicates.AttributeUtils.readAttribute;
 /**
  * Like Predicate
  */
-public class LikePredicate implements Predicate, DataSerializable {
+public class LikePredicate implements Predicate, DataSerializable, Visitable {
     protected String attribute;
     protected String second;
     private volatile Pattern pattern;
@@ -100,5 +101,10 @@ public class LikePredicate implements Predicate, DataSerializable {
                 .append(second)
                 .append("'");
         return builder.toString();
+    }
+
+    @Override
+    public Predicate accept(Visitor visitor) {
+        return visitor.visit(this);
     }
 }

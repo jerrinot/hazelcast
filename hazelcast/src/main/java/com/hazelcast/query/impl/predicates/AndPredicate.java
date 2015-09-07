@@ -48,13 +48,14 @@ public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visi
     }
 
     @Override
-    public void accept(Visitor visitor) {
-        for (Predicate predicate : predicates) {
+    public Predicate accept(Visitor visitor) {
+        for (int i = 0; i < predicates.length; i++) {
+            Predicate predicate = predicates[i];
             if (predicate instanceof Visitable) {
-                ((Visitable) predicate).accept(visitor);
+                predicates[i] = ((Visitable) predicate).accept(visitor);
             }
         }
-        visitor.visit(this);
+        return visitor.visit(this);
     }
 
     @Override

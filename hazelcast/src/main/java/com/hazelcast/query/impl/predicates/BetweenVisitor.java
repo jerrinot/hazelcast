@@ -1,6 +1,8 @@
 package com.hazelcast.query.impl.predicates;
 
 import com.hazelcast.query.Predicate;
+import com.hazelcast.query.PredicateBuilder;
+import com.hazelcast.query.SqlPredicate;
 import com.hazelcast.query.impl.FalsePredicate;
 
 import java.util.ArrayList;
@@ -11,12 +13,12 @@ import java.util.Map;
 public class BetweenVisitor implements Visitor {
 
     @Override
-    public void visit(AndPredicate andPredicate) {
+    public Predicate visit(AndPredicate andPredicate) {
         Predicate[] originalPredicates = andPredicate.predicates;
         Map<String, List<GreaterLessPredicate>> candidates = findCandidates(originalPredicates);
 
         if (candidates == null) {
-            return;
+            return andPredicate;
         }
 
         int toBeRemoved = 0;
@@ -47,13 +49,14 @@ public class BetweenVisitor implements Visitor {
             }
 
             if (replaceWithFalsePredicateIfPossible(andPredicate, mostLeft, mostRight)) {
-                return;
+                return andPredicate;
             }
 
             String attributeName = entry.getKey();
             toBeRemoved = rewriteAttribute(attributeName, mostLeft, mostRight, originalPredicates, toBeRemoved);
         }
         andPredicate.predicates = removeEliminatedPredicates(originalPredicates, toBeRemoved);
+        return andPredicate;
     }
 
     private Predicate[] removeEliminatedPredicates(Predicate[] originalPredicates, int toBeRemoved) {
@@ -144,14 +147,28 @@ public class BetweenVisitor implements Visitor {
     }
 
     @Override
-    public void visit(OrPredicate orPredicate) {
-
+    public Predicate visit(OrPredicate orPredicate) {
+        return orPredicate;
     }
 
+    @Override
+    public Predicate visit(NotPredicate predicate) {
+        return predicate;
+    }
 
     @Override
-    public void visit(NotPredicate predicate) {
+    public Predicate visit(PredicateBuilder predicateBuilder) {
+        return predicateBuilder;
+    }
 
+    @Override
+    public Predicate visit(SqlPredicate sqlPredicate) {
+        return sqlPredicate;
+    }
+
+    @Override
+    public Predicate visit(LikePredicate likePredicate) {
+        return likePredicate;
     }
 
 }

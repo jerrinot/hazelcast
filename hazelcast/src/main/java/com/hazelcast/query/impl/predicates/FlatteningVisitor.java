@@ -3,13 +3,14 @@ package com.hazelcast.query.impl.predicates;
 
 import com.hazelcast.query.Predicate;
 import com.hazelcast.query.PredicateBuilder;
+import com.hazelcast.query.SqlPredicate;
 
 import java.util.ArrayList;
 
 public class FlatteningVisitor implements Visitor {
 
     @Override
-    public void visit(AndPredicate andPredicate) {
+    public Predicate visit(AndPredicate andPredicate) {
         Predicate[] predicates = andPredicate.predicates;
         ArrayList<Predicate> toBeAdded = null;
         for (int i = 0; i < predicates.length; i++) {
@@ -25,8 +26,6 @@ public class FlatteningVisitor implements Visitor {
                         toBeAdded.add(subPredicates[j]);
                     }
                 }
-            } else if (predicate instanceof PredicateBuilder){
-                predicates[i] = ((PredicateBuilder) predicate).getPredicate();
             }
         }
         if (toBeAdded != null && toBeAdded.size() != 0) {
@@ -38,10 +37,11 @@ public class FlatteningVisitor implements Visitor {
             }
             andPredicate.predicates = newPredicates;
         }
+        return andPredicate;
     }
 
     @Override
-    public void visit(OrPredicate orPredicate) {
+    public Predicate visit(OrPredicate orPredicate) {
         Predicate[] predicates = orPredicate.predicates;
         ArrayList<Predicate> toBeAdded = null;
         for (int i = 0; i < predicates.length; i++) {
@@ -70,13 +70,30 @@ public class FlatteningVisitor implements Visitor {
             }
             orPredicate.predicates = newPredicates;
         }
+        return orPredicate;
     }
 
     @Override
-    public void visit(NotPredicate predicate) {
+    public Predicate visit(NotPredicate predicate) {
         Predicate inner = predicate.predicate;
         if (inner instanceof PredicateBuilder) {
             predicate.predicate = ((PredicateBuilder) inner).getPredicate();
         }
+        return predicate;
+    }
+
+    @Override
+    public Predicate visit(PredicateBuilder predicateBuilder) {
+        return predicateBuilder.getPredicate();
+    }
+
+    @Override
+    public Predicate visit(SqlPredicate sqlPredicate) {
+        return sqlPredicate;
+    }
+
+    @Override
+    public Predicate visit(LikePredicate likePredicate) {
+        return likePredicate;
     }
 }
