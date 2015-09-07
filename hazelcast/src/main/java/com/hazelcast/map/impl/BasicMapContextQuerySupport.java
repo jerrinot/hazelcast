@@ -249,6 +249,8 @@ class BasicMapContextQuerySupport implements MapContextQuerySupport {
             addResultsOfPredicate(futures, result, partitionIds);
             if (partitionIds.isEmpty()) {
                 return result;
+            } else {
+                logger.warning("There still missing partitions: " + partitionIds);
             }
         } catch (Throwable t) {
             if (t.getCause() instanceof QueryResultSizeExceededException) {
