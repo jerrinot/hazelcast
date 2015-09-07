@@ -32,6 +32,7 @@ import com.hazelcast.query.Visitable;
 import com.hazelcast.query.impl.QueryableEntry;
 import com.hazelcast.query.impl.predicates.BetweenVisitor;
 import com.hazelcast.query.impl.predicates.FlatteningVisitor;
+import com.hazelcast.query.impl.predicates.OrToInVisitor;
 import com.hazelcast.query.impl.predicates.Visitor;
 import com.hazelcast.spi.ExceptionAction;
 import com.hazelcast.spi.ExecutionService;
@@ -68,6 +69,7 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
 
     private Visitor visitor1 = new FlatteningVisitor();
     private Visitor visitor2 = new BetweenVisitor();
+    private Visitor visitor3 = new OrToInVisitor();
 
     public QueryOperation() {
     }
@@ -91,6 +93,9 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
         }
         if (predicate instanceof Visitable) {
             predicate = ((Visitable) predicate).accept(visitor2);
+        }
+        if (predicate instanceof Visitable) {
+            predicate = ((Visitable) predicate).accept(visitor3);
         }
 
         InternalPartitionService partitionService = getNodeEngine().getPartitionService();

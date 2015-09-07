@@ -30,9 +30,10 @@ import java.util.Set;
 /**
  * Greater Less Predicate
  */
-public class GreaterLessPredicate extends EqualPredicate {
+public final class GreaterLessPredicate extends AbstractPredicate {
     boolean equal;
     boolean less;
+    protected Comparable value;
 
     public GreaterLessPredicate() {
     }

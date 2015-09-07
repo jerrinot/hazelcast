@@ -250,18 +250,24 @@ public class OptimizerTest {
 
     @Test
     public void testComplexQuery() {
-//        SqlPredicate p = new SqlPredicate(query1);
-        Predicate p = complexQueryAsPredicate();
+        Predicate p = new SqlPredicate(query1);
+//        Predicate p = complexQueryAsPredicate();
         System.out.println("Before: \n" + p);
-        optimize(p);
+        p = optimize(p);
         System.out.println("After: \n" + p);
     }
 
-    private void optimize(Predicate p) {
+    private Predicate optimize(Predicate p) {
         if (p instanceof Visitable) {
-            ((Visitable) p).accept(new FlatteningVisitor());
-            ((Visitable) p).accept(new BetweenVisitor());
+            p = ((Visitable) p).accept(new FlatteningVisitor());
         }
+        if (p instanceof Visitable) {
+            p = ((Visitable) p).accept(new BetweenVisitor());
+        }
+        if (p instanceof Visitable) {
+            p = ((Visitable) p).accept(new OrToInVisitor());
+        }
+        return p;
     }
 
     public static Predicate complexQueryAsPredicate(){
