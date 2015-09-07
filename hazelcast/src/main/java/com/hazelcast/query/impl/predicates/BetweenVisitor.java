@@ -1,6 +1,8 @@
 package com.hazelcast.query.impl.predicates;
 
 import com.hazelcast.query.Predicate;
+import com.hazelcast.query.PredicateBuilder;
+import com.hazelcast.query.Visitable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -108,6 +110,13 @@ public class BetweenVisitor implements Visitor {
 
     @Override
     public void visit(OrPredicate orPredicate) {
+
+    }
+
+
+
+    @Override
+    public void visit(NotPredicate predicate) {
 
     }
 

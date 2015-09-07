@@ -21,6 +21,7 @@ import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.query.IndexAwarePredicate;
 import com.hazelcast.query.Predicate;
+import com.hazelcast.query.Visitable;
 import com.hazelcast.query.impl.OrResultSet;
 import com.hazelcast.query.impl.QueryContext;
 import com.hazelcast.query.impl.QueryableEntry;
@@ -34,7 +35,7 @@ import java.util.Set;
 /**
  * Or Predicate
  */
-public class OrPredicate implements IndexAwarePredicate, DataSerializable {
+public class OrPredicate implements IndexAwarePredicate, DataSerializable, Visitable {
 
     protected Predicate[] predicates;
 
@@ -120,5 +121,15 @@ public class OrPredicate implements IndexAwarePredicate, DataSerializable {
         }
         sb.append(")");
         return sb.toString();
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+        for (Predicate predicate : predicates) {
+            if (predicate instanceof Visitable) {
+                ((Visitable) predicate).accept(visitor);
+            }
+        }
+        visitor.visit(this);
     }
 }
