@@ -1,11 +1,9 @@
 package com.hazelcast.query.impl.predicates;
 
 import com.hazelcast.query.Predicate;
-import com.hazelcast.query.PredicateBuilder;
-import com.hazelcast.query.Visitable;
+import com.hazelcast.query.impl.FalsePredicate;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,52 +25,41 @@ public class BetweenVisitor implements Visitor {
             if (predicates.size() == 1) {
                 continue;
             }
-            String attributeName = entry.getKey();
-
             GreaterLessPredicate mostLeft = null;
             GreaterLessPredicate mostRight = null;
-
             for (GreaterLessPredicate predicate : predicates) {
                 if (!predicate.equal) {
                     continue;
                 }
-                if (!predicate.less) {
-                    if (mostLeft == null) {
-                        mostLeft = predicate;
-                    } else {
-                        if (predicate.value.compareTo(mostLeft.value) < 0) {
-                            mostLeft = predicate;
-                        }
+                if (predicate.less) {
+                    if (mostRight == null || predicate.value.compareTo(mostRight.value) < 0) {
+                        mostRight = predicate;
                     }
                 } else {
-                    if (mostRight == null) {
-                        mostRight = predicate;
-                    } else {
-                        if (predicate.value.compareTo(mostRight.value) > 0) {
-                            mostRight = predicate;
-                        }
+                    if (mostLeft == null || predicate.value.compareTo(mostLeft.value) > 0) {
+                        mostLeft = predicate;
                     }
                 }
-            }
-            if (predicates.size() != 2) {
-                throw new UnsupportedOperationException("Not implemented yet");
             }
 
             if (mostLeft == null || mostRight == null) {
                 continue;
             }
 
-            BetweenPredicate rewritten = new BetweenPredicate(attributeName, mostLeft.value, mostRight.value);
-            for (int i = 0; i < originalPredicates.length; i++) {
-                if (originalPredicates[i] == mostLeft) {
-                    originalPredicates[i] = rewritten;
-                } else if (originalPredicates[i] == mostRight) {
-                    originalPredicates[i] = null;
-                    toBeRemoved++;
-                }
+            if (replaceWithFalsePredicateIfPossible(andPredicate, mostLeft, mostRight)) {
+                return;
             }
-        }
 
+            String attributeName = entry.getKey();
+            toBeRemoved = rewriteAttribute(attributeName, mostLeft, mostRight, originalPredicates, toBeRemoved);
+        }
+        andPredicate.predicates = removeEliminatedPredicates(originalPredicates, toBeRemoved);
+    }
+
+    private Predicate[] removeEliminatedPredicates(Predicate[] originalPredicates, int toBeRemoved) {
+        if (toBeRemoved == 0) {
+            return originalPredicates;
+        }
         int newSize = originalPredicates.length - toBeRemoved;
         Predicate[] newPredicates = new Predicate[newSize];
         int skipped = 0;
@@ -84,7 +71,46 @@ public class BetweenVisitor implements Visitor {
                 newPredicates[i - skipped] = predicate;
             }
         }
-        andPredicate.predicates = newPredicates;
+        return newPredicates;
+    }
+
+    private boolean replaceWithFalsePredicateIfPossible(AndPredicate andPredicate, GreaterLessPredicate mostLeft, GreaterLessPredicate mostRight) {
+        if (mostLeft.value.compareTo(mostRight.value) > 0) {
+            Predicate[] newPredicates = new Predicate[1];
+            newPredicates[0] = FalsePredicate.INSTANCE;
+            andPredicate.predicates = newPredicates;
+            return true;
+        }
+        return false;
+    }
+
+    private int rewriteAttribute(String attributeName, GreaterLessPredicate mostLeft, GreaterLessPredicate mostRight, Predicate[] originalPredicates, int toBeRemovedCount) {
+        BetweenPredicate rewritten = new BetweenPredicate(attributeName, mostLeft.value, mostRight.value);
+        for (int i = 0; i < originalPredicates.length; i++) {
+            Predicate currentPredicate = originalPredicates[i];
+            if (currentPredicate == mostLeft) {
+                originalPredicates[i] = rewritten;
+            } else if (currentPredicate == mostRight) {
+                originalPredicates[i] = null;
+                toBeRemovedCount++;
+            } else if (canBeEliminated(currentPredicate, mostLeft, mostRight)) {
+                originalPredicates[i] = null;
+                toBeRemovedCount++;
+            }
+        }
+        return toBeRemovedCount;
+    }
+
+    private boolean canBeEliminated(Predicate currentPredicate, GreaterLessPredicate mostLeft, GreaterLessPredicate mostRight) {
+        if (!(currentPredicate instanceof GreaterLessPredicate)) {
+            return false;
+        }
+        GreaterLessPredicate glp = (GreaterLessPredicate) currentPredicate;
+        if (glp.less) {
+            return glp.value.compareTo(mostRight.value) > 0;
+        } else {
+            return glp.value.compareTo(mostLeft.value) < 0;
+        }
     }
 
 
@@ -95,17 +121,26 @@ public class BetweenVisitor implements Visitor {
                 continue;
             }
             GreaterLessPredicate greaterLessPredicate = (GreaterLessPredicate) predicate;
-            if (candidates == null) {
-                candidates = new HashMap<String, List<GreaterLessPredicate>>();
+            if (!(greaterLessPredicate.equal)) {
+                continue;
             }
-            List<GreaterLessPredicate> greaterLessPredicates = candidates.get(greaterLessPredicate.attribute);
-            if (greaterLessPredicates == null) {
-                greaterLessPredicates = new ArrayList<GreaterLessPredicate>();
-                candidates.put(greaterLessPredicate.attribute, greaterLessPredicates);
-            }
-            greaterLessPredicates.add(greaterLessPredicate);
+            candidates = addIntoCandidates(greaterLessPredicate, candidates);
         }
         return candidates;
+    }
+
+    private Map<String, List<GreaterLessPredicate>> addIntoCandidates(GreaterLessPredicate predicate, Map<String, List<GreaterLessPredicate>> currentCandidates) {
+        if (currentCandidates == null) {
+            currentCandidates = new HashMap<String, List<GreaterLessPredicate>>();
+        }
+        String attribute = predicate.attribute;
+        List<GreaterLessPredicate> greaterLessPredicates = currentCandidates.get(attribute);
+        if (greaterLessPredicates == null) {
+            greaterLessPredicates = new ArrayList<GreaterLessPredicate>();
+            currentCandidates.put(attribute, greaterLessPredicates);
+        }
+        greaterLessPredicates.add(predicate);
+        return currentCandidates;
     }
 
     @Override
@@ -114,18 +149,9 @@ public class BetweenVisitor implements Visitor {
     }
 
 
-
     @Override
     public void visit(NotPredicate predicate) {
 
     }
 
-    private static class ValueComparator implements Comparator<GreaterLessPredicate> {
-        private static final ValueComparator INSTANCE = new ValueComparator();
-
-        @Override
-        public int compare(GreaterLessPredicate o1, GreaterLessPredicate o2) {
-            return o1.value.compareTo(o2.value);
-        }
-    }
 }

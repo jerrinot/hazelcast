@@ -16,10 +16,12 @@ public class BetweenVisitorTest {
 
     @Test
     public void testRewrite() {
-        Predicate leftMost = Predicates.greaterEqual("foo", 10);
+        Predicate leftMost = Predicates.greaterEqual("foo", 20);
         Predicate rightMost = Predicates.lessEqual("foo", 15);
+        Predicate extra1 = Predicates.lessThan("foo", 15);
+        Predicate extra2 = Predicates.greaterEqual("foo", 5);
 
-        AndPredicate and = (AndPredicate) Predicates.and(leftMost, rightMost);
+        AndPredicate and = (AndPredicate) Predicates.and(leftMost, rightMost, extra1, extra2);
 
         System.out.println("Before: " + and);
         and.accept(visitor);
