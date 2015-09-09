@@ -775,6 +775,27 @@ public abstract class HazelcastTestSupport {
         assertTrueEventually(task, ASSERT_TRUE_EVENTUALLY_TIMEOUT);
     }
 
+    public static void assertEqualsEventally(final int expected, Object o) {
+        if (o instanceof ProxyHandler) {
+            throw new IllegalStateException("It must be proxy!");
+        }
+        assertTrueEventually(new AssertTask() {
+            @Override
+            public void run() throws Exception {
+                Object result = ProxyHandler.get();
+                if (result instanceof Long) {
+                    long l = Long.valueOf((Long) result);
+                    assertEquals(expected, l);
+                } else if (result instanceof Integer) {
+                    long i = Integer.valueOf((Integer) result);
+                    assertEquals(expected, i);
+                } else {
+                    assertEquals(expected, result);
+                }
+            }
+        });
+    }
+
     public static void assertTrueDelayed5sec(AssertTask task) {
         assertTrueDelayed(5, task);
     }

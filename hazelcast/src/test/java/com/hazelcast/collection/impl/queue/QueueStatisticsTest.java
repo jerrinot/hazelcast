@@ -9,6 +9,7 @@ import com.hazelcast.monitor.LocalQueueStats;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
+import com.hazelcast.test.ProxyFactory;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -17,6 +18,7 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 
+import static com.hazelcast.test.ProxyFactory.on;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(HazelcastParallelClassRunner.class)
@@ -62,13 +64,15 @@ public class QueueStatisticsTest extends HazelcastTestSupport {
         }
 
         final LocalQueueStats stats = queue.getLocalQueueStats();
-        AssertTask task = new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                assertEquals(30, stats.getOfferOperationCount());
-            }
-        };
-        assertTrueEventually(task);
+        assertEqualsEventally(30, on(stats).getOfferOperationCount());
+
+//        AssertTask task = new AssertTask() {
+//            @Override
+//            public void run() throws Exception {
+//                assertEquals(30, stats.getOfferOperationCount());
+//            }
+//        };
+//        assertTrueEventually(task);
     }
 
     @Test
