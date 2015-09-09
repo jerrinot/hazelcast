@@ -35,7 +35,7 @@ import java.util.Set;
 /**
  * Or Predicate
  */
-public class OrPredicate implements IndexAwarePredicate, DataSerializable, Visitable, Accountable {
+public class OrPredicate implements IndexAwarePredicate, DataSerializable, Visitable, Accountable, Negatable {
 
     protected Predicate[] predicates;
 
@@ -150,5 +150,23 @@ public class OrPredicate implements IndexAwarePredicate, DataSerializable, Visit
             cost += currentCost;
         }
         return cost;
+    }
+
+    @Override
+    public Predicate negate() {
+        int size = predicates.length;
+        Predicate[] inners = new Predicate[size];
+        for (int i = 0; i < size; i++) {
+            Predicate original = predicates[i];
+            Predicate negated;
+            if (original instanceof Negatable) {
+                negated = ((Negatable) original).negate();
+            } else {
+                negated = new NotPredicate(original);
+            }
+            inners[i] = negated;
+        }
+        AndPredicate andPredicate = new AndPredicate(inners);
+        return andPredicate;
     }
 }

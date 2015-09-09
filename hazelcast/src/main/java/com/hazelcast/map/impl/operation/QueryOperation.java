@@ -32,6 +32,7 @@ import com.hazelcast.query.Visitable;
 import com.hazelcast.query.impl.QueryableEntry;
 import com.hazelcast.query.impl.predicates.BetweenVisitor;
 import com.hazelcast.query.impl.predicates.FlatteningVisitor;
+import com.hazelcast.query.impl.predicates.NotEliminatingVisitor;
 import com.hazelcast.query.impl.predicates.OrToInVisitor;
 import com.hazelcast.query.impl.predicates.Visitor;
 import com.hazelcast.spi.ExceptionAction;
@@ -67,9 +68,11 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
 
     private QueryResult result;
 
-    private Visitor visitor1 = new FlatteningVisitor();
-    private Visitor visitor2 = new BetweenVisitor();
-    private Visitor visitor3 = new OrToInVisitor();
+    private Visitor flatteningVisitor = new FlatteningVisitor();
+    private Visitor betweenVisitor = new BetweenVisitor();
+    private Visitor orToInVisitor = new OrToInVisitor();
+    private Visitor notEliminatingVisitor = new NotEliminatingVisitor();
+
 
     public QueryOperation() {
     }
@@ -89,14 +92,18 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
     @Override
     public void run() throws Exception {
         if (predicate instanceof Visitable) {
-            predicate = ((Visitable) predicate).accept(visitor1);
+            predicate = ((Visitable) predicate).accept(notEliminatingVisitor);
         }
         if (predicate instanceof Visitable) {
-            predicate = ((Visitable) predicate).accept(visitor2);
+            predicate = ((Visitable) predicate).accept(flatteningVisitor);
         }
         if (predicate instanceof Visitable) {
-            predicate = ((Visitable) predicate).accept(visitor3);
+            predicate = ((Visitable) predicate).accept(betweenVisitor);
         }
+        if (predicate instanceof Visitable) {
+            predicate = ((Visitable) predicate).accept(orToInVisitor);
+        }
+
 
         InternalPartitionService partitionService = getNodeEngine().getPartitionService();
         NodeEngine nodeEngine = getNodeEngine();

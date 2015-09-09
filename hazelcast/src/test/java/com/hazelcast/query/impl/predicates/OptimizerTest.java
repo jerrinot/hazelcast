@@ -250,14 +250,18 @@ public class OptimizerTest {
 
     @Test
     public void testComplexQuery() {
-        Predicate p = new SqlPredicate(query1);
+        Predicate p = new SqlPredicate(query2);
 //        Predicate p = complexQueryAsPredicate();
+        System.out.println("Original: " + query2);
         System.out.println("Before: \n" + p);
         p = optimize(p);
         System.out.println("After: \n" + p);
     }
 
     private Predicate optimize(Predicate p) {
+        if (p instanceof Visitable) {
+            p = ((Visitable) p).accept(new NotEliminatingVisitor());
+        }
         if (p instanceof Visitable) {
             p = ((Visitable) p).accept(new FlatteningVisitor());
         }
