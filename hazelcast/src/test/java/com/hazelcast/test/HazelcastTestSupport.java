@@ -776,13 +776,21 @@ public abstract class HazelcastTestSupport {
     }
 
     public static void assertEqualsEventally(final long expected, long actual) {
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                Long result = (Long) ProxyHandler.get();
-                assertEquals(expected, result.longValue());
-            }
-        });
+        if (!ExecutionRecordingHandler.isReady()) {
+            throw new IllegalStateException("No call has been recorded!");
+        }
+
+        try {
+            assertTrueEventually(new AssertTask() {
+                @Override
+                public void run() throws Exception {
+                    Long result = (Long) ExecutionRecordingHandler.get();
+                    assertEquals(expected, result.longValue());
+                }
+            });
+        } finally {
+            ExecutionRecordingHandler.reset();
+        }
     }
 
     public static void assertTrueDelayed5sec(AssertTask task) {
