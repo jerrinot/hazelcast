@@ -6,7 +6,6 @@ import com.hazelcast.core.IQueue;
 import com.hazelcast.core.ItemEvent;
 import com.hazelcast.core.ItemListener;
 import com.hazelcast.monitor.LocalQueueStats;
-import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.QuickTest;
@@ -78,13 +77,7 @@ public class QueueStatisticsTest extends HazelcastTestSupport {
         }
 
         final LocalQueueStats stats = queue.getLocalQueueStats();
-        AssertTask task = new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                assertEquals(10, stats.getRejectedOfferOperationCount());
-            }
-        };
-        assertTrueEventually(task);
+        assertEqualsEventually(10, on(stats).getRejectedOfferOperationCount());
 
     }
 
@@ -108,13 +101,7 @@ public class QueueStatisticsTest extends HazelcastTestSupport {
 
 
         final LocalQueueStats stats = queue.getLocalQueueStats();
-        AssertTask task = new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                assertEquals(30, stats.getPollOperationCount());
-            }
-        };
-        assertTrueEventually(task);
+        assertEqualsEventually(30, on(stats).getPollOperationCount());
     }
 
     @Test
@@ -126,13 +113,7 @@ public class QueueStatisticsTest extends HazelcastTestSupport {
         }
 
         final LocalQueueStats stats = queue.getLocalQueueStats();
-        AssertTask task = new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                assertEquals(10, stats.getEmptyPollOperationCount());
-            }
-        };
-        assertTrueEventually(task);
+        assertEqualsEventually(10, on(stats).getEmptyPollOperationCount());
     }
 
     @Test
@@ -147,13 +128,7 @@ public class QueueStatisticsTest extends HazelcastTestSupport {
         queue.removeAll(list);
 
         final LocalQueueStats stats = queue.getLocalQueueStats();
-        AssertTask task = new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                assertEquals(3, stats.getOtherOperationsCount());
-            }
-        };
-        assertTrueEventually(task);
+        assertEqualsEventually(3, on(stats).getOtherOperationsCount());
     }
 
     @Test
@@ -184,12 +159,7 @@ public class QueueStatisticsTest extends HazelcastTestSupport {
         final LocalQueueStats stats = queue.getLocalQueueStats();
         assertOpenEventually(listener.addedLatch);
         assertOpenEventually(listener.removedLatch);
-        assertTrueEventually(new AssertTask() {
-            @Override
-            public void run() throws Exception {
-                assertEquals(60, stats.getEventOperationCount());
-            }
-        });
+        assertEqualsEventually(60, on(stats).getEventOperationCount());
     }
 
     private static class TestListener implements ItemListener {
