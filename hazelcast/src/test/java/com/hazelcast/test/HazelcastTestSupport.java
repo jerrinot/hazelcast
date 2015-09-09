@@ -775,7 +775,7 @@ public abstract class HazelcastTestSupport {
         assertTrueEventually(task, ASSERT_TRUE_EVENTUALLY_TIMEOUT);
     }
 
-    public static void assertEqualsEventally(final long expected, long actual) {
+    public static void assertEqualsEventually(final long expected, long ignored) {
         if (!ExecutionRecordingHandler.isReady()) {
             throw new IllegalStateException("No call has been recorded!");
         }

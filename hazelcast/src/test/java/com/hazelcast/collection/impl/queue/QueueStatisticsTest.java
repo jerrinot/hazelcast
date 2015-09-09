@@ -63,7 +63,7 @@ public class QueueStatisticsTest extends HazelcastTestSupport {
         }
 
         final LocalQueueStats stats = queue.getLocalQueueStats();
-        assertEqualsEventally(30, on(stats).getOfferOperationCount());
+        assertEqualsEventually(30, on(stats).getOfferOperationCount());
     }
 
     @Test
