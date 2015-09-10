@@ -36,6 +36,8 @@ public class AndResultSet extends AbstractSet<QueryableEntry> {
     private final List<Set<QueryableEntry>> otherIndexedResults;
     private final List<Predicate> lsNoIndexPredicates;
 
+    private transient int cachedSize = -1;
+
     public AndResultSet(Set<QueryableEntry> setSmallest, List<Set<QueryableEntry>> otherIndexedResults,
                         List<Predicate> lsNoIndexPredicates) {
         this.setSmallest = isNotNull(setSmallest, "setSmallest");
@@ -161,6 +163,9 @@ public class AndResultSet extends AbstractSet<QueryableEntry> {
 
     @Override
     public int size() {
-        return setSmallest.size();
+        if (cachedSize == -1) {
+            cachedSize = setSmallest.size();
+        }
+        return cachedSize;
     }
 }
