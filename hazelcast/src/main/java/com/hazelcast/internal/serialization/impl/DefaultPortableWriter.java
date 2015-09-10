@@ -225,16 +225,16 @@ public class DefaultPortableWriter implements PortableWriter {
             throw new HazelcastSerializationException("Invalid field name: '" + fieldName
                     + "' for ClassDefinition {id: " + cd.getClassId() + ", version: " + cd.getVersion() + "}");
         }
-        if (writtenFields.add(fieldName)) {
+//        if (writtenFields.add(fieldName)) {
             int pos = out.position();
             int index = fd.getIndex();
             out.writeInt(offset + index * Bits.INT_SIZE_IN_BYTES, pos);
             out.writeShort(fieldName.length());
             out.writeBytes(fieldName);
             out.writeByte(fieldType.getId());
-        } else {
-            throw new HazelcastSerializationException("Field '" + fieldName + "' has already been written!");
-        }
+//        } else {
+//            throw new HazelcastSerializationException("Field '" + fieldName + "' has already been written!");
+//        }
         return fd;
     }
 
