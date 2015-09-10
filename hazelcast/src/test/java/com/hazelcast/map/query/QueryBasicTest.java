@@ -92,7 +92,7 @@ public class QueryBasicTest extends HazelcastTestSupport {
         assertEquals(expectedValues.length, values.size());
         List<String> names = new ArrayList<String>();
         for (Value configObject : values) {
-            names.add(configObject.getName());
+            names.add(configObject.name);
         }
         String[] array = names.toArray(new String[0]);
         Arrays.sort(array);
@@ -114,7 +114,7 @@ public class QueryBasicTest extends HazelcastTestSupport {
         assertEquals(expectedValues.length, values.size());
         List<String> names = new ArrayList<String>();
         for (Value configObject : values) {
-            names.add(configObject.getName());
+            names.add(configObject.name);
         }
         String[] array = names.toArray(new String[0]);
         Arrays.sort(array);
@@ -233,7 +233,7 @@ public class QueryBasicTest extends HazelcastTestSupport {
         assertEquals(expectedValues.length, values.size());
         List<String> names = new ArrayList<String>();
         for (Value configObject : values) {
-            names.add(configObject.getName());
+            names.add(configObject.name);
         }
         String[] array = names.toArray(new String[0]);
         Arrays.sort(array);
@@ -255,7 +255,7 @@ public class QueryBasicTest extends HazelcastTestSupport {
         assertEquals(expectedValues.length, values.size());
         List<String> names = new ArrayList<String>();
         for (Value configObject : values) {
-            names.add(configObject.getName());
+            names.add(configObject.name);
         }
         String[] array = names.toArray(new String[0]);
         Arrays.sort(array);

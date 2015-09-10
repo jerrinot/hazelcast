@@ -230,6 +230,7 @@
                             <artifactSet>
                                 <includes>
                                     <include>com.eclipsesource.minimal-json:minimal-json</include>
+                                    <include>com.github.jerrinot:FieldMagic</include>
                                 </includes>
                             </artifactSet>
                             <relocations>
@@ -301,6 +302,12 @@
             <version>${slf4j.api.version}</version>
             <scope>provided</scope>
             <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.jerrinot</groupId>
+            <artifactId>FieldMagic</artifactId>
+            <version>ee55fc591b4285f</version>
         </dependency>
 
         <dependency>
@@ -393,5 +400,12 @@
         </dependency>
 
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
 
 </project>

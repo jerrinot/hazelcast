@@ -93,7 +93,7 @@ public final class SampleObjects {
     }
 
     public static class Value implements Serializable {
-        String name;
+        public String name;
         ValueType type;
         State state;
         int index;
@@ -127,9 +127,9 @@ public final class SampleObjects {
             this.state = state;
         }
 
-        public String getName() {
-            return name;
-        }
+//        public String getName() {
+//            return name;
+//        }
 
         public ValueType getType() {
             return type;

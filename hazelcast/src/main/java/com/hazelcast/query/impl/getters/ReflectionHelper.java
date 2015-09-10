@@ -167,7 +167,7 @@ public final class ReflectionHelper {
                     if (localGetter == null) {
                         try {
                             final Field field = clazz.getField(name);
-                            localGetter = new FieldGetter(parent, field);
+                            localGetter = new MagicGetter(parent, field);
                             clazz = field.getType();
                         } catch (NoSuchFieldException ignored) {
                             EmptyStatement.ignore(ignored);
@@ -179,7 +179,7 @@ public final class ReflectionHelper {
                             try {
                                 final Field field = c.getDeclaredField(name);
                                 field.setAccessible(true);
-                                localGetter = new FieldGetter(parent, field);
+                                localGetter = new MagicGetter(parent, field);
                                 clazz = field.getType();
                                 break;
                             } catch (NoSuchFieldException ignored) {
