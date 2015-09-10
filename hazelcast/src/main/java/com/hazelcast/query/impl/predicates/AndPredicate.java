@@ -61,8 +61,8 @@ public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visi
     @Override
     public Set<QueryableEntry> filter(QueryContext queryContext) {
         Set<QueryableEntry> smallestIndexedResult = null;
-        List<Set<QueryableEntry>> otherIndexedResults = new LinkedList<Set<QueryableEntry>>();
         List<Predicate> lsNoIndexPredicates = null;
+        Predicate currentIndexedPredicate = null;
         for (Predicate predicate : predicates) {
             boolean indexed = false;
             if (predicate instanceof IndexAwarePredicate) {
@@ -71,12 +71,14 @@ public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visi
                     indexed = true;
                     Set<QueryableEntry> s = iap.filter(queryContext);
                     if (smallestIndexedResult == null) {
+                        currentIndexedPredicate = iap;
                         smallestIndexedResult = s;
                     } else if (s.size() < smallestIndexedResult.size()) {
-                        otherIndexedResults.add(smallestIndexedResult);
+                        lsNoIndexPredicates.add(currentIndexedPredicate);
+                        currentIndexedPredicate = iap;
                         smallestIndexedResult = s;
                     } else {
-                        otherIndexedResults.add(s);
+                        lsNoIndexPredicates.add(iap);
                     }
                 }
             }
@@ -95,7 +97,7 @@ public class AndPredicate implements IndexAwarePredicate, DataSerializable, Visi
             Collections.sort(lsNoIndexPredicates, CostComparator.INSTANCE);
         }
 
-        return new AndResultSet(smallestIndexedResult, otherIndexedResults, lsNoIndexPredicates);
+        return new AndResultSet(smallestIndexedResult, null, lsNoIndexPredicates);
     }
 
     @Override
