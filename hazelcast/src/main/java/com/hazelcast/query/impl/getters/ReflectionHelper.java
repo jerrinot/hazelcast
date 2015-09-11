@@ -158,7 +158,16 @@ public final class ReflectionHelper {
                             final Method method = clazz.getMethod(methodName);
                             method.setAccessible(true);
                             localGetter = new MethodGetter(parent, method);
-                            clazz = method.getReturnType();
+                            Object currentObject = obj;
+                            if (parent != null) {
+                                currentObject = parent.getValue(obj);
+                            }
+                            Object returningObject = method.invoke(currentObject);
+                            if (returningObject != null) {
+                                clazz = returningObject.getClass();
+                            } else {
+                                clazz = method.getReturnType();
+                            }
                             break;
                         } catch (NoSuchMethodException ignored) {
                             EmptyStatement.ignore(ignored);
