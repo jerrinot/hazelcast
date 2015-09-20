@@ -35,5 +35,5 @@ public interface IndexStore {
     void getSubRecords(MultiResultSet results, ComparisonType comparisonType, Comparable searchedValue);
     Set<QueryableEntry> getRecords(Comparable value);
     void getRecords(MultiResultSet results, Set<Comparable> values);
-    ConcurrentMap<Data, QueryableEntry> getRecordMap(Comparable indexValue);
+    Set<QueryableEntry> getRecordMap(Comparable indexValue);
 }

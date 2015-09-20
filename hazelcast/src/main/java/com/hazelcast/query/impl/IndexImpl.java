@@ -74,7 +74,7 @@ public class IndexImpl implements Index {
         converter = null;
     }
 
-    ConcurrentMap<Data, QueryableEntry> getRecordMap(Comparable indexValue) {
+    Set<QueryableEntry> getRecordMap(Comparable indexValue) {
         return indexStore.getRecordMap(indexValue);
     }
 

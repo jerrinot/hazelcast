@@ -21,15 +21,16 @@ import com.hazelcast.nio.serialization.Data;
 import java.util.AbstractSet;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
 /**
  *  Multiple result set for Predicates.
  */
 public class SingleResultSet extends AbstractSet<QueryableEntry> {
-    private final ConcurrentMap<Data, QueryableEntry> records;
+    private final Set<QueryableEntry> records;
 
-    public SingleResultSet(ConcurrentMap<Data, QueryableEntry> records) {
+    public SingleResultSet(Set<QueryableEntry> records) {
         this.records = records;
     }
 
@@ -39,8 +40,7 @@ public class SingleResultSet extends AbstractSet<QueryableEntry> {
             return false;
         }
 
-        Data keyData = ((QueryableEntry) mapEntry).getKeyData();
-        return records.containsKey(keyData);
+        return records.contains(mapEntry);
     }
 
     @Override
@@ -49,7 +49,7 @@ public class SingleResultSet extends AbstractSet<QueryableEntry> {
             //todo: why are we not returning Collections.EMPTY_SET.iterator?
             return new HashSet<QueryableEntry>().iterator();
         } else {
-            return records.values().iterator();
+            return records.iterator();
         }
     }
 

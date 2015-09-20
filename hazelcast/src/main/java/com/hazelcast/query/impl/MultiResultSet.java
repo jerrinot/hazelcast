@@ -32,13 +32,13 @@ import java.util.concurrent.ConcurrentMap;
 public class MultiResultSet extends AbstractSet<QueryableEntry> {
 
     private Set<Object> index;
-    private final List<ConcurrentMap<Data, QueryableEntry>> resultSets
-            = new ArrayList<ConcurrentMap<Data, QueryableEntry>>();
+    private final List<Set<QueryableEntry>> resultSets
+            = new ArrayList<Set<QueryableEntry>>();
 
     public MultiResultSet() {
     }
 
-    public void addResultSet(ConcurrentMap<Data, QueryableEntry> resultSet) {
+    public void addResultSet(Set<QueryableEntry> resultSet) {
         resultSets.add(resultSet);
     }
 
@@ -51,15 +51,15 @@ public class MultiResultSet extends AbstractSet<QueryableEntry> {
             //todo: what is the point of this condition? Is it some kind of optimization?
             if (resultSets.size() > 3) {
                 index = new HashSet<Object>();
-                for (ConcurrentMap<Data, QueryableEntry> result : resultSets) {
-                    for (QueryableEntry queryableEntry : result.values()) {
+                for (Set<QueryableEntry> result : resultSets) {
+                    for (QueryableEntry queryableEntry : result) {
                         index.add(queryableEntry.getIndexKey());
                     }
                 }
                 return checkFromIndex(entry);
             } else {
-                for (ConcurrentMap<Data, QueryableEntry> resultSet : resultSets) {
-                    if (resultSet.containsKey(entry.getIndexKey())) {
+                for (Set<QueryableEntry> resultSet : resultSets) {
+                    if (resultSet.contains(entry)) {
                         return true;
                     }
                 }
@@ -90,7 +90,7 @@ public class MultiResultSet extends AbstractSet<QueryableEntry> {
                 return true;
             }
             while (currentIndex < resultSets.size()) {
-                currentIterator = resultSets.get(currentIndex++).values().iterator();
+                currentIterator = resultSets.get(currentIndex++).iterator();
                 if (currentIterator.hasNext()) {
                     return true;
                 }
@@ -120,7 +120,7 @@ public class MultiResultSet extends AbstractSet<QueryableEntry> {
     @Override
     public int size() {
         int size = 0;
-        for (ConcurrentMap<Data, QueryableEntry> resultSet : resultSets) {
+        for (Set<QueryableEntry> resultSet : resultSets) {
             size += resultSet.size();
         }
         return size;

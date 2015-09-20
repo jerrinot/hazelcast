@@ -45,6 +45,11 @@ public class QueryEntry implements QueryableEntry {
         init(serializationService, indexKey, key, value);
     }
 
+    //TODO: Hack, hack, hack
+    public QueryEntry(Data indexKey) {
+        this.indexKey = indexKey;
+    }
+
     /**
      * It may be useful to use this {@code init} method in some cases that same instance of this class can be used
      * instead of creating a new one for every iteration when scanning large data sets, for example:
