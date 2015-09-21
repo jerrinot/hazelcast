@@ -172,7 +172,7 @@ public class PagingPredicate implements IndexAwarePredicate, DataSerializable {
             return null;
         }
 
-        Set<QueryableEntry> set = ((IndexAwarePredicate) predicate).filter(queryContext);
+        Set<QueryableEntry> set = (Set<QueryableEntry>) ((IndexAwarePredicate) predicate).filter(queryContext);
         if (set == null || set.isEmpty()) {
             return null;
         }

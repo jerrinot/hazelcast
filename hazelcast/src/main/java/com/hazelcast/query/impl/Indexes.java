@@ -94,7 +94,7 @@ public class Indexes {
         return mapIndexes.get(attribute);
     }
 
-    public Set<QueryableEntry> query(Predicate predicate) {
+    public Iterable<QueryableEntry> query(Predicate predicate) {
         if (hasIndex) {
             QueryContext queryContext = new QueryContext(this);
             if (predicate instanceof IndexAwarePredicate) {

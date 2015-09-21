@@ -22,6 +22,7 @@ import com.hazelcast.util.collection.InflatableSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -118,6 +119,14 @@ public class SortedIndexStore extends BaseIndexStore {
             releaseReadLock();
         }
     }
+
+    @Override
+    public Iterator<QueryableEntry> getIteratorBetween(Comparable from, Comparable to) {
+        SortedMap<Comparable, Set<QueryableEntry>> subMap =
+                recordMap.subMap(from, true, to, true);
+        return new SmartIterator<QueryableEntry>(subMap);
+    }
+
 
     @Override
     public void getSubRecords(MultiResultSet results, ComparisonType comparisonType, Comparable searchedValue) {

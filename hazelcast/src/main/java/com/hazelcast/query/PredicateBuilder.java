@@ -83,7 +83,7 @@ public class PredicateBuilder implements IndexAwarePredicate, DataSerializable {
     public Set<QueryableEntry> filter(QueryContext queryContext) {
         Predicate p = lsPredicates.get(0);
         if (p instanceof IndexAwarePredicate) {
-            return ((IndexAwarePredicate) p).filter(queryContext);
+            return (Set<QueryableEntry>) ((IndexAwarePredicate) p).filter(queryContext);
         }
         return null;
     }

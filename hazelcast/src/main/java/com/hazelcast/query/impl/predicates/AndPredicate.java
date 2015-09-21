@@ -69,7 +69,7 @@ public final class AndPredicate implements IndexAwarePredicate, DataSerializable
                 IndexAwarePredicate iap = (IndexAwarePredicate) predicate;
                 if (iap.isIndexed(queryContext)) {
                     indexed = true;
-                    Set<QueryableEntry> s = iap.filter(queryContext);
+                    Set<QueryableEntry> s = (Set<QueryableEntry>) iap.filter(queryContext);
                     if (smallestIndexedResult == null) {
                         smallestIndexedResult = s;
                     } else if (s.size() < smallestIndexedResult.size()) {

@@ -60,7 +60,7 @@ public class BetweenPredicate extends AbstractPredicate {
     }
 
     @Override
-    public Set<QueryableEntry> filter(QueryContext queryContext) {
+    public Iterable<QueryableEntry> filter(QueryContext queryContext) {
         Index index = getIndex(queryContext);
         return index.getSubRecordsBetween(from, to);
     }

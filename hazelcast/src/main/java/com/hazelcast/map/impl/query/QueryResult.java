@@ -47,7 +47,7 @@ public class QueryResult implements DataSerializable {
         this.resultLimit = resultLimit;
     }
 
-    public void addAll(Collection<QueryableEntry> queryableEntries) {
+    public void addAll(Iterable<QueryableEntry> queryableEntries) {
         for (QueryableEntry entry : queryableEntries) {
             if (++resultSize > resultLimit) {
                 throw new QueryResultSizeExceededException();

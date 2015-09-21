@@ -79,7 +79,7 @@ public class SqlPredicate extends AbstractPredicate implements IndexAwarePredica
 
     @Override
     public Set<QueryableEntry> filter(QueryContext queryContext) {
-        return ((IndexAwarePredicate) predicate).filter(queryContext);
+        return (Set<QueryableEntry>) ((IndexAwarePredicate) predicate).filter(queryContext);
     }
 
     @Override

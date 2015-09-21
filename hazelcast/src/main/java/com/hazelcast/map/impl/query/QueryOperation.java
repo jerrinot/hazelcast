@@ -91,7 +91,7 @@ public class QueryOperation extends AbstractMapOperation implements ReadonlyOper
         int initialPartitionStateVersion = partitionService.getPartitionStateVersion();
         Collection<Integer> initialPartitions = mapServiceContext.getOwnedPartitions();
 
-        Set<QueryableEntry> entries = null;
+        Iterable<QueryableEntry> entries = null;
         if (!partitionService.hasOnGoingMigrationLocal()) {
             entries = indexes.query(predicate);
         }

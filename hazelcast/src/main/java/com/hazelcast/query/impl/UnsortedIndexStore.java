@@ -19,6 +19,7 @@ package com.hazelcast.query.impl;
 import com.hazelcast.nio.serialization.Data;
 
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -128,6 +129,11 @@ public class UnsortedIndexStore extends BaseIndexStore {
         } finally {
             releaseReadLock();
         }
+    }
+
+    @Override
+    public Iterator<QueryableEntry> getIteratorBetween(Comparable from, Comparable to) {
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override

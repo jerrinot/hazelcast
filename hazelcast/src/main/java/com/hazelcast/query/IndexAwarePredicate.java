@@ -25,7 +25,7 @@ import java.util.Set;
  */
 public interface IndexAwarePredicate extends Predicate {
 
-    Set<QueryableEntry> filter(QueryContext queryContext);
+    Iterable<QueryableEntry> filter(QueryContext queryContext);
 
     boolean isIndexed(QueryContext queryContext);
 }

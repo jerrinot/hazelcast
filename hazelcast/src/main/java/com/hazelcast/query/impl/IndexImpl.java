@@ -24,7 +24,9 @@ import com.hazelcast.query.QueryException;
 import com.hazelcast.query.impl.TypeConverters.TypeConverter;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -148,6 +150,14 @@ public class IndexImpl implements Index {
             indexStore.getSubRecordsBetween(results, convert(from), convert(to));
         }
         return results;
+    }
+
+    @Override
+    public Iterator<QueryableEntry> getIteratorBetween(Comparable from, Comparable to) {
+        if (converter != null) {
+            return indexStore.getIteratorBetween(convert(from), convert(to));
+        }
+        return Collections.<QueryableEntry>emptySet().iterator();
     }
 
     @Override

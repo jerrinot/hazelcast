@@ -54,7 +54,7 @@ public final class OrPredicate implements IndexAwarePredicate, DataSerializable,
             if (predicate instanceof IndexAwarePredicate) {
                 IndexAwarePredicate iap = (IndexAwarePredicate) predicate;
                 if (iap.isIndexed(queryContext)) {
-                    Set<QueryableEntry> s = iap.filter(queryContext);
+                    Set<QueryableEntry> s = (Set<QueryableEntry>) iap.filter(queryContext);
                     if (s != null) {
                         indexedResults.add(s);
                     }

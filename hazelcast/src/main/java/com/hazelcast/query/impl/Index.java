@@ -19,6 +19,7 @@ package com.hazelcast.query.impl;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.query.QueryException;
 
+import java.util.Iterator;
 import java.util.Set;
 /**
  * This interface contains the methods related to index of Query.
@@ -42,6 +43,8 @@ public interface Index {
     Set<QueryableEntry> getRecords(Comparable[] values);
 
     Set<QueryableEntry> getRecords(Comparable value);
+
+    Iterator<QueryableEntry> getIteratorBetween(Comparable from, Comparable to);
 
     Set<QueryableEntry> getSubRecordsBetween(Comparable from, Comparable to);
 
