@@ -21,7 +21,7 @@ import com.hazelcast.nio.serialization.Data;
 /**
  * CachedDataRecord.
  */
-class CachedDataRecord extends DataRecord {
+public class CachedDataRecord extends DataRecord {
 
     private transient volatile Object cachedValue;
 

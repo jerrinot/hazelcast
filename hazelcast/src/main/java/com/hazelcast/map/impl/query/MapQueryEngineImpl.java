@@ -16,6 +16,7 @@
 
 package com.hazelcast.map.impl.query;
 
+import com.hazelcast.cache.impl.record.CacheDataRecord;
 import com.hazelcast.cluster.ClusterService;
 import com.hazelcast.core.Member;
 import com.hazelcast.internal.serialization.SerializationService;
@@ -26,6 +27,7 @@ import com.hazelcast.map.impl.MapContainer;
 import com.hazelcast.map.impl.MapService;
 import com.hazelcast.map.impl.MapServiceContext;
 import com.hazelcast.map.impl.PartitionContainer;
+import com.hazelcast.map.impl.record.CachedDataRecord;
 import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.monitor.impl.LocalMapStatsImpl;
 import com.hazelcast.nio.serialization.Data;
@@ -297,7 +299,7 @@ public class MapQueryEngineImpl implements MapQueryEngine {
             value = record.getValue();
         } else if (value == null) {
             value = record.getValue();
-            if (value instanceof Data && !((Data) value).isPortable()) {
+            if (record instanceof CachedDataRecord && value instanceof Data && !((Data) value).isPortable()) {
                 value = serializationService.toObject(value);
                 record.setCachedValue(value);
             }
