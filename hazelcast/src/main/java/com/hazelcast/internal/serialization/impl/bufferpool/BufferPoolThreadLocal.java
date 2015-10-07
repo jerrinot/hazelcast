@@ -32,31 +32,25 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class BufferPoolThreadLocal {
 
-    private static final float LOAD_FACTOR = 0.91f;
-
-    private final ConcurrentMap<Thread, BufferPool> pools;
     private final SerializationService serializationService;
     private final BufferPoolFactory bufferPoolFactory;
+    private final ThreadLocal<BufferPool> pools = new ThreadLocal<BufferPool>() {
+        @Override
+        protected BufferPool initialValue() {
+            return bufferPoolFactory.create(serializationService);
+        }
+    };
 
     public BufferPoolThreadLocal(SerializationService serializationService, BufferPoolFactory bufferPoolFactory) {
         this.serializationService = serializationService;
         this.bufferPoolFactory = bufferPoolFactory;
-        int initialCapacity = Runtime.getRuntime().availableProcessors();
-        this.pools = new ConcurrentReferenceHashMap<Thread, BufferPool>(initialCapacity, LOAD_FACTOR, 1);
     }
 
     public BufferPool get() {
-        Thread t = Thread.currentThread();
-        BufferPool pool = pools.get(t);
-        if (pool == null) {
-            pool = bufferPoolFactory.create(serializationService);
-            pools.put(t, pool);
-        }
-
-        return pool;
+        return pools.get();
     }
 
     public void clear() {
-        pools.clear();
+        //todo: is this needed?
     }
 }
