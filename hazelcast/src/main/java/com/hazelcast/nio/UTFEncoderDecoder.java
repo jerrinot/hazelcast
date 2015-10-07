@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.UTFDataFormatException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.nio.charset.Charset;
 
 /**
  * Class to encode/decode UTF-Strings to and from byte-arrays.
@@ -33,6 +34,7 @@ import java.lang.reflect.Field;
 public final class UTFEncoderDecoder {
 
     private static final int STRING_CHUNK_SIZE = 16 * 1024;
+    private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private static final UTFEncoderDecoder INSTANCE;
 
@@ -69,12 +71,19 @@ public final class UTFEncoderDecoder {
     public static void writeUTF(final DataOutput out,
                                 final String str,
                                 final byte[] buffer) throws IOException {
-        INSTANCE.writeUTF0(out, str, buffer);
+        byte[] bytes = str.getBytes(UTF8);
+        out.writeInt(bytes.length);
+        out.write(bytes);
+//        INSTANCE.writeUTF0(out, str, buffer);
     }
 
     public static String readUTF(final DataInput in,
                                  final byte[] buffer) throws IOException {
-        return INSTANCE.readUTF0(in, buffer);
+        int size = in.readInt();
+        byte[] bytes = new byte[size];
+        in.readFully(bytes);
+        return new String(bytes, UTF8);
+//        return INSTANCE.readUTF0(in, buffer);
     }
 
     // ********************************************************************* //
