@@ -33,6 +33,7 @@ import static com.hazelcast.query.Predicates.equal;
 import static com.hazelcast.query.Predicates.not;
 import static com.hazelcast.query.Predicates.or;
 import static com.hazelcast.query.impl.TypeConverters.INTEGER_CONVERTER;
+import static com.hazelcast.query.impl.predicates.PredicateAssertions.assertContainsEqualsPredicate;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -71,6 +72,10 @@ public class FlatteningVisitorTest {
         AndPredicate result = (AndPredicate) visitor.visit(outerAnd, mockIndexes);
         Predicate[] inners = result.predicates;
         assertEquals(3, inners.length);
+
+        assertContainsEqualsPredicate(inners, "a1", 1);
+        assertContainsEqualsPredicate(inners, "a2", 2);
+        assertContainsEqualsPredicate(inners, "a3", 3);
     }
 
     @Test
@@ -87,6 +92,9 @@ public class FlatteningVisitorTest {
         OrPredicate result = (OrPredicate) visitor.visit(outerOr, mockIndexes);
         Predicate[] inners = result.predicates;
         assertEquals(3, inners.length);
+        assertContainsEqualsPredicate(inners, "a1", 1);
+        assertContainsEqualsPredicate(inners, "a2", 2);
+        assertContainsEqualsPredicate(inners, "a3", 3);
     }
 
     @Test
