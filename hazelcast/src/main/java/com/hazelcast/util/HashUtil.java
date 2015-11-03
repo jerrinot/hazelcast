@@ -48,8 +48,13 @@ public final class HashUtil {
         int roundedEnd = offset + (len & 0xfffffffc);  // round down to 4 byte block
 
         for (int i = offset; i < roundedEnd; i += 4) {
+
+            //TODO: Can be use only when little endian is used + fallback when Unsafe is not available.
+//            if (LITTLE_ENDIAN && UnsafeHelper.UNSAFE_AVAILABLE) {
+                int k1 = UnsafeHelper.UNSAFE.getInt(data, UnsafeHelper.BYTE_ARRAY_BASE_OFFSET + i);
+//            }
             // little endian load order
-            int k1 = (data[i] & 0xff) | ((data[i + 1] & 0xff) << 8) | ((data[i + 2] & 0xff) << 16) | (data[i + 3] << 24);
+//            int k1 = (data[i] & 0xff) | ((data[i + 1] & 0xff) << 8) | ((data[i + 2] & 0xff) << 16) | (data[i + 3] << 24);
             k1 *= c1;
             k1 = (k1 << 15) | (k1 >>> 17);  // ROTL32(k1,15);
             k1 *= c2;
