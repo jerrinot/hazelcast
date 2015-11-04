@@ -42,6 +42,8 @@ public class HeapData implements Data {
 
     protected byte[] payload;
 
+    private volatile int cachedHashCode;
+
     public HeapData() {
     }
 
@@ -144,7 +146,12 @@ public class HeapData implements Data {
 
     @Override
     public int hashCode() {
-        return HashUtil.MurmurHash3_x86_32(payload, DATA_OFFSET, dataSize());
+        int hash = cachedHashCode;
+        if (hash == 0) {
+            hash = HashUtil.MurmurHash3_x86_32(payload, DATA_OFFSET, dataSize());
+            cachedHashCode = hash;
+        }
+        return hash;
     }
 
     @Override
