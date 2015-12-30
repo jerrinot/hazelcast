@@ -238,7 +238,7 @@ final class SecondsBasedEntryTaskScheduler<K, V> implements EntryTaskScheduler<K
     }
 
     private Set<CompositeKey> getCompositeKeys(K key) {
-        Set<CompositeKey> candidateKeys = new HashSet<CompositeKey>();
+        final Set<CompositeKey> candidateKeys = new HashSet<CompositeKey>();
         for (Object keyObj : secondsOfKeys.keySet()) {
             CompositeKey compositeKey = (CompositeKey) keyObj;
             if (compositeKey.getKey().equals(key)) {
