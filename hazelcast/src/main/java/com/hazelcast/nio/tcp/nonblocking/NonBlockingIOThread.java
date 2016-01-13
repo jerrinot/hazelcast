@@ -39,7 +39,7 @@ public class NonBlockingIOThread extends Thread implements OperationHostileThrea
     // WARNING: This value has significant effect on idle CPU usage!
     private static final int SELECT_WAIT_TIME_MILLIS = 5000;
     private static final int SELECT_FAILURE_PAUSE_MILLIS = 1000;
-    public static final int MAXIMUM_ITEMS_TAKEN_FROM_TASK_QUEUE_RENAME_ME_I_AM_SILLY = 1000;
+    public static final int MAXIMUM_ITEMS_TAKEN_FROM_TASK_QUEUE_RENAME_ME_I_AM_SILLY = Integer.getInteger("ioselector.batchsize", 10);
 
     @Probe(name = "taskQueueSize")
     private final Queue<Runnable> taskQueue = new ConcurrentLinkedQueue<Runnable>();
