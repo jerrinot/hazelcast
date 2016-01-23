@@ -58,8 +58,10 @@ public class ExpirationManager {
     }
 
     public void start() {
-        nodeEngine.getExecutionService()
-                .scheduleAtFixedRate(new ClearExpiredRecordsTask(), INITIAL_DELAY, PERIOD, UNIT);
+        if (System.getProperty("hazelcast.experimental.clear.expired").equalsIgnoreCase("disabled") == false) {
+            nodeEngine.getExecutionService()
+                    .scheduleAtFixedRate(new ClearExpiredRecordsTask(), INITIAL_DELAY, PERIOD, UNIT);
+        }
     }
 
     /**
