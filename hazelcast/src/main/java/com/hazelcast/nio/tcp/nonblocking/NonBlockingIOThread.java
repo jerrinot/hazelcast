@@ -19,9 +19,11 @@ package com.hazelcast.nio.tcp.nonblocking;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.metrics.ProbeLevel;
+import com.hazelcast.internal.util.MPSCQueue;
 import com.hazelcast.internal.util.counters.SwCounter;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.impl.operationexecutor.OperationHostileThread;
+import com.hazelcast.util.concurrent.BusySpinIdleStrategy;
 
 import java.io.IOException;
 import java.nio.channels.CancelledKeyException;
@@ -47,7 +49,7 @@ public class NonBlockingIOThread extends Thread implements OperationHostileThrea
     int id;
 
     @Probe(name = "taskQueueSize")
-    private final Queue<Runnable> taskQueue = new ConcurrentLinkedQueue<Runnable>();
+    private final MPSCQueue<Runnable> taskQueue;// = new ConcurrentLinkedQueue<Runnable>();
     @Probe
     private final SwCounter eventCount = newSwCounter();
     @Probe
@@ -87,6 +89,8 @@ public class NonBlockingIOThread extends Thread implements OperationHostileThrea
                                boolean selectNow,
                                Selector selector) {
         super(threadGroup, threadName);
+        taskQueue = new MPSCQueue<Runnable>(null, new BusySpinIdleStrategy());
+        taskQueue.setOwningThread(this);
         this.logger = logger;
         this.selectNow = selectNow;
         this.oomeHandler = oomeHandler;
