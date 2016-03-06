@@ -35,7 +35,8 @@ import com.hazelcast.spi.impl.operationexecutor.OperationRunnerFactory;
 import com.hazelcast.util.concurrent.NoOpIdleStrategy;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.util.Preconditions.checkNotNull;
@@ -71,7 +72,7 @@ public final class ClassicOperationExecutor implements OperationExecutor {
     private final PartitionOperationThread[] partitionOperationThreads;
     private final OperationRunner[] partitionOperationRunners;
 
-    private final ScheduleQueue genericScheduleQueue;
+    private final BlockingQueue genericScheduleQueue;
 
     // all operations that are not specific for a partition will be executed here, e.g. heartbeat or map.size()
     private final GenericOperationThread[] genericOperationThreads;
@@ -95,7 +96,7 @@ public final class ClassicOperationExecutor implements OperationExecutor {
         this.threadGroup = hazelcastThreadGroup;
         this.metricsRegistry = metricsRegistry;
         this.logger = loggerService.getLogger(ClassicOperationExecutor.class);
-        this.genericScheduleQueue = new DefaultScheduleQueue();
+        this.genericScheduleQueue = new LinkedBlockingQueue();
 
         this.adHocOperationRunner = operationRunnerFactory.createAdHocRunner();
 
@@ -153,14 +154,12 @@ public final class ClassicOperationExecutor implements OperationExecutor {
         for (int threadId = 0; threadId < threads.length; threadId++) {
             String threadName = threadGroup.getThreadPoolNamePrefix("partition-operation") + threadId;
 
-            MPSCQueue normalQueue = new MPSCQueue(null, new NoOpIdleStrategy());
-            ScheduleQueue scheduleQueue = new DefaultScheduleQueue(
-                    normalQueue, new ConcurrentLinkedQueue());
+            MPSCQueue scheduleQueue = new MPSCQueue(null, new NoOpIdleStrategy());
 
             PartitionOperationThread operationThread = new PartitionOperationThread(threadName, threadId, scheduleQueue, logger,
                     threadGroup, nodeExtension, partitionOperationRunners);
 
-            normalQueue.setOwningThread(operationThread);
+            scheduleQueue.setOwningThread(operationThread);
             threads[threadId] = operationThread;
 
             metricsRegistry.scanAndRegister(operationThread, "operation." + operationThread.getName());
@@ -302,10 +301,10 @@ public final class ClassicOperationExecutor implements OperationExecutor {
         int size = 0;
 
         for (PartitionOperationThread t : partitionOperationThreads) {
-            size += t.scheduleQueue.normalSize();
+            size += 0;
         }
 
-        size += genericScheduleQueue.normalSize();
+        size += 0;
 
         return size;
     }
@@ -315,10 +314,10 @@ public final class ClassicOperationExecutor implements OperationExecutor {
         int size = 0;
 
         for (PartitionOperationThread t : partitionOperationThreads) {
-            size += t.scheduleQueue.prioritySize();
+            size += 0;
         }
 
-        size += genericScheduleQueue.prioritySize();
+        size += 0;
         return size;
     }
 
@@ -359,7 +358,7 @@ public final class ClassicOperationExecutor implements OperationExecutor {
         checkNotNull(task, "task can't be null");
 
         for (OperationThread partitionOperationThread : partitionOperationThreads) {
-            partitionOperationThread.scheduleQueue.addUrgent(task);
+            partitionOperationThread.scheduleQueue.offer(task);
         }
     }
 
@@ -421,7 +420,7 @@ public final class ClassicOperationExecutor implements OperationExecutor {
     }
 
     private void execute(Object task, int partitionId, boolean priority) {
-        ScheduleQueue scheduleQueue;
+        BlockingQueue scheduleQueue;
 
         if (partitionId < 0) {
             scheduleQueue = genericScheduleQueue;
@@ -430,11 +429,8 @@ public final class ClassicOperationExecutor implements OperationExecutor {
             scheduleQueue = partitionOperationThread.scheduleQueue;
         }
 
-        if (priority) {
-            scheduleQueue.addUrgent(task);
-        } else {
-            scheduleQueue.add(task);
-        }
+        scheduleQueue.offer(task);
+
     }
 
     public int toPartitionThreadIndex(int partitionId) {

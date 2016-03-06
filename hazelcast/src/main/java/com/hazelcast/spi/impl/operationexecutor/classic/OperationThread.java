@@ -27,6 +27,8 @@ import com.hazelcast.spi.impl.operationexecutor.OperationRunner;
 import com.hazelcast.internal.util.counters.SwCounter;
 import com.hazelcast.util.executor.HazelcastManagedThread;
 
+import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.instance.OutOfMemoryErrorDispatcher.inspectOutputMemoryError;
@@ -44,7 +46,7 @@ import static com.hazelcast.internal.util.counters.SwCounter.newSwCounter;
 public abstract class OperationThread extends HazelcastManagedThread {
 
     final int threadId;
-    final ScheduleQueue scheduleQueue;
+    final BlockingQueue scheduleQueue;
 
     // All these counters are updated by this OperationThread (so a single writer) and are read by the MetricsRegistry.
     @Probe
@@ -66,7 +68,7 @@ public abstract class OperationThread extends HazelcastManagedThread {
     // for any form of synchronization.
     private OperationRunner currentOperationRunner;
 
-    public OperationThread(String name, int threadId, ScheduleQueue scheduleQueue,
+    public OperationThread(String name, int threadId, BlockingQueue scheduleQueue,
                            ILogger logger, HazelcastThreadGroup threadGroup, NodeExtension nodeExtension) {
         super(threadGroup.getInternalThreadGroup(), name);
         setContextClassLoader(threadGroup.getClassLoader());
@@ -78,12 +80,12 @@ public abstract class OperationThread extends HazelcastManagedThread {
 
     @Probe
     int priorityPendingCount() {
-        return scheduleQueue.prioritySize();
+        return 1;
     }
 
     @Probe
     int normalPendingCount() {
-        return scheduleQueue.normalSize();
+        return 1;
     }
 
     public OperationRunner getCurrentOperationRunner() {
@@ -109,7 +111,9 @@ public abstract class OperationThread extends HazelcastManagedThread {
         for (; ; ) {
             Object task;
             try {
-                task = scheduleQueue.take();
+                do {
+                    task = scheduleQueue.take();
+                } while (task == null);
             } catch (InterruptedException e) {
                 if (shutdown) {
                     return;

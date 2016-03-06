@@ -21,6 +21,8 @@ import com.hazelcast.instance.NodeExtension;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.impl.operationexecutor.OperationRunner;
 
+import java.util.concurrent.BlockingQueue;
+
 /**
  * An {@link OperationThread} for non partition specific operations.
  */
@@ -28,7 +30,7 @@ public final class GenericOperationThread extends OperationThread {
 
     private final OperationRunner operationRunner;
 
-    public GenericOperationThread(String name, int threadId, ScheduleQueue scheduleQueue,
+    public GenericOperationThread(String name, int threadId, BlockingQueue scheduleQueue,
                                   ILogger logger, HazelcastThreadGroup threadGroup,
                                   NodeExtension nodeExtension,  OperationRunner operationRunner) {
         super(name, threadId, scheduleQueue, logger, threadGroup, nodeExtension);

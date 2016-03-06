@@ -22,6 +22,8 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.impl.operationexecutor.OperationRunner;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import java.util.concurrent.BlockingQueue;
+
 /**
  * An {@link OperationThread} that executes Operations for a particular partition, e.g. a map.get operation.
  */
@@ -31,7 +33,7 @@ public final class PartitionOperationThread extends OperationThread {
 
     @SuppressFBWarnings("EI_EXPOSE_REP")
     public PartitionOperationThread(String name, int threadId,
-                                    ScheduleQueue scheduleQueue, ILogger logger,
+                                    BlockingQueue scheduleQueue, ILogger logger,
                                     HazelcastThreadGroup threadGroup, NodeExtension nodeExtension,
                                     OperationRunner[] partitionOperationRunners) {
         super(name, threadId, scheduleQueue, logger, threadGroup, nodeExtension);
