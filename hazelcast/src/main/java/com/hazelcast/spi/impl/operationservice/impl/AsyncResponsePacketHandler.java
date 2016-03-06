@@ -23,6 +23,7 @@ import com.hazelcast.nio.Packet;
 import com.hazelcast.spi.impl.PacketHandler;
 import com.hazelcast.spi.impl.operationexecutor.OperationHostileThread;
 import com.hazelcast.util.concurrent.BackoffIdleStrategy;
+import com.hazelcast.util.concurrent.NoOpIdleStrategy;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.concurrent.BlockingQueue;
@@ -61,8 +62,7 @@ public class AsyncResponsePacketHandler implements PacketHandler {
                                       PacketHandler responsePacketHandler) {
         this.logger = logger;
         this.responseThread = new ResponseThread(threadGroup, responsePacketHandler);
-        this.workQueue = new MPSCQueue<Packet>(responseThread, new BackoffIdleStrategy(
-                IDLE_MAX_SPINS, IDLE_MAX_YIELDS, IDLE_MIN_PARK_NS, IDLE_MAX_PARK_NS));
+        this.workQueue = new MPSCQueue<Packet>(responseThread, new NoOpIdleStrategy());
         responseThread.start();
     }
 
@@ -80,7 +80,7 @@ public class AsyncResponsePacketHandler implements PacketHandler {
         checkTrue(packet.isFlagSet(FLAG_OP), "FLAG_OP should be set");
         checkTrue(packet.isFlagSet(FLAG_RESPONSE), "FLAG_RESPONSE should be set");
 
-        workQueue.add(packet);
+        workQueue.offer(packet);
     }
 
     /**
@@ -115,14 +115,9 @@ public class AsyncResponsePacketHandler implements PacketHandler {
         private void doRun() {
             for (; ; ) {
                 Packet responsePacket;
-                try {
-                    responsePacket = workQueue.take();
-                } catch (InterruptedException e) {
-                    if (shutdown) {
-                        return;
-                    }
-                    continue;
-                }
+                do {
+                    responsePacket = workQueue.poll();
+                } while (responsePacket == null);
 
                 if (shutdown) {
                     return;
