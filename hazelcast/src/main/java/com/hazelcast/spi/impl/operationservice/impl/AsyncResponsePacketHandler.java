@@ -22,7 +22,7 @@ import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Packet;
 import com.hazelcast.spi.impl.PacketHandler;
 import com.hazelcast.spi.impl.operationexecutor.OperationHostileThread;
-import com.hazelcast.util.concurrent.BackoffIdleStrategy;
+import com.hazelcast.util.concurrent.BusySpinIdleStrategy;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.concurrent.BlockingQueue;
@@ -61,8 +61,7 @@ public class AsyncResponsePacketHandler implements PacketHandler {
                                       PacketHandler responsePacketHandler) {
         this.logger = logger;
         this.responseThread = new ResponseThread(threadGroup, responsePacketHandler);
-        this.workQueue = new MPSCQueue<Packet>(responseThread, new BackoffIdleStrategy(
-                IDLE_MAX_SPINS, IDLE_MAX_YIELDS, IDLE_MIN_PARK_NS, IDLE_MAX_PARK_NS));
+        this.workQueue = new MPSCQueue<Packet>(responseThread, new BusySpinIdleStrategy());
         responseThread.start();
     }
 
