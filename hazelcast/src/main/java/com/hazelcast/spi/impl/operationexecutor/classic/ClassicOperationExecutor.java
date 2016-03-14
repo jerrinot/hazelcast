@@ -124,13 +124,7 @@ public final class ClassicOperationExecutor implements OperationExecutor {
     }
 
     private OperationRunner[] initGenericOperationRunners(GroupProperties properties, OperationRunnerFactory runnerFactory) {
-        int genericThreadCount = properties.getInteger(GroupProperty.GENERIC_OPERATION_THREAD_COUNT);
-        if (genericThreadCount <= 0) {
-            // default generic operation thread count
-            int coreSize = Runtime.getRuntime().availableProcessors();
-            genericThreadCount = Math.max(2, coreSize / 2);
-        }
-
+        int genericThreadCount = getGenericThreadCount(properties);
         OperationRunner[] operationRunners = new OperationRunner[genericThreadCount];
         for (int partitionId = 0; partitionId < operationRunners.length; partitionId++) {
             operationRunners[partitionId] = runnerFactory.createGenericRunner();
@@ -138,14 +132,18 @@ public final class ClassicOperationExecutor implements OperationExecutor {
         return operationRunners;
     }
 
-    private PartitionOperationThread[] initPartitionThreads(GroupProperties properties) {
-        int threadCount = properties.getInteger(GroupProperty.PARTITION_OPERATION_THREAD_COUNT);
-        if (threadCount <= 0) {
-            // default partition operation thread count
+    private int getGenericThreadCount(GroupProperties properties) {
+        int genericThreadCount = properties.getInteger(GroupProperty.GENERIC_OPERATION_THREAD_COUNT);
+        if (genericThreadCount <= 0) {
+            // default generic operation thread count
             int coreSize = Runtime.getRuntime().availableProcessors();
-            threadCount = Math.max(2, coreSize);
+            genericThreadCount = Math.max(2, coreSize / 2);
         }
+        return genericThreadCount;
+    }
 
+    private PartitionOperationThread[] initPartitionThreads(GroupProperties properties) {
+        int threadCount = getPartitionThreadCount(properties);
         PartitionOperationThread[] threads = new PartitionOperationThread[threadCount];
         for (int threadId = 0; threadId < threads.length; threadId++) {
             String threadName = threadGroup.getThreadPoolNamePrefix("partition-operation") + threadId;
@@ -168,6 +166,16 @@ public final class ClassicOperationExecutor implements OperationExecutor {
         }
 
         return threads;
+    }
+
+    private int getPartitionThreadCount(GroupProperties properties) {
+        int threadCount = properties.getInteger(GroupProperty.PARTITION_OPERATION_THREAD_COUNT);
+        if (threadCount <= 0) {
+            // default partition operation thread count
+            int coreSize = Runtime.getRuntime().availableProcessors();
+            threadCount = Math.max(2, coreSize);
+        }
+        return threadCount;
     }
 
     private GenericOperationThread[] initGenericThreads() {
