@@ -131,11 +131,11 @@ public final class ClassLoaderUtil {
     private static Class<?> tryLoadClass(String className, ClassLoader classLoader)
             throws ClassNotFoundException {
 
-        if (className.startsWith("[")) {
+//        if (className.startsWith("[")) {
             return Class.forName(className, false, classLoader);
-        } else {
-            return classLoader.loadClass(className);
-        }
+//        } else {
+//            return classLoader.loadClass(className);
+//        }
     }
 
     public static boolean isInternalType(Class type) {
