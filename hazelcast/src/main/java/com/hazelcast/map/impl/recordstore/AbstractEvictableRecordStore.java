@@ -59,6 +59,7 @@ abstract class AbstractEvictableRecordStore extends AbstractRecordStore {
      */
     protected Iterator<Record> expirationIterator;
     protected volatile boolean hasEntryWithCustomTTL;
+    private EntryView[] evictionPool;
 
     protected AbstractEvictableRecordStore(MapContainer mapContainer, int partitionId) {
         super(mapContainer, partitionId);
@@ -69,6 +70,7 @@ abstract class AbstractEvictableRecordStore extends AbstractRecordStore {
         eventService = nodeEngine.getEventService();
         mapEventPublisher = mapServiceContext.getMapEventPublisher();
         thisAddress = nodeEngine.getThisAddress();
+        this.evictionPool = new EntryView[Integer.getInteger("hazelcast.eviction.sample.count", 15)];
     }
 
     /**
@@ -150,7 +152,7 @@ abstract class AbstractEvictableRecordStore extends AbstractRecordStore {
     @Override
     public void evictEntries() {
         if (shouldEvict()) {
-            evictor.evict(this);
+            evictor.evict(this, evictionPool);
         }
     }
 

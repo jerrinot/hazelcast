@@ -43,15 +43,16 @@ public class EvictorImpl implements Evictor {
     }
 
     @Override
-    public void evict(RecordStore recordStore) {
-        Iterable<EntryView> samples = getSamples(recordStore);
-        EntryView selectedEntry = evictionPolicy.selectEvictableEntry(samples);
+    public void evict(RecordStore recordStore, EntryView[] evictionPool) {
+        EntryView selectedEntry;
+        do {
+            Iterable<EntryView> samples = getSamples(recordStore);
+            selectedEntry = evictionPolicy.selectEvictableEntry(samples, evictionPool);
 
-        if (selectedEntry == null) {
-            return;
-        }
-
-        evictEntry(selectedEntry, recordStore);
+            if (selectedEntry == null) {
+                return;
+            }
+        } while (evictEntry(selectedEntry, recordStore) == false);
     }
 
     @Override
@@ -59,18 +60,23 @@ public class EvictorImpl implements Evictor {
         return evictionChecker.checkEvictable(recordStore);
     }
 
-    private void evictEntry(EntryView selectedEntry, RecordStore recordStore) {
+    private boolean evictEntry(EntryView selectedEntry, RecordStore recordStore) {
         Record record = getRecordFromEntryView(selectedEntry);
         Data key = record.getKey();
 
         if (!recordStore.isLocked(key)) {
 
             boolean backup = isBackup(recordStore);
-            recordStore.evict(key, backup);
+            if (recordStore.evict(key, backup) == null) {
+                return false;
+            }
 
             if (!backup) {
                 recordStore.doPostEvictionOperations(record, backup);
             }
+            return true;
+        } else {
+            return false;
         }
 
     }

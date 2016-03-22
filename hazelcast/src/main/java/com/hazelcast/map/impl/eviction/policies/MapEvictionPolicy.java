@@ -37,9 +37,10 @@ public interface MapEvictionPolicy {
      * Returns candidate to be evicted.
      *
      * @param samples samples used to find eviction candidate among them
+     * @param evictionPool
      * @return candidate to be evicted
      */
-    EntryView selectEvictableEntry(Iterable<EntryView> samples);
+    EntryView selectEvictableEntry(Iterable<EntryView> samples, EntryView[] evictionPool);
 
     /**
      * Returns {@code true} if supplied candidate will be the new selected entry to evict, otherwise returns {@code false}

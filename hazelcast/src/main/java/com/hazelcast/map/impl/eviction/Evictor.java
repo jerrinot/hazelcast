@@ -16,6 +16,7 @@
 
 package com.hazelcast.map.impl.eviction;
 
+import com.hazelcast.core.EntryView;
 import com.hazelcast.map.impl.recordstore.RecordStore;
 
 /**
@@ -31,7 +32,7 @@ public interface Evictor {
      *
      * @param recordStore the recordStore
      */
-    void evict(RecordStore recordStore);
+    void evict(RecordStore recordStore, EntryView[] evictionPool);
 
     /**
      * Check whether the supplied record-store needs eviction.

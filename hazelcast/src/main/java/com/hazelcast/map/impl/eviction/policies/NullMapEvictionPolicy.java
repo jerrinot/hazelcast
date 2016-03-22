@@ -29,7 +29,7 @@ class NullMapEvictionPolicy implements MapEvictionPolicy {
     }
 
     @Override
-    public EntryView selectEvictableEntry(Iterable<EntryView> samples) {
+    public EntryView selectEvictableEntry(Iterable<EntryView> samples, EntryView[] evictionPool) {
         return null;
     }
 
