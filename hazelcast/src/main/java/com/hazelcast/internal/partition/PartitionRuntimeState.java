@@ -172,6 +172,16 @@ public final class PartitionRuntimeState implements IdentifiedDataSerializable {
         }
     }
 
+    public MemberInfo findByAddressOrNull(Address address) {
+        for (MemberInfo member : members) {
+            Address memberAddress = member.getAddress();
+            if (address.equals(memberAddress)) {
+                return member;
+            }
+        }
+        return null;
+    }
+
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         // `masterTime` field is removed because it's not used anymore.

@@ -743,24 +743,32 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
                 return;
             }
 
-            final Address master = node.getMasterAddress();
             if (node.isMaster()) {
                 logger.warning("This is the master node and received a PartitionRuntimeState from "
                         + sender + ". Ignoring incoming state! ");
                 return;
-            } else {
-                if (sender == null || !sender.equals(master)) {
-                    if (node.clusterService.getMember(sender) == null) {
-                        logger.severe("Received a ClusterRuntimeState from an unknown member!"
-                                + " => Sender: " + sender + ", Master: " + master + "! ");
-                        return;
-                    } else {
-                        logger.warning("Received a ClusterRuntimeState, but its sender doesn't seem to be master!"
-                                + " => Sender: " + sender + ", Master: " + master + "! "
-                                + "(Ignore if master node has changed recently.)");
-                        return;
-                    }
+            }
+
+            final Address master = node.getMasterAddress();
+            if (sender == null || !sender.equals(master)) {
+                if (node.clusterService.getMember(sender) == null) {
+                    logger.severe("Received a ClusterRuntimeState from an unknown member!"
+                            + " => Sender: " + sender + ", Master: " + master + "! ");
+                    return;
                 }
+                if (hasMasterAddressWithDifferentUUID(partitionState)) {
+                    logger.finest("Received a ClusterRuntimeState from " + sender + ", but I consider " + master
+                            + " to the cluster master. The received state contains " + master + ", but it has " +
+                            "a different UUID. It appears the old master was restarted and a new member is " +
+                            "listening at the same address. ");
+                    node.getClusterService().removeAddress(master);
+                    return;
+                }
+
+                logger.warning("Received a ClusterRuntimeState, but its sender doesn't seem to be master!"
+                        + " => Sender: " + sender + ", Master: " + master + "! "
+                        + "(Ignore if master node has changed recently.)");
+                return;
             }
 
             stateVersion.set(partitionState.getVersion());
@@ -772,6 +780,28 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
         } finally {
             lock.unlock();
         }
+    }
+
+    private boolean hasMasterAddressWithDifferentUUID(PartitionRuntimeState partitionState) {
+        MemberImpl masterMember = getMasterMember();
+        if (masterMember == null) {
+            return false;
+        }
+
+        Address masterAddress = masterMember.getAddress();
+        MemberInfo infoFromState = partitionState.findByAddressOrNull(masterAddress);
+        if (infoFromState == null) {
+            return false;
+        }
+
+        String localMasterUuid = masterMember.getUuid();
+        String receivedUuid = infoFromState.getUuid();
+        if (receivedUuid.equals(localMasterUuid)) {
+            node.getClusterService().removeAddress(masterAddress);
+            return false;
+        }
+
+        return true;
     }
 
     private void finalizeOrRollbackMigration(PartitionRuntimeState partitionState, PartitionInfo[] state) {
