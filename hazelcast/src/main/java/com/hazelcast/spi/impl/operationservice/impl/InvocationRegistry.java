@@ -19,6 +19,7 @@ package com.hazelcast.spi.impl.operationservice.impl;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.internal.metrics.Probe;
+import com.hazelcast.internal.util.collection.cclick.NonBlockingHashMapLong;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 
@@ -62,7 +63,8 @@ public class InvocationRegistry implements Iterable<Invocation> {
                               int concurrencyLevel) {
         this.logger = logger;
         this.callIdSequence = backpressureRegulator.newCallIdSequence();
-        this.invocations = new ConcurrentHashMap<Long, Invocation>(INITIAL_CAPACITY, LOAD_FACTOR, concurrencyLevel);
+//        this.invocations = new ConcurrentHashMap<Long, Invocation>(INITIAL_CAPACITY, LOAD_FACTOR, concurrencyLevel);
+        this.invocations = new NonBlockingHashMapLong<Invocation>(false);
 
         nodeEngine.getMetricsRegistry().scanAndRegister(this, "operation");
     }
