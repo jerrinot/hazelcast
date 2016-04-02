@@ -825,7 +825,7 @@ abstract class MapProxySupport extends AbstractDistributedObject<MapService> imp
 
     public void removeMapInterceptorInternal(String id) {
         NodeEngine nodeEngine = getNodeEngine();
-        mapServiceContext.removeInterceptor(name, id);
+        mapServiceContext.removeInterceptor(mapContainer, id);
         Collection<Member> members = nodeEngine.getClusterService().getMembers();
         for (Member member : members) {
             try {

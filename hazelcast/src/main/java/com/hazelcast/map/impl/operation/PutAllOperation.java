@@ -86,7 +86,7 @@ public class PutAllOperation extends MapOperation implements PartitionAwareOpera
         }
 
         dataValue = getValueOrPostProcessedValue(dataKey, dataValue);
-        mapServiceContext.interceptAfterPut(name, dataValue);
+        mapServiceContext.interceptAfterPut(mapContainer, dataValue);
 
         EntryEventType eventType = oldValue == null ? ADDED : UPDATED;
         mapEventPublisher.publishEvent(getCallerAddress(), name, eventType, dataKey, oldValue, dataValue);

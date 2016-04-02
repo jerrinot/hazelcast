@@ -58,7 +58,7 @@ public class PutFromLoadAllOperation extends MapOperation implements PartitionAw
 
     @Override
     public void run() throws Exception {
-        boolean hasInterceptor = mapServiceContext.hasInterceptor(name);
+        boolean hasInterceptor = mapServiceContext.hasInterceptor(mapContainer);
 
         List<Data> keyValueSequence = this.keyValueSequence;
         for (int i = 0; i < keyValueSequence.size(); i += 2) {
@@ -93,7 +93,7 @@ public class PutFromLoadAllOperation extends MapOperation implements PartitionAw
 
 
     private void callAfterPutInterceptors(Object value) {
-        mapService.getMapServiceContext().interceptAfterPut(name, value);
+        mapService.getMapServiceContext().interceptAfterPut(mapContainer, value);
     }
 
     private void publishEntryEvent(Data key, Object previousValue, Object newValue) {

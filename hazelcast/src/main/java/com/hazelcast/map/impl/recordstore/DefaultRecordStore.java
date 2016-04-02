@@ -456,7 +456,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
             removeIndex(record);
             storage.removeRecord(record);
             if (!backup) {
-                mapServiceContext.interceptRemove(name, value);
+                mapServiceContext.interceptRemove(mapContainer, value);
             }
         }
         return value;
@@ -519,7 +519,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
             oldValue = record.getValue();
         }
         if (recordFactory.isEquals(testValue, oldValue)) {
-            mapServiceContext.interceptRemove(name, oldValue);
+            mapServiceContext.interceptRemove(mapContainer, oldValue);
             removeIndex(record);
             mapDataStore.remove(key, now);
             onStore(record);
@@ -555,7 +555,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
             accessRecord(record, now);
         }
         Object value = record == null ? null : record.getValue();
-        value = mapServiceContext.interceptGet(name, value);
+        value = mapServiceContext.interceptGet(mapContainer, value);
 
         return value;
     }
@@ -578,7 +578,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
         }
         final MapServiceContext mapServiceContext = this.mapServiceContext;
         final Object value = record.getValue();
-        mapServiceContext.interceptAfterGet(name, value);
+        mapServiceContext.interceptAfterGet(mapContainer, value);
         // this serialization step is needed not to expose the object, see issue 1292
         return mapServiceContext.toData(value);
     }
@@ -636,7 +636,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
         if (key == null || value == null) {
             return;
         }
-        value = mapServiceContext.interceptGet(name, value);
+        value = mapServiceContext.interceptGet(mapContainer, value);
         final Data dataKey = mapServiceContext.toData(key);
         final Data dataValue = mapServiceContext.toData(value);
         mapEntries.add(dataKey, dataValue);
@@ -678,7 +678,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
 
         Record record = getRecordOrNull(key, now, false);
         Object oldValue = record == null ? (loadFromStore ? mapDataStore.load(key) : null) : record.getValue();
-        value = mapServiceContext.interceptPut(name, oldValue, value);
+        value = mapServiceContext.interceptPut(mapContainer, oldValue, value);
         value = mapDataStore.add(key, value, now);
         onStore(record);
 
@@ -753,7 +753,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
             return null;
         }
         Object oldValue = record.getValue();
-        update = mapServiceContext.interceptPut(name, oldValue, update);
+        update = mapServiceContext.interceptPut(mapContainer, oldValue, update);
         update = mapDataStore.add(key, update, now);
         onStore(record);
         updateRecord(key, record, update, now);
@@ -776,7 +776,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
         if (!recordFactory.isEquals(expect, current)) {
             return false;
         }
-        update = mapServiceContext.interceptPut(mapName, current, update);
+        update = mapServiceContext.interceptPut(mapContainer, current, update);
         update = mapDataStore.add(key, update, now);
         onStore(record);
         updateRecord(key, record, update, now);
@@ -793,12 +793,12 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
         Record record = getRecordOrNull(key, now, false);
         Object oldValue = null;
         if (record == null) {
-            value = mapServiceContext.interceptPut(name, null, value);
+            value = mapServiceContext.interceptPut(mapContainer, null, value);
             record = createRecord(value, ttl, now);
             storage.put(key, record);
         } else {
             oldValue = record.getValue();
-            value = mapServiceContext.interceptPut(name, oldValue, value);
+            value = mapServiceContext.interceptPut(mapContainer, oldValue, value);
             updateRecord(key, record, value, now);
             updateExpiryTime(record, ttl, mapContainer.getMapConfig());
         }
@@ -836,12 +836,12 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
         Record record = getRecordOrNull(key, now, false);
         Object oldValue = null;
         if (record == null) {
-            value = mapServiceContext.interceptPut(name, null, value);
+            value = mapServiceContext.interceptPut(mapContainer, null, value);
             record = createRecord(value, ttl, now);
             storage.put(key, record);
         } else {
             oldValue = record.getValue();
-            value = mapServiceContext.interceptPut(name, oldValue, value);
+            value = mapServiceContext.interceptPut(mapContainer, oldValue, value);
             updateRecord(key, record, value, now);
             updateExpiryTime(record, ttl, mapContainer.getMapConfig());
         }
@@ -890,7 +890,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
             oldValue = record.getValue();
         }
         if (oldValue == null) {
-            value = mapServiceContext.interceptPut(name, null, value);
+            value = mapServiceContext.interceptPut(mapContainer, null, value);
             value = mapDataStore.add(key, value, now);
             onStore(record);
             record = createRecord(value, ttl, now);
@@ -909,7 +909,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
 
     protected Object removeRecord(Data key, Record record, long now) {
         Object oldValue = record.getValue();
-        oldValue = mapServiceContext.interceptRemove(name, oldValue);
+        oldValue = mapServiceContext.interceptRemove(mapContainer, oldValue);
         if (oldValue != null) {
             removeIndex(record);
             mapDataStore.remove(key, now);

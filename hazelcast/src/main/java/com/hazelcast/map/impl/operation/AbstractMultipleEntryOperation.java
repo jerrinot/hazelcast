@@ -147,7 +147,7 @@ abstract class AbstractMultipleEntryOperation extends MapOperation implements Mu
 
         Object newValue = entry.getValue();
         invalidateNearCache(key);
-        mapServiceContext.interceptAfterPut(name, newValue);
+        mapServiceContext.interceptAfterPut(mapContainer, newValue);
         if (isPostProcessing(recordStore)) {
             Record record = recordStore.getRecord(key);
             newValue = record.getValue();

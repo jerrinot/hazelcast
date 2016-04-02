@@ -89,7 +89,7 @@ public class EvictOperation extends LockAwareOperation implements MutatingOperat
         if (!evicted) {
             return;
         }
-        mapServiceContext.interceptAfterRemove(name, dataValue);
+        mapServiceContext.interceptAfterRemove(mapContainer, dataValue);
         mapEventPublisher.publishEvent(getCallerAddress(), name, EVICTED, dataKey, dataValue, null);
         invalidateNearCache(dataKey);
     }
