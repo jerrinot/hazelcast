@@ -85,7 +85,7 @@ public abstract class MapOperation extends AbstractNamedOperation {
 
     protected boolean isPostProcessing(RecordStore recordStore) {
         MapDataStore mapDataStore = recordStore.getMapDataStore();
-        return mapDataStore.isPostProcessingMapStore() || mapServiceContext.hasInterceptor(name);
+        return mapDataStore.isPostProcessingMapStore() || mapServiceContext.hasInterceptor(mapContainer);
     }
 
     public void setThreadId(long threadId) {
