@@ -31,6 +31,7 @@ import com.hazelcast.ringbuffer.OverflowPolicy;
 import com.hazelcast.ringbuffer.Ringbuffer;
 import com.hazelcast.spi.AbstractDistributedObject;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.impl.ObjectInstantiator;
 import com.hazelcast.topic.ReliableMessageListener;
 import com.hazelcast.topic.TopicOverloadException;
 import com.hazelcast.topic.TopicOverloadPolicy;
@@ -120,7 +121,8 @@ public class ReliableTopicProxy<E> extends AbstractDistributedObject<ReliableTop
             }
 
             if (listenerConfig.getClassName() != null) {
-                Object object = ClassLoaderUtil.newInstance(nodeEngine.getConfigClassLoader(), listenerConfig.getClassName());
+                ObjectInstantiator objectInstantiator = nodeEngine.getObjectInstantiator();
+                Object object = objectInstantiator.newInitializedInstance(listenerConfig.getClassName());
 
                 if (!(object instanceof MessageListener)) {
                     throw new HazelcastException("class '"

@@ -120,7 +120,7 @@ final class BasicMapStoreContext implements MapStoreContext {
         final MapConfig mapConfig = mapContainer.getMapConfig();
         final MapStoreConfig mapStoreConfig = mapConfig.getMapStoreConfig();
         final ClassLoader configClassLoader = nodeEngine.getConfigClassLoader();
-        // create store.
+        // create store
         final Object store = createStore(mapName, mapStoreConfig, configClassLoader);
         final MapStoreWrapper storeWrapper = new MapStoreWrapper(mapName, store);
 

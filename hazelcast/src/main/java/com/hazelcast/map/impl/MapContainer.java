@@ -40,6 +40,7 @@ import com.hazelcast.query.impl.getters.Extractors;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.partition.IPartitionService;
 import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.spi.impl.ObjectInstantiator;
 import com.hazelcast.util.ConstructorFunction;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.util.MemoryInfoAccessor;
@@ -162,8 +163,8 @@ public class MapContainer {
             strategy = partitioningStrategyConfig.getPartitioningStrategy();
             if (strategy == null && partitioningStrategyConfig.getPartitioningStrategyClass() != null) {
                 try {
-                    strategy = ClassLoaderUtil.newInstance(mapServiceContext.getNodeEngine().getConfigClassLoader(),
-                            partitioningStrategyConfig.getPartitioningStrategyClass());
+                    ObjectInstantiator instantiator = mapServiceContext.getNodeEngine().getObjectInstantiator();
+                    strategy = instantiator.newInitializedInstance(partitioningStrategyConfig.getPartitioningStrategyClass());
                 } catch (Exception e) {
                     throw ExceptionUtil.rethrow(e);
                 }

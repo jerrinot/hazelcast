@@ -126,7 +126,7 @@ public class NodeEngineImpl implements NodeEngine {
                 operationService.getInvocationMonitor(),
                 eventService,
                 new ConnectionManagerPacketHandler());
-        this.quorumService = new QuorumServiceImpl(this);
+        this.quorumService = new QuorumServiceImpl(this, getObjectInstantiator());
         this.performanceMonitor = newPerformanceMonitor();
 
         serviceManager.registerService(InternalOperationService.SERVICE_NAME, operationService);
@@ -219,6 +219,11 @@ public class NodeEngineImpl implements NodeEngine {
     @Override
     public ClassLoader getConfigClassLoader() {
         return node.getConfigClassLoader();
+    }
+
+    @Override
+    public ObjectInstantiator getObjectInstantiator() {
+        return node.getObjectInstantiator();
     }
 
     @Override

@@ -42,6 +42,7 @@ import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
+import com.hazelcast.spi.impl.ObjectInstantiator;
 import com.hazelcast.spi.impl.SerializableList;
 import com.hazelcast.util.ExceptionUtil;
 
@@ -72,16 +73,13 @@ abstract class QueueProxySupport extends AbstractDistributedObject<QueueService>
             ItemListener listener = itemListenerConfig.getImplementation();
             if (listener == null && itemListenerConfig.getClassName() != null) {
                 try {
-                    listener = ClassLoaderUtil.newInstance(nodeEngine.getConfigClassLoader(),
-                            itemListenerConfig.getClassName());
+                    ObjectInstantiator instantiator = nodeEngine.getObjectInstantiator();
+                    listener = instantiator.newInitializedInstance(itemListenerConfig.getClassName());
                 } catch (Exception e) {
                     throw ExceptionUtil.rethrow(e);
                 }
             }
             if (listener != null) {
-                if (listener instanceof HazelcastInstanceAware) {
-                    ((HazelcastInstanceAware) listener).setHazelcastInstance(nodeEngine.getHazelcastInstance());
-                }
                 addItemListener(listener, itemListenerConfig.isIncludeValue());
             }
         }

@@ -28,12 +28,12 @@ import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.AbstractDistributedObject;
 import com.hazelcast.spi.InitializingObject;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.impl.ObjectInstantiator;
 import com.hazelcast.util.ExceptionUtil;
 
 public abstract class TopicProxySupport extends AbstractDistributedObject<TopicService> implements InitializingObject {
 
     private final String name;
-    private final ClassLoader configClassLoader;
     private final TopicService topicService;
     private final LocalTopicStatsImpl topicStats;
     private final Member localMember;
@@ -41,7 +41,6 @@ public abstract class TopicProxySupport extends AbstractDistributedObject<TopicS
     public TopicProxySupport(String name, NodeEngine nodeEngine, TopicService service) {
         super(nodeEngine, service);
         this.name = name;
-        this.configClassLoader = nodeEngine.getConfigClassLoader();
         this.topicService = service;
         this.topicStats = topicService.getLocalTopicStats(name);
         this.localMember = nodeEngine.getLocalMember();
@@ -76,7 +75,8 @@ public abstract class TopicProxySupport extends AbstractDistributedObject<TopicS
         try {
             MessageListener listener = (MessageListener) listenerConfig.getImplementation();
             if (listener == null && listenerConfig.getClassName() != null) {
-                listener = ClassLoaderUtil.newInstance(configClassLoader, listenerConfig.getClassName());
+                ObjectInstantiator instantiator = getNodeEngine().getObjectInstantiator();
+                listener = instantiator.newInitializedInstance(listenerConfig.getClassName());
             }
             return listener;
         } catch (Exception e) {

@@ -27,6 +27,7 @@ import com.hazelcast.quorum.QuorumService;
 import com.hazelcast.spi.partition.IPartitionService;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.spi.impl.ObjectInstantiator;
 import com.hazelcast.transaction.TransactionManagerService;
 import com.hazelcast.wan.WanReplicationService;
 
@@ -154,6 +155,8 @@ public interface NodeEngine {
      * @return the config ClassLoader.
      */
     ClassLoader getConfigClassLoader();
+
+    ObjectInstantiator getObjectInstantiator();
 
     /**
      * Returns the HazelcastProperties.

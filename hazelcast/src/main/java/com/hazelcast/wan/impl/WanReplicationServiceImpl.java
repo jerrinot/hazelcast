@@ -22,6 +22,9 @@ import com.hazelcast.instance.Node;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.monitor.LocalWanStats;
 import com.hazelcast.nio.ClassLoaderUtil;
+import com.hazelcast.nio.Packet;
+import com.hazelcast.spi.ReplicationSupportingService;
+import com.hazelcast.spi.impl.ObjectInstantiator;
 import com.hazelcast.util.ExceptionUtil;
 import com.hazelcast.wan.WanReplicationEndpoint;
 import com.hazelcast.wan.WanReplicationPublisher;
@@ -71,8 +74,8 @@ public class WanReplicationServiceImpl implements WanReplicationService {
                     if (publisherConfig.getImplementation() != null) {
                         target = (WanReplicationEndpoint) publisherConfig.getImplementation();
                     } else {
-                        target = ClassLoaderUtil
-                                .newInstance(node.getConfigClassLoader(), publisherConfig.getClassName());
+                        ObjectInstantiator objectInstantiator = node.getObjectInstantiator();
+                        target = objectInstantiator.newInitializedInstance(publisherConfig.getClassName());
                     }
                 } catch (Exception e) {
                     throw ExceptionUtil.rethrow(e);

@@ -35,6 +35,7 @@ import com.hazelcast.spi.NamedOperation;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.QuorumAwareService;
 import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.spi.impl.ObjectInstantiator;
 import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
@@ -54,12 +55,14 @@ public class QuorumServiceImpl implements EventPublishingService<QuorumEvent, Qu
 
     private final NodeEngineImpl nodeEngine;
     private final EventService eventService;
+    private final ObjectInstantiator objectInstantiator;
     private boolean inactive;
     private final Map<String, QuorumImpl> quorums = new HashMap<String, QuorumImpl>();
 
-    public QuorumServiceImpl(NodeEngineImpl nodeEngine) {
+    public QuorumServiceImpl(NodeEngineImpl nodeEngine, ObjectInstantiator objectInstantiator) {
         this.nodeEngine = nodeEngine;
         this.eventService = nodeEngine.getEventService();
+        this.objectInstantiator = objectInstantiator;
         initializeQuorums();
         this.inactive = quorums.isEmpty();
     }
@@ -91,8 +94,8 @@ public class QuorumServiceImpl implements EventPublishingService<QuorumEvent, Qu
             listener = listenerConfig.getImplementation();
         } else if (listenerConfig.getClassName() != null) {
             try {
-                listener = ClassLoaderUtil
-                        .newInstance(nodeEngine.getConfigClassLoader(), listenerConfig.getClassName());
+                String className = listenerConfig.getClassName();
+                listener = objectInstantiator.newInitializedInstance(className);
             } catch (Exception e) {
                 throw ExceptionUtil.rethrow(e);
             }

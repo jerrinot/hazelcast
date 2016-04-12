@@ -61,6 +61,7 @@ import com.hazelcast.spi.discovery.integration.DiscoveryService;
 import com.hazelcast.spi.discovery.integration.DiscoveryServiceProvider;
 import com.hazelcast.spi.discovery.integration.DiscoveryServiceSettings;
 import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.spi.impl.ObjectInstantiator;
 import com.hazelcast.spi.impl.proxyservice.impl.ProxyServiceImpl;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.util.Clock;
@@ -133,6 +134,8 @@ public class Node {
 
     private final HazelcastThreadGroup hazelcastThreadGroup;
 
+    private final ObjectInstantiator objectInstantiator;
+
     private final Joiner joiner;
 
     private final boolean liteMember;
@@ -150,6 +153,7 @@ public class Node {
         this.liteMember = config.isLiteMember();
         this.configClassLoader = config.getClassLoader();
         this.properties = new HazelcastProperties(config);
+        this.objectInstantiator = new ObjectInstantiator(hazelcastInstance, configClassLoader);
         this.buildInfo = BuildInfoProvider.getBuildInfo();
 
         String loggingType = properties.getString(LOGGING_TYPE);
@@ -541,6 +545,10 @@ public class Node {
 
     public NodeExtension getNodeExtension() {
         return nodeExtension;
+    }
+
+    public ObjectInstantiator getObjectInstantiator() {
+        return objectInstantiator;
     }
 
     public class NodeShutdownHookThread extends Thread {

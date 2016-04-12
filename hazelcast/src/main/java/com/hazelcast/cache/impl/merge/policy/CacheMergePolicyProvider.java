@@ -20,6 +20,7 @@ import com.hazelcast.cache.BuiltInCacheMergePolicies;
 import com.hazelcast.cache.CacheMergePolicy;
 import com.hazelcast.config.InvalidConfigurationException;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.spi.impl.ObjectInstantiator;
 import com.hazelcast.util.ConcurrencyUtil;
 import com.hazelcast.util.ConstructorFunction;
 
@@ -41,7 +42,8 @@ public final class CacheMergePolicyProvider {
         @Override
         public CacheMergePolicy createNew(String className) {
             try {
-                return newInstance(nodeEngine.getConfigClassLoader(), className);
+                ObjectInstantiator instantiator = nodeEngine.getObjectInstantiator();
+                return instantiator.newInitializedInstance(className);
             } catch (Exception e) {
                 nodeEngine.getLogger(getClass()).severe(e);
                 throw new InvalidConfigurationException("Invalid cache merge policy: " + className, e);

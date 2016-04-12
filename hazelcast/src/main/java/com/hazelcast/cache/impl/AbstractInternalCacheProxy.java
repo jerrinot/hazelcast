@@ -33,6 +33,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationFactory;
 import com.hazelcast.spi.OperationService;
+import com.hazelcast.spi.impl.ObjectInstantiator;
 import com.hazelcast.util.ExceptionUtil;
 
 import javax.cache.CacheException;
@@ -404,8 +405,8 @@ abstract class AbstractInternalCacheProxy<K, V>
             listener = (T) listenerConfig.getImplementation();
         } else if (listenerConfig.getClassName() != null) {
             try {
-                return ClassLoaderUtil.newInstance(getNodeEngine().getConfigClassLoader(),
-                                                   listenerConfig.getClassName());
+                ObjectInstantiator instantiator = getNodeEngine().getObjectInstantiator();
+                return instantiator.newInitializedInstance(listenerConfig.getClassName());
             } catch (Exception e) {
                 throw ExceptionUtil.rethrow(e);
             }
