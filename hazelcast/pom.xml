@@ -216,6 +216,7 @@
                                 <includes>
                                     <include>com.eclipsesource.minimal-json:minimal-json</include>
                                     <include>com.hazelcast:hazelcast-client-protocol</include>
+                                    <include>org.jctools:jctools-core</include>
                                 </includes>
                             </artifactSet>
                             <relocations>
@@ -231,7 +232,27 @@
         </plugins>
     </build>
 
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
     <dependencies>
+        <!--<dependency>-->
+            <!--<groupId>com.github.JCTools.JCTools</groupId>-->
+            <!--<artifactId>jctools-core</artifactId>-->
+            <!--<version>LATEST</version>-->
+        <!--</dependency>-->
+
+        <dependency>
+            <groupId>org.jctools</groupId>
+            <artifactId>jctools-core</artifactId>
+            <version>1.2</version>
+        </dependency>
+
+
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest-library</artifactId>

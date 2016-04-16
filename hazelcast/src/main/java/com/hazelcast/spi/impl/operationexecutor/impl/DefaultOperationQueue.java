@@ -16,6 +16,12 @@
 
 package com.hazelcast.spi.impl.operationexecutor.impl;
 
+import org.jctools.queues.MpscArrayQueue;
+import org.jctools.queues.MpscCompoundQueue;
+import org.jctools.queues.MpscLinkedQueue7;
+import org.jctools.queues.MpscLinkedQueue8;
+import org.jctools.queues.atomic.MpscAtomicArrayQueue;
+
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -35,7 +41,7 @@ public final class DefaultOperationQueue implements OperationQueue {
     private final Queue<Object> priorityQueue;
 
     public DefaultOperationQueue() {
-        this(new LinkedBlockingQueue<Object>(), new ConcurrentLinkedQueue<Object>());
+        this(new LinkedBlockingQueue<Object>(), new MpscArrayQueue<Object>(8096));
     }
 
     public DefaultOperationQueue(BlockingQueue<Object> normalQueue, Queue<Object> priorityQueue) {

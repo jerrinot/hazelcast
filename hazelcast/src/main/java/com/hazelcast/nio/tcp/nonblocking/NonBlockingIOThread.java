@@ -22,6 +22,7 @@ import com.hazelcast.internal.metrics.ProbeLevel;
 import com.hazelcast.internal.util.counters.SwCounter;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.spi.impl.operationexecutor.OperationHostileThread;
+import org.jctools.queues.MpscArrayQueue;
 
 import java.io.IOException;
 import java.nio.channels.CancelledKeyException;
@@ -49,7 +50,7 @@ public class NonBlockingIOThread extends Thread implements OperationHostileThrea
     public int id;
 
     @Probe(name = "taskQueueSize")
-    private final Queue<Runnable> taskQueue = new ConcurrentLinkedQueue<Runnable>();
+    private final Queue<Runnable> taskQueue = new MpscArrayQueue<Runnable>(8096);
     @Probe
     private final SwCounter eventCount = newSwCounter();
     @Probe
