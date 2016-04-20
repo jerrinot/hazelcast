@@ -16,13 +16,14 @@
 
 package com.hazelcast.spi.impl.operationservice.impl;
 
+import com.hazelcast.core.Member;
 import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.instance.HazelcastThreadGroup;
 import com.hazelcast.instance.MemberImpl;
+import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.metrics.MetricsProvider;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.Probe;
-import com.hazelcast.internal.properties.GroupProperties;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.util.counters.SwCounter;
 import com.hazelcast.logging.ILogger;
@@ -34,24 +35,28 @@ import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.PacketHandler;
 import com.hazelcast.spi.impl.operationexecutor.OperationHostileThread;
 import com.hazelcast.spi.impl.servicemanager.ServiceManager;
+import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.util.Clock;
 
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 
 import static com.hazelcast.instance.OutOfMemoryErrorDispatcher.inspectOutputMemoryError;
 import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
-import static com.hazelcast.internal.properties.GroupProperty.OPERATION_BACKUP_TIMEOUT_MILLIS;
-import static com.hazelcast.internal.properties.GroupProperty.OPERATION_CALL_TIMEOUT_MILLIS;
 import static com.hazelcast.internal.util.counters.SwCounter.newSwCounter;
 import static com.hazelcast.nio.Packet.FLAG_OP;
 import static com.hazelcast.nio.Packet.FLAG_OP_CONTROL;
 import static com.hazelcast.nio.Packet.FLAG_URGENT;
+import static com.hazelcast.spi.properties.GroupProperty.OPERATION_BACKUP_TIMEOUT_MILLIS;
+import static com.hazelcast.spi.properties.GroupProperty.OPERATION_CALL_TIMEOUT_MILLIS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
@@ -60,6 +65,10 @@ import static java.util.logging.Level.INFO;
 /**
  * The InvocationMonitor monitors all pending invocations and determines if there are any problems like timeouts. It uses the
  * {@link InvocationRegistry} to access the pending invocations.
+ *
+ * The {@link InvocationMonitor} sends Operation heartbeats to the other member informing them about if the operation is still
+ * alive. Also if no operations are running, it will still send a period packet to each member. This is a different system than
+ * the regular heartbeats, but it has similar characteristics. The reason the packet is always send is for debugging purposes.
  */
 public class InvocationMonitor implements PacketHandler, MetricsProvider {
 
@@ -73,6 +82,7 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
     private final ILogger logger;
     private final ScheduledExecutorService scheduler;
     private final Address thisAddress;
+    private final ConcurrentMap<Address, AtomicLong> lastHeartbeatPerMember = new ConcurrentHashMap<Address, AtomicLong>();
 
     @Probe(name = "backupTimeouts", level = MANDATORY)
     private final SwCounter backupTimeoutsCount = newSwCounter();
@@ -95,7 +105,7 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
     public InvocationMonitor(NodeEngineImpl nodeEngine,
                              Address thisAddress,
                              HazelcastThreadGroup threadGroup,
-                             GroupProperties groupProperties,
+                             HazelcastProperties hazelcastProperties,
                              InvocationRegistry invocationRegistry,
                              ILogger logger,
                              InternalSerializationService serializationService,
@@ -106,9 +116,9 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
         this.serviceManager = serviceManager;
         this.invocationRegistry = invocationRegistry;
         this.logger = logger;
-        this.backupTimeoutMillis = backupTimeoutMillis(groupProperties);
-        this.invocationTimeoutMillis = invocationTimeoutMillis(groupProperties);
-        this.heartbeatBroadcastPeriodMillis = heartbeatBroadcastPeriodMillis(groupProperties);
+        this.backupTimeoutMillis = backupTimeoutMillis(hazelcastProperties);
+        this.invocationTimeoutMillis = invocationTimeoutMillis(hazelcastProperties);
+        this.heartbeatBroadcastPeriodMillis = heartbeatBroadcastPeriodMillis(hazelcastProperties);
         this.scheduler = newScheduler(threadGroup);
     }
 
@@ -118,7 +128,7 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
     }
 
     private ScheduledExecutorService newScheduler(final HazelcastThreadGroup threadGroup) {
-        // the scheduler is configured with a single thread.
+        // the scheduler is configured with a single thread; so prevent concurrency problems.
         ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(1, new ThreadFactory() {
             @Override
             public Thread newThread(Runnable r) {
@@ -135,7 +145,7 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
         return scheduler;
     }
 
-    private long invocationTimeoutMillis(GroupProperties properties) {
+    private long invocationTimeoutMillis(HazelcastProperties properties) {
         long heartbeatTimeoutMillis = properties.getMillis(OPERATION_CALL_TIMEOUT_MILLIS);
         if (logger.isFinestEnabled()) {
             logger.finest("Operation invocation timeout is " + heartbeatTimeoutMillis + " ms");
@@ -144,7 +154,7 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
         return heartbeatTimeoutMillis;
     }
 
-    private long backupTimeoutMillis(GroupProperties properties) {
+    private long backupTimeoutMillis(HazelcastProperties properties) {
         long backupTimeoutMillis = properties.getMillis(OPERATION_BACKUP_TIMEOUT_MILLIS);
 
         if (logger.isFinestEnabled()) {
@@ -154,7 +164,7 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
         return backupTimeoutMillis;
     }
 
-    private long heartbeatBroadcastPeriodMillis(GroupProperties groupProperties) {
+    private long heartbeatBroadcastPeriodMillis(HazelcastProperties groupProperties) {
         // The heartbeat period is configured to be 1/4 of the call timeout. So with default settings, every 15 seconds,
         // every member in the cluster, will notify every other member in the cluster about all calls that are pending.
         // This is done quite efficiently; imagine at any given moment one node has 1000 concurrent calls pending on another
@@ -192,6 +202,15 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
 
     public void awaitTermination(long timeoutMillis) throws InterruptedException {
         scheduler.awaitTermination(timeoutMillis, MILLISECONDS);
+    }
+
+    public long getLastMemberHeartbeatMillis(Address memberAddress) {
+        if (memberAddress == null) {
+            return 0;
+        }
+
+        AtomicLong heartbeat = lastHeartbeatPerMember.get(memberAddress);
+        return heartbeat == null ? 0 : heartbeat.get();
     }
 
 
@@ -305,6 +324,8 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
 
         @Override
         public void run() {
+            lastHeartbeatPerMember.remove(leftMember.getAddress());
+
             for (Invocation invocation : invocationRegistry) {
                 if (hasMemberLeft(invocation)) {
                     invocation.notifyError(new MemberLeftException(leftMember));
@@ -334,25 +355,39 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
         @Override
         public void run() {
             heartbeatPacketsReceived.inc();
+            long timeMillis = Clock.currentTimeMillis();
+
+            updateMemberHeartbeat(timeMillis);
+
             for (long callId : (long[]) serializationService.toObject(callIds)) {
-                updateHeartbeat(callId);
+                updateHeartbeat(callId, timeMillis);
             }
         }
 
-        private void updateHeartbeat(long callId) {
+        private void updateMemberHeartbeat(long timeMillis) {
+            Address address = callIds instanceof Packet ? ((Packet) callIds).getConn().getEndPoint() : thisAddress;
+            AtomicLong lastMemberHeartbeat = lastHeartbeatPerMember.get(address);
+            if (lastMemberHeartbeat == null) {
+                lastMemberHeartbeat = new AtomicLong();
+                lastHeartbeatPerMember.put(address, lastMemberHeartbeat);
+            }
+
+            lastMemberHeartbeat.set(timeMillis);
+        }
+
+        private void updateHeartbeat(long callId, long timeMillis) {
             Invocation invocation = invocationRegistry.get(callId);
             if (invocation == null) {
                 // the invocation doesn't exist anymore, so we are done.
                 return;
             }
 
-            invocation.lastHeartbeatMillis = Clock.currentTimeMillis();
+            invocation.lastHeartbeatMillis = timeMillis;
         }
     }
 
     private final class BroadcastOperationHeartbeatsTask implements Runnable {
         private final LiveOperations liveOperations = new LiveOperations(thisAddress);
-
 
         @Override
         public void run() {
@@ -370,6 +405,12 @@ public class InvocationMonitor implements PacketHandler, MetricsProvider {
 
         private LiveOperations populate() {
             liveOperations.clear();
+
+            ClusterService clusterService = nodeEngine.getClusterService();
+            liveOperations.initMember(nodeEngine.getThisAddress());
+            for (Member member : clusterService.getMembers()) {
+                liveOperations.initMember(member.getAddress());
+            }
 
             for (LiveOperationsTracker tracker : serviceManager.getServices(LiveOperationsTracker.class)) {
                 tracker.populate(liveOperations);
