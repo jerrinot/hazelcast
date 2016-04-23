@@ -20,8 +20,11 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.instance.Node;
 import com.hazelcast.nio.Connection;
+import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.InvocationBuilder;
 import com.hazelcast.spi.Operation;
+
+import java.util.concurrent.ExecutionException;
 
 /**
  * AbstractPartitionMessageTask
@@ -59,10 +62,21 @@ public abstract class AbstractPartitionMessageTask<P>
         op.setCallerUuid(endpoint.getUuid());
         InvocationBuilder builder = nodeEngine.getOperationService()
                 .createInvocationBuilder(getServiceName(), op, getPartitionId())
-                .setExecutionCallback(this)
+//                .setExecutionCallback(this)
                 .setResultDeserialized(false);
 
-        builder.invoke();
+//        builder.invoke();
+
+        InternalCompletableFuture<Object> invoke = builder.invoke();
+        beforeResponse();
+        try {
+            Object response = invoke.join();
+            sendResponse(response);
+        } catch (Exception e) {
+            handleProcessingFailure(e);
+        } finally {
+            afterResponse();
+        }
     }
 
     protected abstract Operation prepareOperation();
