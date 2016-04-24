@@ -169,7 +169,7 @@ public final class OperationServiceImpl implements InternalOperationService, Met
 
         this.operationExecutor = new OperationExecutorImpl(
                 hazelcastProperties, node.loggingService, node.getThisAddress(), new OperationRunnerFactoryImpl(this),
-                node.getHazelcastThreadGroup(), node.getNodeExtension());
+                node.getHazelcastThreadGroup(), node.getNodeExtension(), serializationService, this, nodeEngine);
 
         ExecutionService executionService = nodeEngine.getExecutionService();
         this.asyncExecutor = executionService.register(ExecutionService.ASYNC_EXECUTOR, coreSize,

@@ -21,24 +21,39 @@ import com.hazelcast.instance.NodeExtension;
 import com.hazelcast.internal.metrics.MetricsProvider;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.Probe;
+import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.LoggingService;
+import com.hazelcast.map.impl.operation.GetOperation;
 import com.hazelcast.nio.Address;
+import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.Packet;
 import com.hazelcast.spi.LiveOperations;
+import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
+import com.hazelcast.spi.OperationAccessor;
+import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.PartitionSpecificRunnable;
 import com.hazelcast.spi.impl.operationexecutor.OperationExecutor;
 import com.hazelcast.spi.impl.operationexecutor.OperationHostileThread;
 import com.hazelcast.spi.impl.operationexecutor.OperationRunner;
 import com.hazelcast.spi.impl.operationexecutor.OperationRunnerFactory;
+import com.hazelcast.spi.impl.operationservice.impl.OperationRunnerImpl;
+import com.hazelcast.spi.impl.operationservice.impl.OperationServiceImpl;
+import com.hazelcast.spi.impl.operationservice.impl.RemoteInvocationResponseHandler;
 import com.hazelcast.spi.impl.operationservice.impl.operations.Backup;
+import com.hazelcast.spi.impl.operationservice.impl.responses.ErrorResponse;
 import com.hazelcast.spi.properties.HazelcastProperties;
+import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.util.ExceptionUtil;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static com.hazelcast.internal.metrics.ProbeLevel.MANDATORY;
+import static com.hazelcast.nio.IOUtil.extractOperationCallId;
+import static com.hazelcast.spi.OperationAccessor.setCallerAddress;
+import static com.hazelcast.spi.OperationAccessor.setConnection;
 import static com.hazelcast.spi.properties.GroupProperty.GENERIC_OPERATION_THREAD_COUNT;
 import static com.hazelcast.spi.properties.GroupProperty.PARTITION_COUNT;
 import static com.hazelcast.spi.properties.GroupProperty.PARTITION_OPERATION_THREAD_COUNT;
@@ -89,13 +104,17 @@ public final class OperationExecutorImpl implements OperationExecutor, MetricsPr
     private final Address thisAddress;
     private final OperationRunner adHocOperationRunner;
     private final int priorityThreadCount;
+    private final InternalSerializationService ss;
+    private final OperationServiceImpl os;
+    private final NodeEngine nodeEngine;
+    private final RemoteInvocationResponseHandler remoteResponseHandler;
 
     public OperationExecutorImpl(HazelcastProperties properties,
                                  LoggingService loggerService,
                                  Address thisAddress,
                                  OperationRunnerFactory operationRunnerFactory,
                                  HazelcastThreadGroup threadGroup,
-                                 NodeExtension nodeExtension) {
+                                 NodeExtension nodeExtension, InternalSerializationService serializationService, OperationServiceImpl operationService, NodeEngineImpl nodeEngine) {
         this.thisAddress = thisAddress;
         this.logger = loggerService.getLogger(OperationExecutorImpl.class);
 
@@ -107,6 +126,10 @@ public final class OperationExecutorImpl implements OperationExecutor, MetricsPr
         this.priorityThreadCount = properties.getInteger(PRIORITY_GENERIC_OPERATION_THREAD_COUNT);
         this.genericOperationRunners = initGenericOperationRunners(properties, operationRunnerFactory);
         this.genericThreads = initGenericThreads(threadGroup, nodeExtension);
+        this.ss = serializationService;
+        this.os = operationService;
+        this.nodeEngine = nodeEngine;
+        this.remoteResponseHandler = new RemoteInvocationResponseHandler(operationService);
     }
 
     private OperationRunner[] initPartitionOperationRunners(HazelcastProperties properties,
@@ -329,7 +352,38 @@ public final class OperationExecutorImpl implements OperationExecutor, MetricsPr
 
     @Override
     public void handle(Packet packet) {
-        execute(packet, packet.getPartitionId(), packet.isUrgent());
+        try {
+            run(packet);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+//        execute(packet, packet.getPartitionId(), packet.isUrgent());
+    }
+
+    public void run(Packet packet) throws Exception {
+        Connection connection = packet.getConn();
+        Address caller = connection.getEndPoint();
+        try {
+            Object object = ss.toObject(packet);
+            Operation op = (Operation) object;
+            if (op.getClass() != GetOperation.class) {
+                execute(packet, packet.getPartitionId(), packet.isUrgent());
+                return;
+            }
+            op.setNodeEngine(nodeEngine);
+            setCallerAddress(op, caller);
+            setConnection(op, connection);
+//            OperationAccessor.setCallerUuidIfNotSet(caller, op);
+            OperationRunnerImpl.setOperationResponseHandler(op, remoteResponseHandler);
+
+            run(op);
+        } catch (Throwable throwable) {
+            // If exception happens we need to extract the callId from the bytes directly!
+            long callId = extractOperationCallId(packet, ss);
+            os.send(new ErrorResponse(throwable, callId, packet.isUrgent()), caller);
+            throw ExceptionUtil.rethrow(throwable);
+        } finally {
+        }
     }
 
     private void execute(Object task, int partitionId, boolean priority) {
@@ -361,10 +415,10 @@ public final class OperationExecutorImpl implements OperationExecutor, MetricsPr
     public void run(Operation operation) {
         checkNotNull(operation, "operation can't be null");
 
-        if (!isRunAllowed(operation)) {
-            throw new IllegalThreadStateException("Operation '" + operation + "' cannot be run in current thread: "
-                    + Thread.currentThread());
-        }
+//        if (!isRunAllowed(operation)) {
+//            throw new IllegalThreadStateException("Operation '" + operation + "' cannot be run in current thread: "
+//                    + Thread.currentThread());
+//        }
 
         OperationRunner operationRunner = getOperationRunner(operation);
         operationRunner.run(operation);

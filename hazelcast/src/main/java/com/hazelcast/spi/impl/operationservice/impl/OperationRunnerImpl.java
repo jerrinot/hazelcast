@@ -30,6 +30,7 @@ import com.hazelcast.internal.metrics.Probe;
 import com.hazelcast.internal.partition.InternalPartition;
 import com.hazelcast.internal.util.counters.Counter;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.map.impl.operation.GetOperation;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.nio.Packet;
@@ -55,6 +56,7 @@ import com.hazelcast.spi.impl.operationservice.impl.responses.ErrorResponse;
 import com.hazelcast.spi.impl.operationservice.impl.responses.NormalResponse;
 import com.hazelcast.util.ExceptionUtil;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 
@@ -75,7 +77,7 @@ import static java.util.logging.Level.WARNING;
 /**
  * Responsible for processing an Operation.
  */
-class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
+public class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
 
     static final int AD_HOC_PARTITION_ID = -2;
 
@@ -84,6 +86,8 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
     private final Node node;
     private final NodeEngineImpl nodeEngine;
     private final AtomicLong executedOperationsCount;
+
+    private final AtomicBoolean isRunningSomething;
 
     @Probe(level = DEBUG)
     private final Counter count;
@@ -113,6 +117,7 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
         } else {
             this.count = null;
         }
+        isRunningSomething = new AtomicBoolean();
     }
 
     @Override
@@ -146,6 +151,10 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
 
     @Override
     public void run(Operation op) {
+//        if (op.getClass() != GetOperation.class) {
+//            while (!isRunningSomething.compareAndSet(false, true));
+//        }
+
         if (count != null) {
             count.inc();
         }
@@ -162,6 +171,9 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
             checkNodeState(op);
 
             if (timeout(op)) {
+                if (op.getClass() != GetOperation.class) {
+                    isRunningSomething.set(false);
+                }
                 return;
             }
 
@@ -172,6 +184,9 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
             op.beforeRun();
 
             if (waitingNeeded(op)) {
+                if (op.getClass() != GetOperation.class) {
+                    isRunningSomething.set(false);
+                }
                 return;
             }
 
@@ -181,6 +196,9 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
         } catch (Throwable e) {
             handleOperationError(op, e);
         } finally {
+//            if (op.getClass() != GetOperation.class) {
+//                isRunningSomething.set(false);
+//            }
             if (publishCurrentTask) {
                 currentTask = null;
             }
@@ -311,9 +329,9 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
             return;
         }
 
-        if (partitionId != getPartitionId()) {
-            throw new IllegalStateException("wrong partition, expected: " + getPartitionId() + " but found:" + partitionId);
-        }
+//        if (partitionId != getPartitionId()) {
+//            throw new IllegalStateException("wrong partition, expected: " + getPartitionId() + " but found:" + partitionId);
+//        }
 
         if (internalPartition == null) {
             internalPartition = nodeEngine.getPartitionService().getPartition(partitionId);
@@ -387,7 +405,7 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
             setCallerAddress(op, caller);
             setConnection(op, connection);
             setCallerUuidIfNotSet(caller, op);
-            setOperationResponseHandler(op);
+            setOperationResponseHandler(op, remoteResponseHandler);
 
             if (!ensureValidMember(op)) {
                 return;
@@ -410,7 +428,7 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
         }
     }
 
-    private void setOperationResponseHandler(Operation op) {
+    public static void setOperationResponseHandler(Operation op, OperationResponseHandler remoteResponseHandler) {
         OperationResponseHandler handler = remoteResponseHandler;
         if (op.getCallId() == 0 || op.getCallId() == CALL_ID_LOCAL_SKIPPED) {
             if (op.returnsResponse()) {

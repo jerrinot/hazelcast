@@ -19,12 +19,12 @@ import static org.junit.Assert.assertTrue;
 @Category(QuickTest.class)
 public class OperationExecutorImpl_RunTest extends OperationExecutorImpl_AbstractTest {
 
-    @Test(expected = NullPointerException.class)
-    public void test_whenNull() {
-        initExecutor();
-
-        executor.run(null);
-    }
+//    @Test(expected = NullPointerException.class)
+//    public void test_whenNull() {
+//        initExecutor();
+//
+//        executor.run(null);
+//    }
 
     @Test
     public void test_whenGenericOperation_andCallingFromNormalThread() {
