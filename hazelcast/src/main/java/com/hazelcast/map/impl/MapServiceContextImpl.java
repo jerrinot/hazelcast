@@ -52,6 +52,7 @@ import com.hazelcast.spi.partition.IPartitionService;
 import com.hazelcast.util.ConcurrencyUtil;
 import com.hazelcast.util.ConstructorFunction;
 import com.hazelcast.util.ExceptionUtil;
+import com.hazelcast.util.MutexProvider;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -89,6 +90,8 @@ class MapServiceContextImpl implements MapServiceContext {
             return new MapContainer(mapName, mapConfig, mapServiceContext);
         }
     };
+
+    private final MutexProvider mutexProvider = new MutexProvider();
     /**
      * Per node global write behind queue item counter.
      * Creating here because we want to have a counter per node.
@@ -152,7 +155,7 @@ class MapServiceContextImpl implements MapServiceContext {
 
     @Override
     public MapContainer getMapContainer(String mapName) {
-        return ConcurrencyUtil.getOrPutSynchronized(mapContainers, mapName, mapContainers, mapConstructor);
+        return ConcurrencyUtil.getOrPutSynchronized(mapContainers, mapName, mutexProvider, mapConstructor);
     }
 
 
