@@ -54,6 +54,9 @@ public class NonBlockingIOThread extends Thread implements OperationHostileThrea
     private static final int TEST_SELECTOR_BUG_PROBABILITY = Integer.parseInt(
             System.getProperty("hazelcast.io.selector.bug.probability", "16"));
 
+    public static final int MAXIMUM_ITEMS_TAKEN_FROM_TASK_QUEUE_RENAME_ME_I_AM_SILLY = 1000;
+
+
     @SuppressWarnings("checkstyle:visibilitymodifier")
     // this field is set during construction and is meant for the probes so that the read/write handler can
     // indicate which thread they are currently bound to.
@@ -241,9 +244,9 @@ public class NonBlockingIOThread extends Thread implements OperationHostileThrea
 
     private void selectLoop() throws IOException {
         while (!isInterrupted()) {
-            processTaskQueue();
+            boolean queueFullyProcessed = processTaskQueue();
 
-            int selectedKeys = selector.select(SELECT_WAIT_TIME_MILLIS);
+            int selectedKeys = queueFullyProcessed ? selector.select(SELECT_WAIT_TIME_MILLIS) : selector.selectNow();
             if (selectedKeys > 0) {
                 handleSelectionKeys();
             }
@@ -291,14 +294,15 @@ public class NonBlockingIOThread extends Thread implements OperationHostileThrea
         }
     }
 
-    private void processTaskQueue() {
-        while (!isInterrupted()) {
+    private boolean processTaskQueue() {
+        for (int i = 0; i < MAXIMUM_ITEMS_TAKEN_FROM_TASK_QUEUE_RENAME_ME_I_AM_SILLY && !isInterrupted(); i++) {
             Runnable task = taskQueue.poll();
             if (task == null) {
-                return;
+                return true;
             }
             executeTask(task);
         }
+        return false;
     }
 
     private void executeTask(Runnable task) {
