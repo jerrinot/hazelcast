@@ -278,9 +278,11 @@ public class PartitionReplicaManager {
         PartitionReplicaVersions replicaVersion = replicaVersions[partitionId];
         if (logger.isFinestEnabled()) {
             long currentReplicaVersion = replicaVersion.get()[replicaIndex - 1];
+            long newReplicaVersion = versions[replicaIndex - 1];
             logger.finest("Finalizing replica sync for partition " + partitionId
                     + " and replica index " + replicaIndex
-                    + ". Current replica version: " + currentReplicaVersion);
+                    + ". Current replica version: " + currentReplicaVersion
+                    + ". New replica version: " + newReplicaVersion);
         }
         replicaVersion.clear();
         replicaVersion.set(versions, replicaIndex);
