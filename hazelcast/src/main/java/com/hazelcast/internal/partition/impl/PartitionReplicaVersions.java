@@ -17,6 +17,7 @@
 package com.hazelcast.internal.partition.impl;
 
 import com.hazelcast.internal.partition.InternalPartition;
+import com.hazelcast.logging.ILogger;
 
 import java.util.Arrays;
 
@@ -26,9 +27,12 @@ final class PartitionReplicaVersions {
     final int partitionId;
     // read and updated only by operation/partition threads
     final long[] versions = new long[InternalPartition.MAX_BACKUP_COUNT];
+    private final ILogger logger;
+    private boolean stalling;
 
-    PartitionReplicaVersions(int partitionId) {
+    PartitionReplicaVersions(int partitionId, ILogger logger) {
         this.partitionId = partitionId;
+        this.logger = logger;
     }
 
     long[] incrementAndGet(int backupCount) {
@@ -57,20 +61,30 @@ final class PartitionReplicaVersions {
         if (valid) {
             set(newVersions, currentReplica);
             currentVersion = nextVersion;
+            if (stalling) {
+                logger.finest("Partition " + partitionId + " replicate " + currentReplica
+                        + " is marked as stalling yet there is a successful update!");
+            }
         }
-        return currentVersion >= nextVersion;
+        boolean ok = currentVersion >= nextVersion;
+        if (!ok) {
+            stalling = true;
+        }
+        return ok;
     }
 
     void set(long[] newVersions, int fromReplica) {
         int fromIndex = fromReplica - 1;
         int len = newVersions.length - fromIndex;
         arraycopy(newVersions, fromIndex, versions, fromIndex, len);
+        stalling = false;
     }
 
     void clear() {
         for (int i = 0; i < versions.length; i++) {
             versions[i] = 0;
         }
+        stalling = false;
     }
 
     @Override

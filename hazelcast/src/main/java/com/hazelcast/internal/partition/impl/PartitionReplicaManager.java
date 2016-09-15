@@ -86,7 +86,7 @@ public class PartitionReplicaManager {
 
         replicaVersions = new PartitionReplicaVersions[partitionCount];
         for (int i = 0; i < replicaVersions.length; i++) {
-            replicaVersions[i] = new PartitionReplicaVersions(i);
+            replicaVersions[i] = new PartitionReplicaVersions(i, node.getLogger(PartitionReplicaVersions.class));
         }
 
         ExecutionService executionService = nodeEngine.getExecutionService();
