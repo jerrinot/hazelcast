@@ -236,7 +236,7 @@ public class PartitionReplicaManager {
     }
 
     // called in operation threads
-    void updatePartitionReplicaVersions(int partitionId, long[] versions, int replicaIndex) {
+    boolean updatePartitionReplicaVersions(int partitionId, long[] versions, int replicaIndex) {
         PartitionReplicaVersions partitionVersion = replicaVersions[partitionId];
         if (!partitionVersion.update(versions, replicaIndex)) {
             // this partition backup is behind the owner.
@@ -248,7 +248,9 @@ public class PartitionReplicaManager {
                         + " Expected Version: " + expectedVersion);
             }
             triggerPartitionReplicaSync(partitionId, replicaIndex, 0L);
+            return false;
         }
+        return true;
     }
 
     // called in operation threads

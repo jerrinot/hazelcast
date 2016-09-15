@@ -143,7 +143,10 @@ public final class Backup extends Operation implements BackupOperation, Identifi
         }
 
         InternalPartitionService partitionService = nodeEngine.getPartitionService();
-        partitionService.updatePartitionReplicaVersions(getPartitionId(), replicaVersions, getReplicaIndex());
+        boolean b = partitionService.updatePartitionReplicaVersions(getPartitionId(), replicaVersions, getReplicaIndex());
+        if (!b) {
+            getLogger().finest("Operation " + backupOp + " failed to update partition replicate version");
+        }
     }
 
     @Override

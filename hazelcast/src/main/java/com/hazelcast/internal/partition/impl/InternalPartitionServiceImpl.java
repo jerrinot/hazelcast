@@ -857,8 +857,8 @@ public class InternalPartitionServiceImpl implements InternalPartitionService, M
 
     // called in operation threads
     @Override
-    public void updatePartitionReplicaVersions(int partitionId, long[] versions, int replicaIndex) {
-        replicaManager.updatePartitionReplicaVersions(partitionId, versions, replicaIndex);
+    public boolean updatePartitionReplicaVersions(int partitionId, long[] versions, int replicaIndex) {
+        return replicaManager.updatePartitionReplicaVersions(partitionId, versions, replicaIndex);
     }
 
     @Override
