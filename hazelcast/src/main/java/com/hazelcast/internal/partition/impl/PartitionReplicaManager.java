@@ -276,6 +276,12 @@ public class PartitionReplicaManager {
     // called in operation threads
     public void finalizeReplicaSync(int partitionId, int replicaIndex, long[] versions) {
         PartitionReplicaVersions replicaVersion = replicaVersions[partitionId];
+        if (logger.isFinestEnabled()) {
+            long currentReplicaVersion = replicaVersion.get()[replicaIndex - 1];
+            logger.finest("Finalizing replica sync for partition " + partitionId
+                    + " and replica index " + replicaIndex
+                    + ". Current replica version: " + currentReplicaVersion);
+        }
         replicaVersion.clear();
         replicaVersion.set(versions, replicaIndex);
         clearReplicaSyncRequest(partitionId, replicaIndex);
