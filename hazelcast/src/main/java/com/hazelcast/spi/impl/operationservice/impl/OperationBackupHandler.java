@@ -72,7 +72,8 @@ final class OperationBackupHandler {
         }
 
         if (syncBackups + asyncBackups == 0) {
-            return 0;
+            throw new AssertionError("Requested total backup was " + requestedTotalBackups
+                    + ", but now (syncBackups + asyncBackups == 0)");
         }
 
         return makeBackups(backupAwareOp, op.getPartitionId(), replicaVersions, syncBackups, asyncBackups);
