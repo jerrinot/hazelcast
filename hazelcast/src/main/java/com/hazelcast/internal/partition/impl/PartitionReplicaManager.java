@@ -242,7 +242,7 @@ public class PartitionReplicaManager {
             // this partition backup is behind the owner.
             if (logger.isFinestEnabled()) {
                 long currentVersion = partitionVersion.get()[replicaIndex - 1];
-                long expectedVersion = versions[replicaIndex - 1];
+                long expectedVersion = versions[replicaIndex - 1] - 1;
                 logger.finest("Failed to update replica version for partition " + partitionId
                         + " Triggering replicate sync! Current version: " + currentVersion
                         + " Expected Version: " + expectedVersion);
