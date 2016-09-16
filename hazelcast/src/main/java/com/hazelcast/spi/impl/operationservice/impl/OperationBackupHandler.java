@@ -19,12 +19,14 @@ package com.hazelcast.spi.impl.operationservice.impl;
 import com.hazelcast.instance.Node;
 import com.hazelcast.internal.partition.InternalPartition;
 import com.hazelcast.internal.partition.InternalPartitionService;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.BackupAwareOperation;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.impl.NodeEngineImpl;
 import com.hazelcast.spi.impl.operationservice.impl.operations.Backup;
+import com.hazelcast.spi.properties.GroupProperty;
 
 import static com.hazelcast.internal.partition.InternalPartition.MAX_BACKUP_COUNT;
 import static com.hazelcast.spi.OperationAccessor.setCallId;
@@ -40,11 +42,18 @@ final class OperationBackupHandler {
     private final NodeEngineImpl nodeEngine;
     private final BackpressureRegulator backpressureRegulator;
 
+    private final ILogger[] versionLoggers;
+
     OperationBackupHandler(OperationServiceImpl operationService) {
         this.operationService = operationService;
         this.node = operationService.node;
         this.nodeEngine = operationService.nodeEngine;
         this.backpressureRegulator = operationService.backpressureRegulator;
+        int partitionCount = node.getProperties().getInteger(GroupProperty.PARTITION_COUNT);
+        this.versionLoggers = new ILogger[partitionCount];
+        for (int i = 0; i < partitionCount; i++) {
+            versionLoggers[i] = node.getLogger("partition.owner." + i);
+        }
     }
 
     public int backup(BackupAwareOperation backupAwareOp) throws Exception {
@@ -75,6 +84,10 @@ final class OperationBackupHandler {
             throw new AssertionError("Requested total backup was " + requestedTotalBackups
                     + ", but now (syncBackups + asyncBackups == 0)");
         }
+
+        int partitionId = op.getPartitionId();
+        ILogger versionLogger = versionLoggers[partitionId];
+        versionLogger.finest(replicaVersions[0] + op.getClass().getSimpleName());
 
         return makeBackups(backupAwareOp, op.getPartitionId(), replicaVersions, syncBackups, asyncBackups);
     }
