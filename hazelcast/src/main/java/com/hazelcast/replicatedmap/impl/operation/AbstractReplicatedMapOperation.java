@@ -29,6 +29,7 @@ import com.hazelcast.spi.impl.operationservice.impl.responses.NormalResponse;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.hazelcast.replicatedmap.impl.ReplicatedMapService.INVOCATION_TRY_COUNT;
 
@@ -48,13 +49,13 @@ public abstract class AbstractReplicatedMapOperation extends AbstractOperation {
         Collection<Address> members = getMemberAddresses();
         boolean isLocal = getNodeEngine().getThisAddress().equals(getCallerAddress());
 
-        ExecutionCallback callback = isLocal ? new ReplicatedMapCallback(this) : null;
+        ExecutionCallback callback = null;
+        if (members.size() != 0) {
+            callback = new ReplicatedMapCallback(this, members.size(), !isLocal);
+            postponeReply = true;
+        }
         for (Address address : members) {
             invoke(isRemove, operationService, address, name, key, value, ttl, response, callback);
-            if (callback != null) {
-                postponeReply = true;
-            }
-            callback = null;
         }
     }
 
@@ -80,10 +81,8 @@ public abstract class AbstractReplicatedMapOperation extends AbstractOperation {
         updateOperation.setValidateTarget(false);
         InvocationBuilder invocation = operationService
                 .createInvocationBuilder(getServiceName(), updateOperation, address)
-                .setTryCount(INVOCATION_TRY_COUNT);
-        if (callback != null) {
-            invocation.setExecutionCallback(callback);
-        }
+                .setTryCount(INVOCATION_TRY_COUNT)
+                .setExecutionCallback(callback);
         invocation.invoke();
 
     }
@@ -125,14 +124,24 @@ public abstract class AbstractReplicatedMapOperation extends AbstractOperation {
 
     private class ReplicatedMapCallback extends SimpleExecutionCallback<Object> {
         private final AbstractReplicatedMapOperation op;
+        private final AtomicInteger count;
+        private final boolean requestAck;
 
-        private ReplicatedMapCallback(AbstractReplicatedMapOperation op) {
+        private ReplicatedMapCallback(AbstractReplicatedMapOperation op, int count, boolean requestAck) {
             this.op = op;
+            this.count = new AtomicInteger(count);
+            this.requestAck = requestAck;
         }
 
         @Override
         public void notify(Object ignored) {
-            op.sendResponse(response);
+            if (count.decrementAndGet() == 0) {
+                if (requestAck) {
+                    op.sendResponse(new NormalResponse(response, getCallId(), 1, isUrgent()));
+                } else {
+                    op.sendResponse(response);
+                }
+            }
         }
     }
 }

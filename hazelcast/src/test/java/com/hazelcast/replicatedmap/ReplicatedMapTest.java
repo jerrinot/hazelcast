@@ -415,6 +415,7 @@ public class ReplicatedMapTest extends ReplicatedMapBaseTest {
         HazelcastInstance node = createHazelcastInstance();
         ReplicatedMap<Integer, Integer> map = node.getReplicatedMap("default");
         map.put(1, Integer.MAX_VALUE);
+        System.out.println("Key inserted");
 
         assertTrue(map.containsKey(1));
     }
