@@ -247,7 +247,7 @@ public class PartitionReplicaManager {
                         + " Triggering replicate sync! Current version: " + currentVersion
                         + " Expected Version: " + expectedVersion);
             }
-            triggerPartitionReplicaSync(partitionId, replicaIndex, 0L);
+            //triggerPartitionReplicaSync(partitionId, replicaIndex, 0L);
             return false;
         }
         return true;
