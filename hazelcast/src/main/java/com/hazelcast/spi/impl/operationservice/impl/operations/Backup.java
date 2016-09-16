@@ -184,6 +184,7 @@ public final class Backup extends Operation implements BackupOperation, Identifi
 
     @Override
     public void onExecutionFailure(Throwable e) {
+        getLogger().finest("Exception when executing a backup of " + backupOp, e);
         if (backupOp != null) {
             try {
                 // Be sure that backup operation is initialized.
