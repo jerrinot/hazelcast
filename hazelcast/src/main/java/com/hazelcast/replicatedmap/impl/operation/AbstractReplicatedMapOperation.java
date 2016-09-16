@@ -17,11 +17,14 @@
 package com.hazelcast.replicatedmap.impl.operation;
 
 import com.hazelcast.cluster.memberselector.MemberSelectors;
+import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.Member;
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.AbstractOperation;
+import com.hazelcast.spi.InvocationBuilder;
 import com.hazelcast.spi.OperationService;
+import com.hazelcast.spi.impl.SimpleExecutionCallback;
 import com.hazelcast.spi.impl.operationservice.impl.responses.NormalResponse;
 
 import java.util.ArrayList;
@@ -38,12 +41,20 @@ public abstract class AbstractReplicatedMapOperation extends AbstractOperation {
     protected long ttl;
     protected transient VersionResponsePair response;
 
+    private transient boolean postponeReply;
 
     protected void sendReplicationOperation(final boolean isRemove) {
         final OperationService operationService = getNodeEngine().getOperationService();
         Collection<Address> members = getMemberAddresses();
+        boolean isLocal = getNodeEngine().getThisAddress().equals(getCallerAddress());
+
+        ExecutionCallback callback = isLocal ? new ReplicatedMapCallback(this) : null;
         for (Address address : members) {
-            invoke(isRemove, operationService, address, name, key, value, ttl, response);
+            invoke(isRemove, operationService, address, name, key, value, ttl, response, callback);
+            if (callback != null) {
+                postponeReply = true;
+            }
+            callback = null;
         }
     }
 
@@ -62,15 +73,19 @@ public abstract class AbstractReplicatedMapOperation extends AbstractOperation {
     }
 
     private void invoke(boolean isRemove, OperationService operationService, Address address, String name, Data key,
-                        Data value, long ttl, VersionResponsePair response) {
+                        Data value, long ttl, VersionResponsePair response, ExecutionCallback callback) {
         ReplicateUpdateOperation updateOperation = new ReplicateUpdateOperation(name, key, value, ttl, response,
                 isRemove, getCallerAddress());
         updateOperation.setPartitionId(getPartitionId());
         updateOperation.setValidateTarget(false);
-        operationService
+        InvocationBuilder invocation = operationService
                 .createInvocationBuilder(getServiceName(), updateOperation, address)
-                .setTryCount(INVOCATION_TRY_COUNT)
-                .invoke();
+                .setTryCount(INVOCATION_TRY_COUNT);
+        if (callback != null) {
+            invocation.setExecutionCallback(callback);
+        }
+        invocation.invoke();
+
     }
 
     protected void sendUpdateCallerOperation(boolean isRemove) {
@@ -88,7 +103,7 @@ public abstract class AbstractReplicatedMapOperation extends AbstractOperation {
 
     @Override
     public boolean returnsResponse() {
-        return true;
+        return !postponeReply;
     }
 
     @Override
@@ -106,5 +121,18 @@ public abstract class AbstractReplicatedMapOperation extends AbstractOperation {
         super.toString(sb);
 
         sb.append(", name=").append(name);
+    }
+
+    private class ReplicatedMapCallback extends SimpleExecutionCallback<Object> {
+        private final AbstractReplicatedMapOperation op;
+
+        private ReplicatedMapCallback(AbstractReplicatedMapOperation op) {
+            this.op = op;
+        }
+
+        @Override
+        public void notify(Object ignored) {
+            op.sendResponse(response);
+        }
     }
 }
