@@ -38,6 +38,7 @@ import org.junit.runner.RunWith;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
@@ -45,6 +46,19 @@ import static org.mockito.Mockito.mock;
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public class QuorumTest extends HazelcastTestSupport {
+
+
+    @Test
+    public void test() {
+        Config config = new Config();
+        String quorumName = randomString();
+        QuorumConfig quorumConfig = new QuorumConfig().setName(quorumName).setEnabled(true);
+        quorumConfig.setSize(3);
+        quorumConfig.setType(QuorumType.READ_WRITE);
+        config.addQuorumConfig(quorumConfig);
+        HazelcastInstance hazelcastInstance = createHazelcastInstance(config);
+        assertFalse(hazelcastInstance.getQuorumService().getQuorum(quorumName).isPresent());
+    }
 
     @Test
     public void testQuorumIgnoresMemberAttributeEvents() throws Exception {
@@ -60,7 +74,9 @@ public class QuorumTest extends HazelcastTestSupport {
         MemberAttributeServiceEvent event = mock(MemberAttributeServiceEvent.class);
         service.memberAttributeChanged(event);
 
-        assertFalse(function.wasCalled);
+        //the function was called only once when an instance was constructed
+        //it wasn't called when the member-attribute was changed
+        assertEquals(1, function.counter.get());
     }
 
     @Test(expected = QuorumException.class)
@@ -228,11 +244,11 @@ public class QuorumTest extends HazelcastTestSupport {
     }
 
     private static class RecordingQuorumFunction implements QuorumFunction {
-        private volatile boolean wasCalled;
+        private final AtomicInteger counter = new AtomicInteger();
 
         @Override
         public boolean apply(Collection<Member> members) {
-            wasCalled = true;
+            counter.incrementAndGet();
             return false;
         }
 

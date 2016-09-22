@@ -20,6 +20,7 @@ import com.hazelcast.config.QuorumConfig;
 import com.hazelcast.config.QuorumListenerConfig;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MembershipEvent;
+import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.internal.cluster.impl.MemberSelectingCollection;
 import com.hazelcast.nio.ClassLoaderUtil;
 import com.hazelcast.quorum.Quorum;
@@ -39,7 +40,9 @@ import com.hazelcast.util.ExceptionUtil;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import static com.hazelcast.cluster.memberselector.MemberSelectors.DATA_MEMBER_SELECTOR;
 import static com.hazelcast.util.Preconditions.checkNotNull;
@@ -66,6 +69,10 @@ public class QuorumServiceImpl implements EventPublishingService<QuorumEvent, Qu
 
     public void start() {
         initializeListeners();
+        MemberImpl localMember = nodeEngine.getLocalMember();
+        Set<Member> memberSet = new HashSet<Member>(1, 2);
+        memberSet.add(localMember);
+        updateQuorums(new HashSet<Member>(memberSet), false);
     }
 
     private void initializeQuorums() {
@@ -146,12 +153,12 @@ public class QuorumServiceImpl implements EventPublishingService<QuorumEvent, Qu
 
     @Override
     public void memberAdded(MembershipServiceEvent event) {
-        updateQuorums(event);
+        updateQuorums(event.getMembers(), true);
     }
 
     @Override
     public void memberRemoved(MembershipServiceEvent event) {
-        updateQuorums(event);
+        updateQuorums(event.getMembers(), true);
     }
 
     @Override
@@ -161,10 +168,10 @@ public class QuorumServiceImpl implements EventPublishingService<QuorumEvent, Qu
         // They cannot change quorum state
     }
 
-    private void updateQuorums(MembershipEvent event) {
-        final Collection<Member> members = new MemberSelectingCollection<Member>(event.getMembers(), DATA_MEMBER_SELECTOR);
+    private void updateQuorums(Set<Member> allMembers, boolean fireEvents) {
+        final Collection<Member> members = new MemberSelectingCollection<Member>(allMembers, DATA_MEMBER_SELECTOR);
         for (QuorumImpl quorum : quorums.values()) {
-            quorum.update(members);
+            quorum.update(members, fireEvents);
         }
     }
 

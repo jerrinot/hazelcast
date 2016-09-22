@@ -62,10 +62,10 @@ public class QuorumImpl implements Quorum {
         initializeQuorumFunction();
     }
 
-    public void update(Collection<Member> members) {
+    public void update(Collection<Member> members, boolean fireEvent) {
         boolean presence = quorumFunction.apply(members);
         setLocalResult(presence);
-        updateLastResultAndFireEvent(members, presence);
+        updateLastResult(members, presence, fireEvent);
     }
 
     public String getName() {
@@ -126,13 +126,13 @@ public class QuorumImpl implements Quorum {
         }
         Collection<Member> memberList = nodeEngine.getClusterService().getMembers(DATA_MEMBER_SELECTOR);
         if (!isInitialized()) {
-            update(memberList);
+            update(memberList, true);
         }
         if (!isPresent()) {
-            updateLastResultAndFireEvent(memberList, false);
+            updateLastResult(memberList, false, true);
             throw newQuorumException(memberList);
         }
-        updateLastResultAndFireEvent(memberList, true);
+        updateLastResult(memberList, true, true);
     }
 
     private QuorumException newQuorumException(Collection<Member> memberList) {
@@ -144,14 +144,16 @@ public class QuorumImpl implements Quorum {
     }
 
 
-    private void updateLastResultAndFireEvent(Collection<Member> memberList, Boolean presence) {
+    private void updateLastResult(Collection<Member> memberList, Boolean presence, boolean fireEvent) {
         for (; ; ) {
             boolean currentPresence = lastPresence.get();
             if (presence.equals(currentPresence)) {
                 return;
             }
             if (lastPresence.compareAndSet(currentPresence, presence)) {
-                createAndPublishEvent(memberList, presence);
+                if (fireEvent) {
+                    createAndPublishEvent(memberList, presence);
+                }
                 return;
             }
         }
