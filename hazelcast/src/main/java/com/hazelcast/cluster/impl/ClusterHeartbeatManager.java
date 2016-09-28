@@ -62,7 +62,7 @@ import static java.lang.String.format;
  */
 public class ClusterHeartbeatManager {
 
-    private static final long CLOCK_JUMP_THRESHOLD = 10000L;
+    private static final long CLOCK_JUMP_THRESHOLD = 300000L;
     private static final int HEART_BEAT_INTERVAL_FACTOR = 10;
     private static final int MAX_PING_RETRY_COUNT = 5;
 
