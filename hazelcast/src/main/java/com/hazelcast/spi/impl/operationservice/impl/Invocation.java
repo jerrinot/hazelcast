@@ -81,6 +81,7 @@ import static com.hazelcast.util.ExceptionUtil.rethrow;
 import static com.hazelcast.util.StringUtil.timeToString;
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
+import static java.lang.Math.max;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.logging.Level.FINEST;
 import static java.util.logging.Level.WARNING;
@@ -116,6 +117,7 @@ public abstract class Invocation implements OperationResponseHandler {
      */
     @SuppressWarnings("checkstyle:visibilitymodifier")
     public final long firstInvocationTimeMillis = Clock.currentTimeMillis();
+    private volatile long lastInvocationTimeMillis;
     final Context context;
 
     /**
@@ -197,7 +199,7 @@ public abstract class Invocation implements OperationResponseHandler {
              * Below two lines are shortened version of above*
              * using min(max(x,y),z)=max(min(x,z),min(y,z))
              */
-            long max = Math.max(waitTimeoutMillis, MIN_TIMEOUT);
+            long max = max(waitTimeoutMillis, MIN_TIMEOUT);
             return Math.min(max, defaultCallTimeoutMillis);
         }
         return defaultCallTimeoutMillis;
@@ -257,7 +259,10 @@ public abstract class Invocation implements OperationResponseHandler {
             return;
         }
 
+        //we can send operation into a remote member -> we use cluster-time
         setInvocationTime(op, context.clusterClock.getClusterTime());
+        //invocation is local -> use local-time
+        lastInvocationTimeMillis = Clock.currentTimeMillis();
         if (!context.invocationRegistry.register(this)) {
             return;
         }
@@ -585,10 +590,18 @@ public abstract class Invocation implements OperationResponseHandler {
         // so if the callTimeout is five minutes, and the heartbeatTimeout is one minute, then the operation is allowed
         // to execute for at least six minutes before it is timing out
         long lastHeartbeatMillis = this.lastHeartbeatMillis;
-        long heartbeatExpirationTimeMillis = lastHeartbeatMillis == 0
-                ? op.getInvocationTime() + callTimeoutMillis + heartbeatTimeoutMillis
-                : lastHeartbeatMillis + heartbeatTimeoutMillis;
-
+        long heartbeatExpirationTimeMillis;
+        if (lastHeartbeatMillis == 0) {
+            // 1. operations timestamps use cluster clock
+            // 2. invocations timestamps use local clock
+            // We use maximum from both timestamps to compensate for time-drift
+            // It's better to be lenient and keep invocation running for a bit longer
+            // than timeout an invocation prematurely
+            long invocationTime = max(op.getInvocationTime(), this.lastInvocationTimeMillis);
+            heartbeatExpirationTimeMillis = invocationTime + callTimeoutMillis + heartbeatTimeoutMillis;
+        } else {
+            heartbeatExpirationTimeMillis = lastHeartbeatMillis + heartbeatTimeoutMillis;
+        }
         if (heartbeatExpirationTimeMillis > Clock.currentTimeMillis()) {
             return NO_TIMEOUT__HEARTBEAT_TIMEOUT_NOT_EXPIRED;
         }
