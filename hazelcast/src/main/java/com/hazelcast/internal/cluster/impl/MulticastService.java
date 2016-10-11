@@ -100,6 +100,11 @@ public final class MulticastService implements Runnable {
             } catch (Exception e) {
                 logger.warning(e);
             }
+            if (!multicastSocket.getNetworkInterface().supportsMulticast()) {
+                logger.warning("Hazelcast is bind to " + bindAddress + " and the network interface at this address does"
+                        + " not support Multicast. Are you connected to a network? Member auto-discovery is disabled.");
+                return null;
+            }
             multicastSocket.setReceiveBufferSize(SOCKET_BUFFER_SIZE);
             multicastSocket.setSendBufferSize(SOCKET_BUFFER_SIZE);
             String multicastGroup = System.getProperty("hazelcast.multicast.group");
