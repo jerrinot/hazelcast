@@ -476,11 +476,10 @@ public final class OperationExecutorImpl implements OperationExecutor, MetricsPr
 
     @Override
     public void start() {
-        logger.info("Starting " + partitionThreads.length + " partition threads");
+        logger.info("Starting " + partitionThreads.length + " partition threads and "
+                        + genericThreads.length + " generic threads ("
+                        + priorityThreadCount + " dedicated for priority tasks)");
         startAll(partitionThreads);
-
-        logger.info("Starting " + genericThreads.length + " generic threads ("
-                + priorityThreadCount + " dedicated for priority tasks)");
         startAll(genericThreads);
     }
 
