@@ -27,9 +27,11 @@ import com.hazelcast.util.UuidUtil;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.logging.Level;
 
 import static com.hazelcast.core.LifecycleEvent.LifecycleState.SHUTDOWN;
 import static com.hazelcast.core.LifecycleEvent.LifecycleState.SHUTTING_DOWN;
+import static com.hazelcast.core.LifecycleEvent.LifecycleState.STARTING;
 
 @PrivateApi
 public class LifecycleServiceImpl implements LifecycleService {
@@ -64,7 +66,9 @@ public class LifecycleServiceImpl implements LifecycleService {
     }
 
     public void fireLifecycleEvent(LifecycleEvent lifecycleEvent) {
-        getLogger().info(instance.node.getThisAddress() + " is " + lifecycleEvent.getState());
+        LifecycleState state = lifecycleEvent.getState();
+        Level level = state == STARTING ? Level.FINE : Level.INFO;
+        getLogger().log(level, instance.node.getThisAddress() + " is " + state);
         for (LifecycleListener lifecycleListener : lifecycleListeners.values()) {
             lifecycleListener.stateChanged(lifecycleEvent);
         }
