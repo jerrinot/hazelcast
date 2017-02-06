@@ -141,14 +141,20 @@ public class InvalidationMemberAddRemoveTest extends NearCacheTestSupport {
             }
         });
 
+        System.out.println("About to start the extra threads");
+
         // start threads
         putFromMember.start();
         populateClientNearCache.start();
         clearFromMember.start();
         shadowMember.start();
 
+        System.out.println("Threads started, going to stress it a bit");
+
         // stress system some seconds
         sleepSeconds(60);
+
+        System.out.println("Stress period is over, now time to join all threads");
 
         //stop threads
         stopTest.set(true);
@@ -156,6 +162,8 @@ public class InvalidationMemberAddRemoveTest extends NearCacheTestSupport {
         clearFromMember.join();
         populateClientNearCache.join();
         putFromMember.join();
+
+        System.out.println("All threads joined, let's do some assertions");
 
         assertTrueEventually(new AssertTask() {
             @Override
