@@ -42,9 +42,7 @@ public final class ThreadLocalRandomProvider {
     public static Random get() {
         Random random = THREAD_LOCAL_RANDOM.get();
         if (random == null) {
-            // using the same way as the OpenJDK version just to make sure this happens on every JDK
-            // implementation, since there are some out there that just use System.currentTimeMillis()
-            random = new Random(seedUniquifier() ^ System.nanoTime());
+            random = new Random(newSeed());
             THREAD_LOCAL_RANDOM.set(random);
         }
         return random;
@@ -64,13 +62,13 @@ public final class ThreadLocalRandomProvider {
         return random;
     }
 
-    private static long seedUniquifier() {
+    private static long newSeed() {
         // L'Ecuyer, "Tables of Linear Congruential Generators of Different Sizes and Good Lattice Structure", 1999
         for (; ; ) {
             long current = SEED_UNIQUIFIER.get();
             long next = current * MOTHER_OF_MAGIC_NUMBERS;
             if (SEED_UNIQUIFIER.compareAndSet(current, next)) {
-                return next;
+                return next ^ System.nanoTime();
             }
         }
     }
