@@ -76,10 +76,11 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
     public static final int REPLICATED_MAP_CONFIG = 34;
     public static final int RINGBUFFER_CONFIG = 35;
     public static final int RINGBUFFER_STORE_CONFIG = 36;
+    public static final int CARDINALITY_ESTIMATOR_CONFIG = 37;
 
 
 
-    private static final int LEN = RINGBUFFER_STORE_CONFIG + 1;
+    private static final int LEN = CARDINALITY_ESTIMATOR_CONFIG + 1;
 
     @Override
     public int getFactoryId() {
@@ -305,6 +306,12 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable createNew(Integer arg) {
                 return new RingbufferStoreConfig();
+            }
+        };
+        constructors[CARDINALITY_ESTIMATOR_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new CardinalityEstimatorConfig();
             }
         };
 
