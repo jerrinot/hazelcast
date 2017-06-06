@@ -77,10 +77,16 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
     public static final int RINGBUFFER_CONFIG = 35;
     public static final int RINGBUFFER_STORE_CONFIG = 36;
     public static final int CARDINALITY_ESTIMATOR_CONFIG = 37;
+    public static final int SIMPLE_CACHE_CONFIG = 38;
+    public static final int SIMPLE_CACHE_CONFIG_EXPIRY_POLICY_FACTORY_CONFIG = 39;
+    public static final int SIMPLE_CACHE_CONFIG_TIMED_EXPIRY_POLICY_FACTORY_CONFIG = 40;
+    public static final int SIMPLE_CACHE_CONFIG_DURATION_CONFIG = 41;
 
 
 
-    private static final int LEN = CARDINALITY_ESTIMATOR_CONFIG + 1;
+
+
+    private static final int LEN = SIMPLE_CACHE_CONFIG_DURATION_CONFIG + 1;
 
     @Override
     public int getFactoryId() {
@@ -314,6 +320,33 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
                 return new CardinalityEstimatorConfig();
             }
         };
+        constructors[SIMPLE_CACHE_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new CacheSimpleConfig();
+            }
+        };
+        constructors[SIMPLE_CACHE_CONFIG_EXPIRY_POLICY_FACTORY_CONFIG] =
+                new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new CacheSimpleConfig.ExpiryPolicyFactoryConfig();
+            }
+        };
+        constructors[SIMPLE_CACHE_CONFIG_TIMED_EXPIRY_POLICY_FACTORY_CONFIG] =
+                new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+                    @Override
+                    public IdentifiedDataSerializable createNew(Integer arg) {
+                        return new CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig();
+                    }
+                };
+        constructors[SIMPLE_CACHE_CONFIG_DURATION_CONFIG] =
+                new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+                    @Override
+                    public IdentifiedDataSerializable createNew(Integer arg) {
+                        return new CacheSimpleConfig.ExpiryPolicyFactoryConfig.DurationConfig();
+                    }
+                };
 
 
         return new ArrayDataSerializableFactory(constructors);
