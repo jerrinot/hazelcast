@@ -73,10 +73,11 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
     public static final int DURABLE_EXECUTOR_CONFIG = 31;
     public static final int SCHEDULED_EXECUTOR_CONFIG = 32;
     public static final int SEMAPHORE_CONFIG = 33;
+    public static final int REPLICATED_MAP_CONFIG = 34;
 
 
 
-    private static final int LEN = SCHEDULED_EXECUTOR_CONFIG + 1;
+    private static final int LEN = REPLICATED_MAP_CONFIG + 1;
 
     @Override
     public int getFactoryId() {
@@ -286,8 +287,12 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
                 return new SemaphoreConfig();
             }
         };
-
-
+        constructors[REPLICATED_MAP_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new ReplicatedMapConfig();
+            }
+        };
 
 
         return new ArrayDataSerializableFactory(constructors);
