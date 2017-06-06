@@ -69,9 +69,10 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
     public static final int LOCK_CONFIG = 27;
     public static final int LIST_CONFIG = 28;
     public static final int SET_CONFIG = 29;
+    public static final int EXECUTOR_CONFIG = 30;
 
 
-    private static final int LEN = LOCK_CONFIG + 1;
+    private static final int LEN = EXECUTOR_CONFIG + 1;
 
     @Override
     public int getFactoryId() {
@@ -257,6 +258,13 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
                 return new SetConfig();
             }
         };
+        constructors[EXECUTOR_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new ExecutorConfig();
+            }
+        };
+
 
 
         return new ArrayDataSerializableFactory(constructors);
