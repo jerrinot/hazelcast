@@ -71,9 +71,10 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
     public static final int SET_CONFIG = 29;
     public static final int EXECUTOR_CONFIG = 30;
     public static final int DURABLE_EXECUTOR_CONFIG = 31;
+    public static final int SCHEDULED_EXECUTOR_CONFIG = 32;
 
 
-    private static final int LEN = DURABLE_EXECUTOR_CONFIG + 1;
+    private static final int LEN = SCHEDULED_EXECUTOR_CONFIG + 1;
 
     @Override
     public int getFactoryId() {
@@ -271,6 +272,13 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
                 return new DurableExecutorConfig();
             }
         };
+        constructors[SCHEDULED_EXECUTOR_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new ScheduledExecutorConfig();
+            }
+        };
+
 
 
 
