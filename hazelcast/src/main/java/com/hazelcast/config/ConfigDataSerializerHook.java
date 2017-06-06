@@ -66,9 +66,12 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
     public static final int ITEM_LISTENER_CONFIG = 24;
     public static final int QUEUE_STORE_CONFIG = 25;
     public static final int QUEUE_CONFIG = 26;
+    public static final int LOCK_CONFIG = 27;
+    public static final int LIST_CONFIG = 28;
+    public static final int SET_CONFIG = 29;
 
 
-    private static final int LEN = QUEUE_CONFIG + 1;
+    private static final int LEN = LOCK_CONFIG + 1;
 
     @Override
     public int getFactoryId() {
@@ -234,6 +237,24 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable createNew(Integer arg) {
                 return new QueueConfig();
+            }
+        };
+        constructors[LOCK_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new LockConfig();
+            }
+        };
+        constructors[LIST_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new ListConfig();
+            }
+        };
+        constructors[SET_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new SetConfig();
             }
         };
 
