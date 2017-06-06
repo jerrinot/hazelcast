@@ -61,6 +61,7 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
     public static final int PREDICATE_CONFIG = 19;
     public static final int PARTITION_STRATEGY_CONFIG = 20;
     public static final int HOT_RESTART_CONFIG = 21;
+    public static final int TOPIC_CONFIG = 22;
 
 
     private static final int LEN = HOT_RESTART_CONFIG + 1;
@@ -199,6 +200,12 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable createNew(Integer arg) {
                 return new HotRestartConfig();
+            }
+        };
+        constructors[TOPIC_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new TopicConfig();
             }
         };
 
