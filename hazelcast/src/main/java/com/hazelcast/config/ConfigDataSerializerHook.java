@@ -62,9 +62,10 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
     public static final int PARTITION_STRATEGY_CONFIG = 20;
     public static final int HOT_RESTART_CONFIG = 21;
     public static final int TOPIC_CONFIG = 22;
+    public static final int RELIABLE_TOPIC_CONFIG = 23;
 
 
-    private static final int LEN = HOT_RESTART_CONFIG + 1;
+    private static final int LEN = RELIABLE_TOPIC_CONFIG + 1;
 
     @Override
     public int getFactoryId() {
@@ -206,6 +207,12 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable createNew(Integer arg) {
                 return new TopicConfig();
+            }
+        };
+        constructors[RELIABLE_TOPIC_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new ReliableTopicConfig();
             }
         };
 
