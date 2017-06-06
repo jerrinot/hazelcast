@@ -74,10 +74,12 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
     public static final int SCHEDULED_EXECUTOR_CONFIG = 32;
     public static final int SEMAPHORE_CONFIG = 33;
     public static final int REPLICATED_MAP_CONFIG = 34;
+    public static final int RINGBUFFER_CONFIG = 35;
+    public static final int RINGBUFFER_STORE_CONFIG = 36;
 
 
 
-    private static final int LEN = REPLICATED_MAP_CONFIG + 1;
+    private static final int LEN = RINGBUFFER_STORE_CONFIG + 1;
 
     @Override
     public int getFactoryId() {
@@ -291,6 +293,18 @@ public final class ConfigDataSerializerHook implements DataSerializerHook {
             @Override
             public IdentifiedDataSerializable createNew(Integer arg) {
                 return new ReplicatedMapConfig();
+            }
+        };
+        constructors[RINGBUFFER_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new RingbufferConfig();
+            }
+        };
+        constructors[RINGBUFFER_STORE_CONFIG] = new ConstructorFunction<Integer, IdentifiedDataSerializable>() {
+            @Override
+            public IdentifiedDataSerializable createNew(Integer arg) {
+                return new RingbufferStoreConfig();
             }
         };
 
