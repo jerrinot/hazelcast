@@ -17,7 +17,9 @@
 package com.hazelcast.internal.dynamicconfig;
 
 import com.hazelcast.config.CardinalityEstimatorConfig;
+import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.EntryListenerConfig;
+import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.MultiMapConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.test.HazelcastParallelClassRunner;
@@ -97,6 +99,36 @@ public class DynamicConfigTest extends HazelcastTestSupport {
         assertEquals(config.getName(), configOnCluster.getName());
         assertEquals(config.getBackupCount(), configOnCluster.getBackupCount());
         assertEquals(config.getAsyncBackupCount(), configOnCluster.getAsyncBackupCount());
+    }
+
+    @Test
+    public void testExecutorConfig() {
+        String name = randomString();
+        ExecutorConfig config = new ExecutorConfig(name, 7);
+        config.setStatisticsEnabled(true);
+        config.setQueueCapacity(13);
+
+        driver.getConfig().addExecutorConfig(config);
+
+        ExecutorConfig configOnCluster = getConfigurationService().getExecutorConfig(name);
+        assertEquals(config.getName(), configOnCluster.getName());
+        assertEquals(config.getPoolSize(), configOnCluster.getPoolSize());
+        assertEquals(config.getQueueCapacity(), configOnCluster.getQueueCapacity());
+        assertEquals(config.isStatisticsEnabled(), configOnCluster.isStatisticsEnabled());
+    }
+
+    @Test
+    public void testDurableExecutorConfig() {
+        String name = randomString();
+        DurableExecutorConfig config = new DurableExecutorConfig(name, 7, 3, 10);
+
+        driver.getConfig().addDurableExecutorConfig(config);
+
+        DurableExecutorConfig configOnCluster = getConfigurationService().getDurableExecutorConfig(name);
+        assertEquals(config.getName(), configOnCluster.getName());
+        assertEquals(config.getPoolSize(), configOnCluster.getPoolSize());
+        assertEquals(config.getCapacity(), configOnCluster.getCapacity());
+        assertEquals(config.getDurability(), configOnCluster.getDurability());
     }
 
     private ConfigurationService getConfigurationService() {

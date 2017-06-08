@@ -113,6 +113,54 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
         return config;
     }
 
+    public ExecutorConfig getExecutorConfig(String name) {
+        Map<String, ExecutorConfig> staticConfigs = staticConfig.getExecutorConfigs();
+        ExecutorConfig config = Config.lookupByPattern(staticConfigs, name);
+        if (config == null) {
+            config = executorConfigs.get(name);
+        }
+        if (config == null) {
+            config = staticConfig.getExecutorConfig(name);
+        }
+        return config;
+    }
+
+    public ScheduledExecutorConfig getScheduledExecutorConfig(String name) {
+        Map<String, ScheduledExecutorConfig> staticConfigs = staticConfig.getScheduledExecutorConfigs();
+        ScheduledExecutorConfig config = Config.lookupByPattern(staticConfigs, name);
+        if (config == null) {
+            config = scheduledExecutorConfigs.get(name);
+        }
+        if (config == null) {
+            config = staticConfig.getScheduledExecutorConfig(name);
+        }
+        return config;
+    }
+
+    public DurableExecutorConfig getDurableExecutorConfig(String name) {
+        Map<String, DurableExecutorConfig> staticConfigs = staticConfig.getDurableExecutorConfigs();
+        DurableExecutorConfig config = Config.lookupByPattern(staticConfigs, name);
+        if (config == null) {
+            config = durableExecutorConfigs.get(name);
+        }
+        if (config == null) {
+            config = staticConfig.getDurableExecutorConfig(name);
+        }
+        return config;
+    }
+
+    public SemaphoreConfig getSemaphoreConfig(String name) {
+        Map<String, SemaphoreConfig> staticConfigs = staticConfig.getSemaphoreConfigsAsMap();
+        SemaphoreConfig config = Config.lookupByPattern(staticConfigs, name);
+        if (config == null) {
+            config = semaphoreConfigs.get(name);
+        }
+        if (config == null) {
+            config = staticConfig.getSemaphoreConfig(name);
+        }
+        return config;
+    }
+
     public void registerLocally(IdentifiedDataSerializable config) {
         if (config instanceof MultiMapConfig) {
             MultiMapConfig multiMapConfig = (MultiMapConfig) config;
