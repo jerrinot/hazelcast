@@ -47,12 +47,6 @@ public abstract class AbstractAddConfigMessageTask<P> extends AbstractCallableMe
     }
 
     @Override
-    protected ClientMessage encodeResponse(Object response) {
-        // todo no response really needed here
-        return MapSizeCodec.encodeResponse(10);
-    }
-
-    @Override
     public String getServiceName() {
         return ConfigurationService.SERVICE_NAME;
     }
@@ -73,6 +67,12 @@ public abstract class AbstractAddConfigMessageTask<P> extends AbstractCallableMe
     public Permission getRequiredPermission() {
         // todo proper security for client-side config updates
         return null;
+    }
+
+    @Override
+    public Object[] getParameters() {
+        // todo may have to specify for security
+        return new Object[0];
     }
 
     protected abstract OperationFactory getOperationFactory();

@@ -17,7 +17,11 @@
 package com.hazelcast.client.impl;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddCardinalityEstimatorConfigCodec;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddDurableExecutorConfigCodec;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddExecutorConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddMultiMapConfigCodec;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddScheduledExecutorConfigCodec;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.EntryListenerConfigHolder;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
@@ -152,22 +156,38 @@ public class DynamicClusterConfig extends Config {
 
     @Override
     public Config addExecutorConfig(ExecutorConfig executorConfig) {
-        return super.addExecutorConfig(executorConfig);
+        ClientMessage request = DynamicConfigAddExecutorConfigCodec.encodeRequest(
+                executorConfig.getName(), executorConfig.getPoolSize(), executorConfig.getQueueCapacity(),
+                executorConfig.isStatisticsEnabled());
+        invoke(request);
+        return this;
     }
 
     @Override
     public Config addDurableExecutorConfig(DurableExecutorConfig durableExecutorConfig) {
-        return super.addDurableExecutorConfig(durableExecutorConfig);
+        ClientMessage request = DynamicConfigAddDurableExecutorConfigCodec.encodeRequest(
+                durableExecutorConfig.getName(), durableExecutorConfig.getPoolSize(),
+                durableExecutorConfig.getDurability(), durableExecutorConfig.getCapacity());
+        invoke(request);
+        return this;
     }
 
     @Override
     public Config addScheduledExecutorConfig(ScheduledExecutorConfig scheduledExecutorConfig) {
-        return super.addScheduledExecutorConfig(scheduledExecutorConfig);
+        ClientMessage request = DynamicConfigAddScheduledExecutorConfigCodec.encodeRequest(
+                scheduledExecutorConfig.getName(), scheduledExecutorConfig.getPoolSize(),
+                scheduledExecutorConfig.getDurability(), scheduledExecutorConfig.getCapacity());
+        invoke(request);
+        return this;
     }
 
     @Override
     public Config addCardinalityEstimatorConfig(CardinalityEstimatorConfig cardinalityEstimatorConfig) {
-        return super.addCardinalityEstimatorConfig(cardinalityEstimatorConfig);
+        ClientMessage request = DynamicConfigAddCardinalityEstimatorConfigCodec.encodeRequest(
+                cardinalityEstimatorConfig.getName(), cardinalityEstimatorConfig.getBackupCount(),
+                cardinalityEstimatorConfig.getAsyncBackupCount());
+        invoke(request);
+        return this;
     }
 
     @Override

@@ -53,13 +53,18 @@ public class AddMultiMapConfigMessageTask extends AbstractAddConfigMessageTask<D
     }
 
     @Override
+    protected ClientMessage encodeResponse(Object response) {
+        return DynamicConfigAddMultiMapConfigCodec.encodeResponse();
+    }
+
+    @Override
     protected OperationFactory getOperationFactory() {
         MultiMapConfig multiMapConfig = new MultiMapConfig();
         multiMapConfig.setName(parameters.name);
         multiMapConfig.setValueCollectionType(parameters.collectionType);
         multiMapConfig.setAsyncBackupCount(parameters.asyncBackupCount);
         multiMapConfig.setBackupCount(parameters.backupCount);
-        multiMapConfig.setBinary(parameters.isBinary);
+        multiMapConfig.setBinary(parameters.binary);
         multiMapConfig.setStatisticsEnabled(parameters.statisticsEnabled);
         if (parameters.listenerConfigs != null && !parameters.listenerConfigs.isEmpty()) {
             for (EntryListenerConfigHolder configHolder : parameters.listenerConfigs) {

@@ -1,8 +1,21 @@
 package com.hazelcast.internal.dynamicconfig;
 
+import com.hazelcast.cardinality.CardinalityEstimator;
+import com.hazelcast.config.CardinalityEstimatorConfig;
 import com.hazelcast.config.Config;
+import com.hazelcast.config.DurableExecutorConfig;
+import com.hazelcast.config.ExecutorConfig;
+import com.hazelcast.config.ListConfig;
+import com.hazelcast.config.ListenerConfig;
+import com.hazelcast.config.LockConfig;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MultiMapConfig;
+import com.hazelcast.config.ReplicatedMapConfig;
+import com.hazelcast.config.RingbufferConfig;
+import com.hazelcast.config.ScheduledExecutorConfig;
+import com.hazelcast.config.SemaphoreConfig;
+import com.hazelcast.config.SetConfig;
+import com.hazelcast.config.TopicConfig;
 import com.hazelcast.internal.cluster.ClusterVersionListener;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import com.hazelcast.spi.CoreService;
@@ -15,13 +28,17 @@ import com.hazelcast.spi.PartitionReplicationEvent;
 import com.hazelcast.spi.PostJoinAwareService;
 import com.hazelcast.version.Version;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static com.hazelcast.internal.cluster.Versions.V3_8;
 import static com.hazelcast.util.InvocationUtil.invokeOnStableCluster;
+import static java.util.Collections.newSetFromMap;
 
 public class ConfigurationService implements PostJoinAwareService, MigrationAwareService,
         CoreService, ClusterVersionListener, ManagedService {
@@ -31,6 +48,22 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
     private NodeEngine nodeEngine;
     private ConcurrentMap<String, MultiMapConfig> multiMapConfigs = new ConcurrentHashMap<String, MultiMapConfig>();
     private ConcurrentMap<String, MapConfig> mapConfigs = new ConcurrentHashMap<String, MapConfig>();
+    private ConcurrentMap<String, CardinalityEstimatorConfig> cardinalityEstimatorConfigs =
+            new ConcurrentHashMap<String, CardinalityEstimatorConfig>();
+    private ConcurrentMap<String, RingbufferConfig> ringbufferConfigs = new ConcurrentHashMap<String, RingbufferConfig>();
+    private ConcurrentMap<String, LockConfig> lockConfigs = new ConcurrentHashMap<String, LockConfig>();
+    private ConcurrentMap<String, ListConfig> listConfigs = new ConcurrentHashMap<String, ListConfig>();
+    private ConcurrentMap<String, SetConfig> setConfigs = new ConcurrentHashMap<String, SetConfig>();
+    private ConcurrentMap<String, ReplicatedMapConfig> replicatedMapConfigs =
+            new ConcurrentHashMap<String, ReplicatedMapConfig>();
+    private ConcurrentMap<String, TopicConfig> topicConfigs = new ConcurrentHashMap<String, TopicConfig>();
+    private ConcurrentMap<String, ExecutorConfig> executorConfigs = new ConcurrentHashMap<String, ExecutorConfig>();
+    private ConcurrentMap<String, DurableExecutorConfig> durableExecutorConfigs =
+            new ConcurrentHashMap<String, DurableExecutorConfig>();
+    private ConcurrentMap<String, ScheduledExecutorConfig> scheduledExecutorConfigs =
+            new ConcurrentHashMap<String, ScheduledExecutorConfig>();
+    private ConcurrentMap<String, SemaphoreConfig> semaphoreConfigs = new ConcurrentHashMap<String, SemaphoreConfig>();
+
     private Config staticConfig;
     private volatile Version version;
 
@@ -68,6 +101,18 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
         return mapConfig;
     }
 
+    public CardinalityEstimatorConfig getCardinalityEstimatorConfig(String name) {
+        Map<String, CardinalityEstimatorConfig> staticConfigs = staticConfig.getCardinalityEstimatorConfigs();
+        CardinalityEstimatorConfig config = Config.lookupByPattern(staticConfigs, name);
+        if (config == null) {
+            config = cardinalityEstimatorConfigs.get(name);
+        }
+        if (config == null) {
+            config = staticConfig.getCardinalityEstimatorConfig(name);
+        }
+        return config;
+    }
+
     public void registerLocally(IdentifiedDataSerializable config) {
         if (config instanceof MultiMapConfig) {
             MultiMapConfig multiMapConfig = (MultiMapConfig) config;
@@ -75,6 +120,39 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
         } else if (config instanceof MapConfig) {
             MapConfig mapConfig = (MapConfig) config;
             mapConfigs.putIfAbsent(mapConfig.getName(), mapConfig);
+        } else if (config instanceof CardinalityEstimatorConfig) {
+            CardinalityEstimatorConfig cardinalityEstimatorConfig = (CardinalityEstimatorConfig) config;
+            cardinalityEstimatorConfigs.putIfAbsent(cardinalityEstimatorConfig.getName(), cardinalityEstimatorConfig);
+        } else if (config instanceof RingbufferConfig) {
+            RingbufferConfig ringbufferConfig = (RingbufferConfig) config;
+            ringbufferConfigs.putIfAbsent(ringbufferConfig.getName(), ringbufferConfig);
+        } else if (config instanceof LockConfig) {
+            LockConfig lockConfig = (LockConfig) config;
+            lockConfigs.putIfAbsent(lockConfig.getName(), lockConfig);
+        } else if (config instanceof ListConfig) {
+            ListConfig listConfig = (ListConfig) config;
+            listConfigs.putIfAbsent(listConfig.getName(), listConfig);
+        } else if (config instanceof SetConfig) {
+            SetConfig setConfig = (SetConfig) config;
+            setConfigs.putIfAbsent(setConfig.getName(), setConfig);
+        } else if (config instanceof ReplicatedMapConfig) {
+            ReplicatedMapConfig replicatedMapConfig = (ReplicatedMapConfig) config;
+            replicatedMapConfigs.putIfAbsent(replicatedMapConfig.getName(), replicatedMapConfig);
+        } else if (config instanceof TopicConfig) {
+            TopicConfig topicConfig = (TopicConfig) config;
+            topicConfigs.putIfAbsent(topicConfig.getName(), topicConfig);
+        } else if (config instanceof ExecutorConfig) {
+            ExecutorConfig executorConfig = (ExecutorConfig) config;
+            executorConfigs.putIfAbsent(executorConfig.getName(), executorConfig);
+        } else if (config instanceof DurableExecutorConfig) {
+            DurableExecutorConfig durableExecutorConfig = (DurableExecutorConfig) config;
+            durableExecutorConfigs.putIfAbsent(durableExecutorConfig.getName(), durableExecutorConfig);
+        } else if (config instanceof ScheduledExecutorConfig) {
+            ScheduledExecutorConfig scheduledExecutorConfig = (ScheduledExecutorConfig) config;
+            scheduledExecutorConfigs.putIfAbsent(scheduledExecutorConfig.getName(), scheduledExecutorConfig);
+        } else if (config instanceof SemaphoreConfig) {
+            SemaphoreConfig semaphoreConfig = (SemaphoreConfig) config;
+            semaphoreConfigs.putIfAbsent(semaphoreConfig.getName(), semaphoreConfig);
         } else {
             throw new UnsupportedOperationException("Unsupported config type: " + config);
         }
