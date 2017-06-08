@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.internal.cluster.Versions.V3_8;
 import static com.hazelcast.util.FutureUtil.RETHROW_ALL_EXCEPT_MEMBER_LEFT;
+import static com.hazelcast.util.InvocationUtil.invokeOnStableCluster;
 
 public class ConfigurationService implements PostJoinAwareService, MigrationAwareService,
         CoreService, ClusterVersionListener, ManagedService {
@@ -96,39 +97,8 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
     }
 
     public void broadcastConfig(IdentifiedDataSerializable config) {
-        warmUpPartitions();
-        Collection<Member> originalMembers;
-        int iterationCounter = 0;
-        do {
-            originalMembers = nodeEngine.getClusterService().getMembers();
-            OperationService operationService = nodeEngine.getOperationService();
-            Set<InternalCompletableFuture<Object>> futures = operationService.invokeOnCluster(SERVICE_NAME,
-                    new AddDynamicConfigOperationFactory(config), null);
-            FutureUtil.waitWithDeadline(futures, 1, TimeUnit.MINUTES, RETHROW_ALL_EXCEPT_MEMBER_LEFT);
-            Collection<Member> currentMembers = nodeEngine.getClusterService().getMembers();
-            if (currentMembers.equals(originalMembers)) {
-                break;
-            }
-            if (iterationCounter++ == CONFIG_PUBLISH_MAX_ATTEMPT_COUNT) {
-                //todo better error message
-                throw new HazelcastException("Cluster topology keeps changing, cannot distribute configuration " + config);
-            }
-        } while (!originalMembers.equals(nodeEngine.getClusterService().getMembers()));
-    }
-
-    //todo: move elsewhere
-    private void warmUpPartitions() {
-        final PartitionService ps = nodeEngine.getHazelcastInstance().getPartitionService();
-        for (Partition partition : ps.getPartitions()) {
-            while (partition.getOwner() == null) {
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new HazelcastException("Thread interrupted while initializing a partition table", e);
-                }
-            }
-        }
+        invokeOnStableCluster(nodeEngine, new AddDynamicConfigOperationFactory(config), null,
+                CONFIG_PUBLISH_MAX_ATTEMPT_COUNT);
     }
 
     @Override
