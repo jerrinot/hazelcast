@@ -448,7 +448,7 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
 
     @Override
     public Config getConfig() {
-        throw new UnsupportedOperationException("Client cannot access cluster config!");
+        return new DynamicClusterConfig(this);
     }
 
     public HazelcastProperties getProperties() {
