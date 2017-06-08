@@ -1,5 +1,6 @@
 package com.hazelcast.internal.dynamicconfig;
 
+import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddDynamicConfigOperationSupplier;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MultiMapConfig;
@@ -28,6 +29,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
@@ -100,13 +102,8 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
         do {
             originalMembers = nodeEngine.getClusterService().getMembers();
             OperationService operationService = nodeEngine.getOperationService();
-            List<Future> futures = new ArrayList<Future>(originalMembers.size());
-            for (Member member : originalMembers) {
-                Operation op = new AddDynamicConfigOperation(config);
-                Address address = member.getAddress();
-                InternalCompletableFuture<Object> future = operationService.invokeOnTarget(SERVICE_NAME, op, address);
-                futures.add(future);
-            }
+            Set<InternalCompletableFuture<Object>> futures = operationService.invokeOnCluster(SERVICE_NAME,
+                    new AddDynamicConfigOperationFactory(config), null);
             FutureUtil.waitWithDeadline(futures, 1, TimeUnit.MINUTES, RETHROW_ALL_EXCEPT_MEMBER_LEFT);
             Collection<Member> currentMembers = nodeEngine.getClusterService().getMembers();
             if (currentMembers.equals(originalMembers)) {
