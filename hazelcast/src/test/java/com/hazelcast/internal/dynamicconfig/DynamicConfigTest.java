@@ -21,6 +21,7 @@ import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.EntryListenerConfig;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.MultiMapConfig;
+import com.hazelcast.config.ScheduledExecutorConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
@@ -43,7 +44,7 @@ public class DynamicConfigTest extends HazelcastTestSupport {
 
     private TestHazelcastInstanceFactory factory;
     private HazelcastInstance[] members;
-    // dynamic configuration is added on driver instance
+    // add***Config is invoked on driver instance
     private HazelcastInstance driver;
 
     @Before
@@ -125,6 +126,20 @@ public class DynamicConfigTest extends HazelcastTestSupport {
         driver.getConfig().addDurableExecutorConfig(config);
 
         DurableExecutorConfig configOnCluster = getConfigurationService().getDurableExecutorConfig(name);
+        assertEquals(config.getName(), configOnCluster.getName());
+        assertEquals(config.getPoolSize(), configOnCluster.getPoolSize());
+        assertEquals(config.getCapacity(), configOnCluster.getCapacity());
+        assertEquals(config.getDurability(), configOnCluster.getDurability());
+    }
+
+    @Test
+    public void testScheduledExecutorConfig() {
+        String name = randomString();
+        ScheduledExecutorConfig config = new ScheduledExecutorConfig(name, 2, 3, 10);
+
+        driver.getConfig().addScheduledExecutorConfig(config);
+
+        ScheduledExecutorConfig configOnCluster = getConfigurationService().getScheduledExecutorConfig(name);
         assertEquals(config.getName(), configOnCluster.getName());
         assertEquals(config.getPoolSize(), configOnCluster.getPoolSize());
         assertEquals(config.getCapacity(), configOnCluster.getCapacity());
