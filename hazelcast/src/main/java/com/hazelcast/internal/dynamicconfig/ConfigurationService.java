@@ -42,7 +42,7 @@ import static com.hazelcast.util.InvocationUtil.invokeOnStableCluster;
 public class ConfigurationService implements PostJoinAwareService, MigrationAwareService,
         CoreService, ClusterVersionListener, ManagedService {
     public static final String SERVICE_NAME = "configuration-service";
-    private static final int CONFIG_PUBLISH_MAX_ATTEMPT_COUNT = 100;
+    public static final int CONFIG_PUBLISH_MAX_ATTEMPT_COUNT = 100;
 
     private NodeEngine nodeEngine;
     private ConcurrentMap<String, MultiMapConfig> multiMapConfigs = new ConcurrentHashMap<String, MultiMapConfig>();

@@ -54,15 +54,27 @@ public class EntryListenerConfigHolder extends ListenerConfigHolder {
         if (className != null) {
             entryListenerConfig = new EntryListenerConfig(className, local, includeValue);
         } else {
-            Object listenerImplementation = serializationService.toObject(this.listenerImplementation);
-            if (listenerImplementation instanceof MapListener) {
-                entryListenerConfig = new EntryListenerConfig((MapListener) this.listenerImplementation, local, includeValue);
-            } else if (listenerImplementation instanceof EntryListener) {
-                entryListenerConfig = new EntryListenerConfig((EntryListener) this.listenerImplementation, local, includeValue);
+            Object implementation = serializationService.toObject(this.listenerImplementation);
+            if (implementation instanceof EntryListener) {
+                entryListenerConfig = new EntryListenerConfig((EntryListener) implementation, local, includeValue);
+            } else if (listenerImplementation instanceof MapListener) {
+                entryListenerConfig = new EntryListenerConfig((MapListener) implementation, local, includeValue);
             } else {
                 throw new IllegalArgumentException("Entry listener has to be an instance of MapListener or EntryListener");
             }
         }
         return entryListenerConfig;
+    }
+
+    public static EntryListenerConfigHolder of(EntryListenerConfig entryListenerConfig,
+                                               SerializationService serializationService) {
+        if (entryListenerConfig.getImplementation() != null) {
+            Data implementation = serializationService.toData(entryListenerConfig.getImplementation());
+            return new EntryListenerConfigHolder(implementation, entryListenerConfig.isLocal(),
+                    entryListenerConfig.isIncludeValue());
+        } else {
+            return new EntryListenerConfigHolder(entryListenerConfig.getClassName(), entryListenerConfig.isLocal(),
+                    entryListenerConfig.isIncludeValue());
+        }
     }
 }

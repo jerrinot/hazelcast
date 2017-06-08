@@ -34,36 +34,26 @@ package com.hazelcast.client.impl.protocol.task.dynamicconfig;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddMultiMapConfigCodec;
-import com.hazelcast.client.impl.protocol.codec.MapSizeCodec;
-import com.hazelcast.client.impl.protocol.task.AbstractMultiTargetMessageTask;
 import com.hazelcast.config.EntryListenerConfig;
 import com.hazelcast.config.MultiMapConfig;
-import com.hazelcast.core.Member;
 import com.hazelcast.instance.Node;
+import com.hazelcast.internal.dynamicconfig.AddDynamicConfigOperationFactory;
 import com.hazelcast.nio.Connection;
-import com.hazelcast.spi.Operation;
-import com.hazelcast.util.function.Supplier;
+import com.hazelcast.spi.OperationFactory;
 
-import java.security.Permission;
-import java.util.Collection;
-import java.util.Map;
-
-import static com.hazelcast.internal.dynamicconfig.ConfigurationService.SERVICE_NAME;
-
-public class AddMultiMapConfigMessageTask extends AbstractMultiTargetMessageTask<DynamicConfigAddMultiMapConfigCodec.RequestParameters> {
+public class AddMultiMapConfigMessageTask extends AbstractAddConfigMessageTask<DynamicConfigAddMultiMapConfigCodec.RequestParameters> {
 
     public AddMultiMapConfigMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
-    public Permission getRequiredPermission() {
-        // todo proper security for client-side config updates
-        return null;
+    protected DynamicConfigAddMultiMapConfigCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return DynamicConfigAddMultiMapConfigCodec.decodeRequest(clientMessage);
     }
 
     @Override
-    protected Supplier<Operation> createOperationSupplier() {
+    protected OperationFactory getOperationFactory() {
         MultiMapConfig multiMapConfig = new MultiMapConfig();
         multiMapConfig.setName(parameters.name);
         multiMapConfig.setValueCollectionType(parameters.collectionType);
@@ -77,54 +67,11 @@ public class AddMultiMapConfigMessageTask extends AbstractMultiTargetMessageTask
                 multiMapConfig.addEntryListenerConfig(entryListenerConfig);
             }
         }
-        return new AddDynamicConfigOperationSupplier(multiMapConfig);
-    }
-
-    @Override
-    public Collection<Member> getTargets() {
-        return nodeEngine.getClusterService().getMembers();
-    }
-
-    @Override
-    protected Object reduce(Map map) throws Throwable {
-        for (Object result : map.values()) {
-            if (result instanceof Throwable) {
-                throw (Throwable) result;
-            }
-        }
-        return true;
-    }
-
-    @Override
-    protected DynamicConfigAddMultiMapConfigCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
-        return DynamicConfigAddMultiMapConfigCodec.decodeRequest(clientMessage);
-    }
-
-    @Override
-    protected ClientMessage encodeResponse(Object response) {
-        // todo no need for a response, help!
-        return MapSizeCodec.encodeResponse(10);
-    }
-
-    @Override
-    public String getServiceName() {
-        return SERVICE_NAME;
-    }
-
-    @Override
-    public String getDistributedObjectName() {
-        return null;
-    }
-
-    @Override
-    public String getMethodName() {
-        return null;
+        return new AddDynamicConfigOperationFactory(multiMapConfig);
     }
 
     @Override
     public Object[] getParameters() {
         return new Object[0];
     }
-
-
 }

@@ -47,11 +47,6 @@ public class DynamicClusterConfigTest extends HazelcastTestSupport {
         client = factory.newHazelcastClient();
     }
 
-    @AfterClass
-    public static void classCleanup() {
-        DynamicConfigSmokeTest.DummyListener.addedCounter.set(0);
-    }
-
     @Test
     public void multimap_smokeMultimap_initialTest() {
         String mapName = "dynamicMM";
@@ -66,7 +61,8 @@ public class DynamicClusterConfigTest extends HazelcastTestSupport {
         multiMap.put("foo", "1");
 
         ConfigurationService configurationService = getNodeEngineImpl(members[0]).getService(ConfigurationService.SERVICE_NAME);
-
+        MultiMapConfig dynamicallyAddedConfig = configurationService.getMultiMapConfig(mapName);
+        assertEquals(3, dynamicallyAddedConfig.getBackupCount());
     }
 
     @After

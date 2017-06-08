@@ -17,8 +17,8 @@
 package com.hazelcast.client.impl;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.codec.DynamicConfigBroadcastMultiMapConfigCodec;
-import com.hazelcast.client.impl.protocol.task.dynamicconfig.ListenerConfigHolder;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddMultiMapConfigCodec;
+import com.hazelcast.client.impl.protocol.task.dynamicconfig.EntryListenerConfigHolder;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.config.CacheSimpleConfig;
@@ -111,17 +111,17 @@ public class DynamicClusterConfig extends Config {
 
     @Override
     public Config addMultiMapConfig(MultiMapConfig multiMapConfig) {
-        List<ListenerConfigHolder> listenerConfigHolders = null;
+        List<EntryListenerConfigHolder> listenerConfigHolders = null;
         List<EntryListenerConfig> entryListenerConfigs = multiMapConfig.getEntryListenerConfigs();
         if (entryListenerConfigs != null && !entryListenerConfigs.isEmpty()) {
-            listenerConfigHolders = new ArrayList<ListenerConfigHolder>(entryListenerConfigs.size());
+            listenerConfigHolders = new ArrayList<EntryListenerConfigHolder>(entryListenerConfigs.size());
             for (EntryListenerConfig entryListenerConfig : entryListenerConfigs) {
-                listenerConfigHolders.add(new ListenerConfigHolder(entryListenerConfig.toString(),
-                        instance.getSerializationService().toData(entryListenerConfig)));
+                listenerConfigHolders.add(EntryListenerConfigHolder.of(entryListenerConfig,
+                        instance.getSerializationService()));
             }
         }
 
-        ClientMessage request = DynamicConfigBroadcastMultiMapConfigCodec.encodeRequest(
+        ClientMessage request = DynamicConfigAddMultiMapConfigCodec.encodeRequest(
                 multiMapConfig.getName(), multiMapConfig.getValueCollectionType().toString(),
                 listenerConfigHolders,
                 multiMapConfig.isBinary(), multiMapConfig.getBackupCount(), multiMapConfig.getAsyncBackupCount(),
