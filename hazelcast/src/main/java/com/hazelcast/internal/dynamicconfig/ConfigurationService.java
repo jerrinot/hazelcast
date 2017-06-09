@@ -179,6 +179,18 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
         return config;
     }
 
+    public ListConfig getListConfig(String name) {
+        Map<String, ListConfig> staticConfigs = staticConfig.getListConfigs();
+        ListConfig config = Config.lookupByPattern(staticConfigs, name);
+        if (config == null) {
+            config = listConfigs.get(name);
+        }
+        if (config == null) {
+            config = staticConfig.getListConfig(name);
+        }
+        return config;
+    }
+
     public void registerLocally(IdentifiedDataSerializable config) {
         if (config instanceof MultiMapConfig) {
             MultiMapConfig multiMapConfig = (MultiMapConfig) config;

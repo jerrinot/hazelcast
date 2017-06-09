@@ -21,6 +21,8 @@ import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.EntryListenerConfig;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.InMemoryFormat;
+import com.hazelcast.config.ItemListenerConfig;
+import com.hazelcast.config.ListConfig;
 import com.hazelcast.config.LockConfig;
 import com.hazelcast.config.MultiMapConfig;
 import com.hazelcast.config.RingbufferConfig;
@@ -28,6 +30,8 @@ import com.hazelcast.config.RingbufferStoreConfig;
 import com.hazelcast.config.ScheduledExecutorConfig;
 import com.hazelcast.core.EntryEvent;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.ItemEvent;
+import com.hazelcast.core.ItemListener;
 import com.hazelcast.core.RingbufferStore;
 import com.hazelcast.core.RingbufferStoreFactory;
 import com.hazelcast.map.listener.EntryAddedListener;
@@ -43,6 +47,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import static com.hazelcast.config.MultiMapConfig.ValueCollectionType.LIST;
@@ -153,6 +159,50 @@ public class DynamicConfigTest extends HazelcastTestSupport {
     }
 
     @Test
+    public void testListConfig() {
+        ListConfig config = getListConfig();
+
+        driver.getConfig().addListConfig(config);
+
+        ListConfig configOnCluster = getConfigurationService().getListConfig(name);
+        assertListConfigCommons(config, configOnCluster);
+    }
+
+    @Test
+    public void testListConfig_withItemListenerConfig_byClassName() {
+        ListConfig config = getListConfig();
+        List<ItemListenerConfig> itemListenerConfigs = new ArrayList<ItemListenerConfig>();
+        ItemListenerConfig listenerConfig = new ItemListenerConfig("com.hazelcast.ItemListener", true);
+        itemListenerConfigs.add(listenerConfig);
+        config.setItemListenerConfigs(itemListenerConfigs);
+
+        driver.getConfig().addListConfig(config);
+
+        ListConfig configOnCluster = getConfigurationService().getListConfig(name);
+        assertListConfigCommons(config, configOnCluster);
+        ItemListenerConfig listenerConfigOnCluster = configOnCluster.getItemListenerConfigs().get(0);
+        assertEquals(listenerConfig.getClassName(), listenerConfigOnCluster.getClassName());
+        assertEquals(listenerConfig.isIncludeValue(), listenerConfigOnCluster.isIncludeValue());
+    }
+
+    @Test
+    public void testListConfig_withItemListenerConfig_byImplementation() {
+        ListConfig config = getListConfig();
+        List<ItemListenerConfig> itemListenerConfigs = new ArrayList<ItemListenerConfig>();
+        ItemListenerConfig listenerConfig = new ItemListenerConfig(new SampleItemListener(), true);
+        itemListenerConfigs.add(listenerConfig);
+        config.setItemListenerConfigs(itemListenerConfigs);
+
+        driver.getConfig().addListConfig(config);
+
+        ListConfig configOnCluster = getConfigurationService().getListConfig(name);
+        assertListConfigCommons(config, configOnCluster);
+        ItemListenerConfig listenerConfigOnCluster = configOnCluster.getItemListenerConfigs().get(0);
+        assertEquals(listenerConfig.getImplementation(), listenerConfigOnCluster.getImplementation());
+        assertEquals(listenerConfig.isIncludeValue(), listenerConfigOnCluster.isIncludeValue());
+    }
+
+    @Test
     public void testExecutorConfig() {
         ExecutorConfig config = new ExecutorConfig(name, 7);
         config.setStatisticsEnabled(true);
@@ -251,6 +301,23 @@ public class DynamicConfigTest extends HazelcastTestSupport {
         assertRingBufferStoreConfig(config.getRingbufferStoreConfig(), configOnCluster.getRingbufferStoreConfig());
     }
 
+    private ListConfig getListConfig() {
+        ListConfig config = new ListConfig(name);
+        config.setStatisticsEnabled(true)
+              .setMaxSize(99)
+              .setBackupCount(4)
+              .setAsyncBackupCount(2);
+        return config;
+    }
+
+    private void assertListConfigCommons(ListConfig config, ListConfig configOnCluster) {
+        assertEquals(config.getName(), configOnCluster.getName());
+        assertEquals(config.getBackupCount(), configOnCluster.getBackupCount());
+        assertEquals(config.getAsyncBackupCount(), configOnCluster.getAsyncBackupCount());
+        assertEquals(config.getMaxSize(), configOnCluster.getMaxSize());
+        assertEquals(config.isStatisticsEnabled(), configOnCluster.isStatisticsEnabled());
+    }
+
     private void assertRingBufferStoreConfig(RingbufferStoreConfig config, RingbufferStoreConfig configOnCluster) {
         assertEquals(config.getClassName(),
                 configOnCluster.getClassName());
@@ -303,6 +370,22 @@ public class DynamicConfigTest extends HazelcastTestSupport {
 
         @Override
         public void entryAdded(EntryEvent event) {
+        }
+    }
+
+    public static class SampleItemListener implements ItemListener, Serializable {
+
+        @Override
+        public void itemAdded(ItemEvent item) {
+        }
+
+        @Override
+        public void itemRemoved(ItemEvent item) {
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj instanceof SampleItemListener);
         }
     }
 

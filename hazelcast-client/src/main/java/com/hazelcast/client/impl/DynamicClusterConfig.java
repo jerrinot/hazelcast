@@ -20,11 +20,13 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddCardinalityEstimatorConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddDurableExecutorConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddExecutorConfigCodec;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddListConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddLockConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddMultiMapConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddRingbufferConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddScheduledExecutorConfigCodec;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.EntryListenerConfigHolder;
+import com.hazelcast.client.impl.protocol.task.dynamicconfig.ItemListenerConfigHolder;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.RingbufferStoreConfigHolder;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
@@ -37,6 +39,7 @@ import com.hazelcast.config.EntryListenerConfig;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.GroupConfig;
 import com.hazelcast.config.HotRestartPersistenceConfig;
+import com.hazelcast.config.ItemListenerConfig;
 import com.hazelcast.config.JobTrackerConfig;
 import com.hazelcast.config.ListConfig;
 import com.hazelcast.config.ListenerConfig;
@@ -64,6 +67,7 @@ import com.hazelcast.config.TopicConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.config.WanReplicationConfig;
 import com.hazelcast.core.ManagedContext;
+import com.hazelcast.spi.serialization.SerializationService;
 
 import java.io.File;
 import java.net.URL;
@@ -82,9 +86,11 @@ import static com.hazelcast.util.ExceptionUtil.rethrow;
 public class DynamicClusterConfig extends Config {
 
     private final HazelcastClientInstanceImpl instance;
+    private final SerializationService serializationService;
 
     public DynamicClusterConfig(HazelcastClientInstanceImpl instance) {
         this.instance = instance;
+        this.serializationService = instance.getSerializationService();
     }
 
     @Override
@@ -111,7 +117,17 @@ public class DynamicClusterConfig extends Config {
 
     @Override
     public Config addListConfig(ListConfig listConfig) {
-        return super.addListConfig(listConfig);
+        List<ItemListenerConfigHolder> listenerConfigs = null;
+        if (!listConfig.getItemListenerConfigs().isEmpty()) {
+            listenerConfigs = new ArrayList<ItemListenerConfigHolder>();
+            for (ItemListenerConfig listenerConfig : listConfig.getItemListenerConfigs()) {
+                listenerConfigs.add(ItemListenerConfigHolder.of(listenerConfig, instance.getSerializationService()));
+            }
+        }
+        ClientMessage request = DynamicConfigAddListConfigCodec.encodeRequest(listConfig.getName(), listenerConfigs,
+                listConfig.getBackupCount(), listConfig.getAsyncBackupCount(), listConfig.getMaxSize(), listConfig.isStatisticsEnabled());
+        invoke(request);
+        return this;
     }
 
     @Override
