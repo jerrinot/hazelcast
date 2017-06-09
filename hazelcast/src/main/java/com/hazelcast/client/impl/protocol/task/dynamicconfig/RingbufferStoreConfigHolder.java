@@ -87,7 +87,8 @@ public class RingbufferStoreConfigHolder {
                                                  SerializationService serializationService) {
         if (ringbufferStoreConfig.getClassName() == null && ringbufferStoreConfig.getFactoryClassName() == null
                 && ringbufferStoreConfig.getStoreImplementation() == null
-                && ringbufferStoreConfig.getFactoryImplementation() == null) {
+                && ringbufferStoreConfig.getFactoryImplementation() == null
+                && ringbufferStoreConfig.isEnabled()) {
             throw new IllegalArgumentException("One of className, factoryClassName, storeImplementation, "
                     + "factoryImplementation has to be not null");
         }

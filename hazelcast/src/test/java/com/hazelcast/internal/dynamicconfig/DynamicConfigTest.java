@@ -20,9 +20,16 @@ import com.hazelcast.config.CardinalityEstimatorConfig;
 import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.EntryListenerConfig;
 import com.hazelcast.config.ExecutorConfig;
+import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.MultiMapConfig;
+import com.hazelcast.config.RingbufferConfig;
+import com.hazelcast.config.RingbufferStoreConfig;
 import com.hazelcast.config.ScheduledExecutorConfig;
+import com.hazelcast.core.EntryEvent;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.RingbufferStore;
+import com.hazelcast.core.RingbufferStoreFactory;
+import com.hazelcast.map.listener.EntryAddedListener;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
@@ -33,8 +40,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.Serializable;
+import java.util.Properties;
+
 import static com.hazelcast.config.MultiMapConfig.ValueCollectionType.LIST;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 @RunWith(HazelcastParallelClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
@@ -42,6 +53,7 @@ public class DynamicConfigTest extends HazelcastTestSupport {
 
     protected static final int INSTANCE_COUNT = 2;
 
+    private String name = randomString();
     private TestHazelcastInstanceFactory factory;
     private HazelcastInstance[] members;
     // add***Config is invoked on driver instance
@@ -65,8 +77,7 @@ public class DynamicConfigTest extends HazelcastTestSupport {
 
     @Test
     public void testMultiMapConfig() {
-        String mapName = randomString();
-        MultiMapConfig multiMapConfig = new MultiMapConfig(mapName);
+        MultiMapConfig multiMapConfig = new MultiMapConfig(name);
         multiMapConfig.setBackupCount(4)
                       .setAsyncBackupCount(2)
                       .setStatisticsEnabled(true)
@@ -78,7 +89,33 @@ public class DynamicConfigTest extends HazelcastTestSupport {
 
         driver.getConfig().addMultiMapConfig(multiMapConfig);
 
-        MultiMapConfig configOnCluster = getConfigurationService().getMultiMapConfig(mapName);
+        MultiMapConfig configOnCluster = getConfigurationService().getMultiMapConfig(name);
+        assertEquals(multiMapConfig.getName(), configOnCluster.getName());
+        assertEquals(multiMapConfig.getBackupCount(), configOnCluster.getBackupCount());
+        assertEquals(multiMapConfig.getAsyncBackupCount(), configOnCluster.getAsyncBackupCount());
+        assertEquals(multiMapConfig.isStatisticsEnabled(), configOnCluster.isStatisticsEnabled());
+        assertEquals(multiMapConfig.isBinary(), configOnCluster.isBinary());
+        assertEquals(multiMapConfig.getValueCollectionType(), configOnCluster.getValueCollectionType());
+        assertEquals(multiMapConfig.getEntryListenerConfigs().get(0),
+                configOnCluster.getEntryListenerConfigs().get(0));
+    }
+
+    // todo fails because MapListenerToEntryListenerAdapter is not serializable
+    @Test
+    public void testMultiMapConfig_whenEntryListenerConfigHasImplementation() {
+        MultiMapConfig multiMapConfig = new MultiMapConfig(name);
+        multiMapConfig.setBackupCount(4)
+                      .setAsyncBackupCount(2)
+                      .setStatisticsEnabled(true)
+                      .setBinary(true)
+                      .setValueCollectionType(LIST)
+                      .addEntryListenerConfig(
+                              new EntryListenerConfig(new SampleEntryListener(), true, false)
+                      );
+
+        driver.getConfig().addMultiMapConfig(multiMapConfig);
+
+        MultiMapConfig configOnCluster = getConfigurationService().getMultiMapConfig(name);
         assertEquals(multiMapConfig.getName(), configOnCluster.getName());
         assertEquals(multiMapConfig.getBackupCount(), configOnCluster.getBackupCount());
         assertEquals(multiMapConfig.getAsyncBackupCount(), configOnCluster.getAsyncBackupCount());
@@ -91,7 +128,6 @@ public class DynamicConfigTest extends HazelcastTestSupport {
 
     @Test
     public void testCardinalityEstimatorConfig() {
-        String name = randomString();
         CardinalityEstimatorConfig config = new CardinalityEstimatorConfig(name, 4 ,2);
 
         driver.getConfig().addCardinalityEstimatorConfig(config);
@@ -104,7 +140,6 @@ public class DynamicConfigTest extends HazelcastTestSupport {
 
     @Test
     public void testExecutorConfig() {
-        String name = randomString();
         ExecutorConfig config = new ExecutorConfig(name, 7);
         config.setStatisticsEnabled(true);
         config.setQueueCapacity(13);
@@ -120,7 +155,6 @@ public class DynamicConfigTest extends HazelcastTestSupport {
 
     @Test
     public void testDurableExecutorConfig() {
-        String name = randomString();
         DurableExecutorConfig config = new DurableExecutorConfig(name, 7, 3, 10);
 
         driver.getConfig().addDurableExecutorConfig(config);
@@ -134,7 +168,6 @@ public class DynamicConfigTest extends HazelcastTestSupport {
 
     @Test
     public void testScheduledExecutorConfig() {
-        String name = randomString();
         ScheduledExecutorConfig config = new ScheduledExecutorConfig(name, 2, 3, 10);
 
         driver.getConfig().addScheduledExecutorConfig(config);
@@ -146,7 +179,158 @@ public class DynamicConfigTest extends HazelcastTestSupport {
         assertEquals(config.getDurability(), configOnCluster.getDurability());
     }
 
+    @Test
+    public void testRingbufferConfig() {
+        RingbufferConfig config = getRingbufferConfig();
+
+        driver.getConfig().addRingBufferConfig(config);
+
+        RingbufferConfig configOnCluster = getConfigurationService().getRingbufferConfig(name);
+        assertRingbufferConfigCommons(config, configOnCluster);
+    }
+
+    @Test
+    public void testRingbufferConfig_whenConfiguredWithRingbufferStore_byClassName() {
+        RingbufferConfig config = getRingbufferConfig();
+        config.getRingbufferStoreConfig().setEnabled(true).setClassName("com.hazelcast.Foo");
+
+        driver.getConfig().addRingBufferConfig(config);
+
+        RingbufferConfig configOnCluster = getConfigurationService().getRingbufferConfig(name);
+        assertRingbufferConfigCommons(config, configOnCluster);
+        assertRingBufferStoreConfig(config.getRingbufferStoreConfig(), configOnCluster.getRingbufferStoreConfig());
+    }
+
+    @Test
+    public void testRingbufferConfig_whenConfiguredWithRingbufferStore_byFactoryClassName() {
+        RingbufferConfig config = getRingbufferConfig();
+        config.getRingbufferStoreConfig().setEnabled(true).setFactoryClassName("com.hazelcast.FactoryFoo");
+
+        driver.getConfig().addRingBufferConfig(config);
+
+        RingbufferConfig configOnCluster = getConfigurationService().getRingbufferConfig(name);
+        assertRingbufferConfigCommons(config, configOnCluster);
+        assertRingBufferStoreConfig(config.getRingbufferStoreConfig(), configOnCluster.getRingbufferStoreConfig());
+    }
+
+    @Test
+    public void testRingbufferConfig_whenConfiguredWithRingbufferStore_byStoreImplementation() {
+        RingbufferConfig config = getRingbufferConfig();
+        config.getRingbufferStoreConfig().setEnabled(true).setStoreImplementation(new SampleRingbufferStore());
+
+        driver.getConfig().addRingBufferConfig(config);
+
+        RingbufferConfig configOnCluster = getConfigurationService().getRingbufferConfig(name);
+        assertRingbufferConfigCommons(config, configOnCluster);
+        assertRingBufferStoreConfig(config.getRingbufferStoreConfig(), configOnCluster.getRingbufferStoreConfig());
+    }
+
+    @Test
+    public void testRingbufferConfig_whenConfiguredWithRingbufferStore_byFactoryImplementation() {
+        RingbufferConfig config = getRingbufferConfig();
+        config.getRingbufferStoreConfig().setEnabled(true).setFactoryImplementation(new SampleRingbufferStoreFactory());
+
+        driver.getConfig().addRingBufferConfig(config);
+
+        RingbufferConfig configOnCluster = getConfigurationService().getRingbufferConfig(name);
+        assertRingbufferConfigCommons(config, configOnCluster);
+        assertRingBufferStoreConfig(config.getRingbufferStoreConfig(), configOnCluster.getRingbufferStoreConfig());
+    }
+
+    private void assertRingBufferStoreConfig(RingbufferStoreConfig config, RingbufferStoreConfig configOnCluster) {
+        assertEquals(config.getClassName(),
+                configOnCluster.getClassName());
+        assertEquals(config.getFactoryClassName(),
+                configOnCluster.getFactoryClassName());
+        assertEquals(config.getStoreImplementation(),
+                configOnCluster.getStoreImplementation());
+        assertEquals(config.getFactoryImplementation(),
+                configOnCluster.getFactoryImplementation());
+        assertEquals(config.isEnabled(),
+                configOnCluster.isEnabled());
+        assertPropertiesEqual(config.getProperties(),
+                configOnCluster.getProperties());
+    }
+
     private ConfigurationService getConfigurationService() {
         return getNodeEngineImpl(members[members.length - 1]).getConfigurationService();
+    }
+
+    private RingbufferConfig getRingbufferConfig() {
+        RingbufferConfig config = new RingbufferConfig(name);
+        config.setTimeToLiveSeconds(59);
+        config.setInMemoryFormat(InMemoryFormat.OBJECT);
+        config.setCapacity(33);
+        config.setBackupCount(4);
+        config.setAsyncBackupCount(2);
+        return config;
+    }
+
+    private void assertRingbufferConfigCommons(RingbufferConfig config, RingbufferConfig configOnCluster) {
+        assertEquals(config.getName(), configOnCluster.getName());
+        assertEquals(config.getAsyncBackupCount(), configOnCluster.getAsyncBackupCount());
+        assertEquals(config.getBackupCount(), configOnCluster.getBackupCount());
+        assertEquals(config.getCapacity(), configOnCluster.getCapacity());
+        assertEquals(config.getInMemoryFormat(), configOnCluster.getInMemoryFormat());
+        assertEquals(config.getTimeToLiveSeconds(), configOnCluster.getTimeToLiveSeconds());
+    }
+
+    private void assertPropertiesEqual(Properties expected, Properties actual) {
+        if (expected == null) {
+            assertNull(actual);
+        }
+
+        for (String key : expected.stringPropertyNames()) {
+            assertEquals(expected.getProperty(key), actual.getProperty(key));
+        }
+    }
+
+    public static class SampleEntryListener implements EntryAddedListener, Serializable {
+
+        @Override
+        public void entryAdded(EntryEvent event) {
+        }
+    }
+
+    public static class SampleRingbufferStore implements RingbufferStore, Serializable {
+        @Override
+        public void store(long sequence, Object data) {
+        }
+
+        @Override
+        public void storeAll(long firstItemSequence, Object[] items) {
+        }
+
+        @Override
+        public Object load(long sequence) {
+            return null;
+        }
+
+        @Override
+        public long getLargestSequence() {
+            return 0;
+        }
+
+        @Override
+        public int hashCode() {
+            return 33;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj instanceof SampleRingbufferStore);
+        }
+    }
+
+    public static class SampleRingbufferStoreFactory implements RingbufferStoreFactory, Serializable {
+        @Override
+        public RingbufferStore newRingbufferStore(String name, Properties properties) {
+            return null;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj instanceof SampleRingbufferStoreFactory);
+        }
     }
 }

@@ -21,8 +21,10 @@ import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddCardinalityEstim
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddDurableExecutorConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddExecutorConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddMultiMapConfigCodec;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddRingbufferConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddScheduledExecutorConfigCodec;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.EntryListenerConfigHolder;
+import com.hazelcast.client.impl.protocol.task.dynamicconfig.RingbufferStoreConfigHolder;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
 import com.hazelcast.config.CacheSimpleConfig;
@@ -50,6 +52,7 @@ import com.hazelcast.config.QuorumConfig;
 import com.hazelcast.config.ReliableTopicConfig;
 import com.hazelcast.config.ReplicatedMapConfig;
 import com.hazelcast.config.RingbufferConfig;
+import com.hazelcast.config.RingbufferStoreConfig;
 import com.hazelcast.config.ScheduledExecutorConfig;
 import com.hazelcast.config.SecurityConfig;
 import com.hazelcast.config.SemaphoreConfig;
@@ -141,7 +144,18 @@ public class DynamicClusterConfig extends Config {
 
     @Override
     public Config addRingBufferConfig(RingbufferConfig ringbufferConfig) {
-        return super.addRingBufferConfig(ringbufferConfig);
+        RingbufferStoreConfigHolder ringbufferStoreConfig = null;
+        if (ringbufferConfig.getRingbufferStoreConfig() != null &&
+                ringbufferConfig.getRingbufferStoreConfig().isEnabled()) {
+            RingbufferStoreConfig storeConfig = ringbufferConfig.getRingbufferStoreConfig();
+            ringbufferStoreConfig = RingbufferStoreConfigHolder.of(storeConfig, instance.getSerializationService());
+        }
+        ClientMessage request = DynamicConfigAddRingbufferConfigCodec.encodeRequest(
+                ringbufferConfig.getName(), ringbufferConfig.getCapacity(), ringbufferConfig.getBackupCount(),
+                ringbufferConfig.getAsyncBackupCount(), ringbufferConfig.getTimeToLiveSeconds(),
+                ringbufferConfig.getInMemoryFormat().name(), ringbufferStoreConfig);
+        invoke(request);
+        return this;
     }
 
     @Override

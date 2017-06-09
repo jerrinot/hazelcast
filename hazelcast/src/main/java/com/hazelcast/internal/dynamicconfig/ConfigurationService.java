@@ -1,12 +1,10 @@
 package com.hazelcast.internal.dynamicconfig;
 
-import com.hazelcast.cardinality.CardinalityEstimator;
 import com.hazelcast.config.CardinalityEstimatorConfig;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.ListConfig;
-import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.config.LockConfig;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MultiMapConfig;
@@ -28,17 +26,13 @@ import com.hazelcast.spi.PartitionReplicationEvent;
 import com.hazelcast.spi.PostJoinAwareService;
 import com.hazelcast.version.Version;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static com.hazelcast.internal.cluster.Versions.V3_8;
 import static com.hazelcast.util.InvocationUtil.invokeOnStableCluster;
-import static java.util.Collections.newSetFromMap;
 
 public class ConfigurationService implements PostJoinAwareService, MigrationAwareService,
         CoreService, ClusterVersionListener, ManagedService {
@@ -157,6 +151,18 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
         }
         if (config == null) {
             config = staticConfig.getSemaphoreConfig(name);
+        }
+        return config;
+    }
+
+    public RingbufferConfig getRingbufferConfig(String name) {
+        Map<String, RingbufferConfig> staticConfigs = staticConfig.getRingbufferConfigs();
+        RingbufferConfig config = Config.lookupByPattern(staticConfigs, name);
+        if (config == null) {
+            config = ringbufferConfigs.get(name);
+        }
+        if (config == null) {
+            config = staticConfig.getRingbufferConfig(name);
         }
         return config;
     }
