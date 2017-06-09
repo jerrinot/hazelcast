@@ -20,6 +20,7 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddCardinalityEstimatorConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddDurableExecutorConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddExecutorConfigCodec;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddLockConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddMultiMapConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddRingbufferConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddScheduledExecutorConfigCodec;
@@ -103,7 +104,9 @@ public class DynamicClusterConfig extends Config {
 
     @Override
     public Config addLockConfig(LockConfig lockConfig) {
-        return super.addLockConfig(lockConfig);
+        ClientMessage request = DynamicConfigAddLockConfigCodec.encodeRequest(lockConfig.getName(), lockConfig.getQuorumName());
+        invoke(request);
+        return this;
     }
 
     @Override

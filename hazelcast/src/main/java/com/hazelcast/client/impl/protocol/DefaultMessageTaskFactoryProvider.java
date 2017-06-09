@@ -23,6 +23,7 @@ import com.hazelcast.client.impl.protocol.task.cardinality.CardinalityEstimatorE
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddCardinalityEstimatorConfigMessageTask;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddDurableExecutorConfigMessageTask;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddExecutorConfigMessageTask;
+import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddLockConfigMessageTask;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddMultiMapConfigMessageTask;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddRingbufferConfigMessageTask;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.AddScheduledExecutorConfigMessageTask;
@@ -1942,6 +1943,11 @@ public class DefaultMessageTaskFactoryProvider implements MessageTaskFactoryProv
         factories[com.hazelcast.client.impl.protocol.codec.DynamicConfigAddRingbufferConfigCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
             public MessageTask create(ClientMessage clientMessage, Connection connection) {
                 return new AddRingbufferConfigMessageTask(clientMessage, node, connection);
+            }
+        };
+        factories[com.hazelcast.client.impl.protocol.codec.DynamicConfigAddLockConfigCodec.RequestParameters.TYPE.id()] = new MessageTaskFactory() {
+            public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                return new AddLockConfigMessageTask(clientMessage, node, connection);
             }
         };
 //endregion

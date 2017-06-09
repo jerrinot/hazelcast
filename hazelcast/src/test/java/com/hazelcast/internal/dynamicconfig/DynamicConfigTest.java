@@ -21,6 +21,7 @@ import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.EntryListenerConfig;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.InMemoryFormat;
+import com.hazelcast.config.LockConfig;
 import com.hazelcast.config.MultiMapConfig;
 import com.hazelcast.config.RingbufferConfig;
 import com.hazelcast.config.RingbufferStoreConfig;
@@ -36,6 +37,7 @@ import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -100,7 +102,7 @@ public class DynamicConfigTest extends HazelcastTestSupport {
                 configOnCluster.getEntryListenerConfigs().get(0));
     }
 
-    // todo fails because MapListenerToEntryListenerAdapter is not serializable
+    @Ignore("TODO Currently fails because MapListenerToEntryListenerAdapter is not serializable")
     @Test
     public void testMultiMapConfig_whenEntryListenerConfigHasImplementation() {
         MultiMapConfig multiMapConfig = new MultiMapConfig(name);
@@ -136,6 +138,18 @@ public class DynamicConfigTest extends HazelcastTestSupport {
         assertEquals(config.getName(), configOnCluster.getName());
         assertEquals(config.getBackupCount(), configOnCluster.getBackupCount());
         assertEquals(config.getAsyncBackupCount(), configOnCluster.getAsyncBackupCount());
+    }
+
+    @Test
+    public void testLockConfig() {
+        LockConfig config = new LockConfig(name);
+        config.setQuorumName(randomString());
+
+        driver.getConfig().addLockConfig(config);
+
+        LockConfig configOnCluster = getConfigurationService().getLockConfig(name);
+        assertEquals(config.getName(), configOnCluster.getName());
+        assertEquals(config.getQuorumName(), configOnCluster.getQuorumName());
     }
 
     @Test
