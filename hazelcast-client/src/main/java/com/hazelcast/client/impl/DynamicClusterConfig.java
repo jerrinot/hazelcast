@@ -24,6 +24,7 @@ import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddListConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddListenerConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddLockConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddMultiMapConfigCodec;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddQueueConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddReplicatedMapConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddRingbufferConfigCodec;
 import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddScheduledExecutorConfigCodec;
@@ -32,6 +33,7 @@ import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddTopicConfigCodec
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.EntryListenerConfigHolder;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.ItemListenerConfigHolder;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.ListenerConfigHolder;
+import com.hazelcast.client.impl.protocol.task.dynamicconfig.QueueStoreConfigHolder;
 import com.hazelcast.client.impl.protocol.task.dynamicconfig.RingbufferStoreConfigHolder;
 import com.hazelcast.client.spi.impl.ClientInvocation;
 import com.hazelcast.client.spi.impl.ClientInvocationFuture;
@@ -110,7 +112,15 @@ public class DynamicClusterConfig extends Config {
 
     @Override
     public Config addQueueConfig(QueueConfig queueConfig) {
-        return super.addQueueConfig(queueConfig);
+        List<ItemListenerConfigHolder> listenerConfigs = adaptItemListenerConfigs(queueConfig.getItemListenerConfigs());
+        QueueStoreConfigHolder queueStoreConfigHolder = QueueStoreConfigHolder.of(queueConfig.getQueueStoreConfig(),
+                serializationService);
+        ClientMessage request = DynamicConfigAddQueueConfigCodec.encodeRequest(queueConfig.getName(), listenerConfigs,
+                queueConfig.getBackupCount(), queueConfig.getAsyncBackupCount(), queueConfig.getMaxSize(),
+                queueConfig.getEmptyQueueTtl(), queueConfig.isStatisticsEnabled(), queueConfig.getQuorumName(),
+                queueStoreConfigHolder);
+        invoke(request);
+        return this;
     }
 
     @Override
@@ -250,7 +260,7 @@ public class DynamicClusterConfig extends Config {
 
     @Override
     public Config addJobTrackerConfig(JobTrackerConfig jobTrackerConfig) {
-        return super.addJobTrackerConfig(jobTrackerConfig);
+        throw new UnsupportedOperationException("JobTracker is deprecated and will be removed in Hazelcast 4.0");
     }
 
     @Override
@@ -900,7 +910,7 @@ public class DynamicClusterConfig extends Config {
 
     private List<ItemListenerConfigHolder> adaptItemListenerConfigs(List<ItemListenerConfig> listenerConfigs) {
         List<ItemListenerConfigHolder> listenerConfigHolders = null;
-        if (!listenerConfigs.isEmpty()) {
+        if (listenerConfigs != null && !listenerConfigs.isEmpty()) {
             listenerConfigHolders = new ArrayList<ItemListenerConfigHolder>();
             for (ItemListenerConfig listenerConfig : listenerConfigs) {
                 listenerConfigHolders.add(ItemListenerConfigHolder.of(listenerConfig, instance.getSerializationService()));
