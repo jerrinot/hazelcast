@@ -60,4 +60,13 @@ public class ListenerConfigHolder {
             throw new IllegalArgumentException("One of class name or listener implementation must be not null");
         }
     }
+
+    public static ListenerConfigHolder of(ListenerConfig config, SerializationService serializationService) {
+        if (config.getClassName() != null) {
+            return new ListenerConfigHolder(config.getClassName());
+        } else {
+            Data implementationData = serializationService.toData(config.getImplementation());
+            return  new ListenerConfigHolder(implementationData);
+        }
+    }
 }

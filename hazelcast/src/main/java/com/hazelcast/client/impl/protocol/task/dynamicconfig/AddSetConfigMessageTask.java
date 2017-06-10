@@ -17,9 +17,9 @@
 package com.hazelcast.client.impl.protocol.task.dynamicconfig;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddListConfigCodec;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddSetConfigCodec;
 import com.hazelcast.config.ItemListenerConfig;
-import com.hazelcast.config.ListConfig;
+import com.hazelcast.config.SetConfig;
 import com.hazelcast.instance.Node;
 import com.hazelcast.internal.dynamicconfig.AddDynamicConfigOperationFactory;
 import com.hazelcast.nio.Connection;
@@ -27,26 +27,26 @@ import com.hazelcast.spi.OperationFactory;
 
 import java.util.List;
 
-public class AddListConfigMessageTask
-        extends AbstractAddConfigMessageTask<DynamicConfigAddListConfigCodec.RequestParameters> {
+public class AddSetConfigMessageTask
+        extends AbstractAddConfigMessageTask<DynamicConfigAddSetConfigCodec.RequestParameters> {
 
-    public AddListConfigMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public AddSetConfigMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
-    protected DynamicConfigAddListConfigCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
-        return DynamicConfigAddListConfigCodec.decodeRequest(clientMessage);
+    protected DynamicConfigAddSetConfigCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return DynamicConfigAddSetConfigCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return DynamicConfigAddListConfigCodec.encodeResponse();
+        return DynamicConfigAddSetConfigCodec.encodeResponse();
     }
 
     @Override
     protected OperationFactory getOperationFactory() {
-        ListConfig config = new ListConfig(parameters.name);
+        SetConfig config = new SetConfig(parameters.name);
         config.setAsyncBackupCount(parameters.asyncBackupCount);
         config.setBackupCount(parameters.backupCount);
         config.setMaxSize(parameters.maxSize);

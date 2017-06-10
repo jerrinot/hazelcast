@@ -17,44 +17,50 @@
 package com.hazelcast.client.impl.protocol.task.dynamicconfig;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddListConfigCodec;
-import com.hazelcast.config.ItemListenerConfig;
-import com.hazelcast.config.ListConfig;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddReplicatedMapConfigCodec;
+import com.hazelcast.config.InMemoryFormat;
+import com.hazelcast.config.ListenerConfig;
+import com.hazelcast.config.ReplicatedMapConfig;
 import com.hazelcast.instance.Node;
 import com.hazelcast.internal.dynamicconfig.AddDynamicConfigOperationFactory;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.spi.OperationFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class AddListConfigMessageTask
-        extends AbstractAddConfigMessageTask<DynamicConfigAddListConfigCodec.RequestParameters> {
+public class AddReplicatedMapConfigMessageTask
+        extends AbstractAddConfigMessageTask<DynamicConfigAddReplicatedMapConfigCodec.RequestParameters> {
 
-    public AddListConfigMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public AddReplicatedMapConfigMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
-    protected DynamicConfigAddListConfigCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
-        return DynamicConfigAddListConfigCodec.decodeRequest(clientMessage);
+    protected DynamicConfigAddReplicatedMapConfigCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return DynamicConfigAddReplicatedMapConfigCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return DynamicConfigAddListConfigCodec.encodeResponse();
+        return DynamicConfigAddReplicatedMapConfigCodec.encodeResponse();
     }
 
     @Override
     protected OperationFactory getOperationFactory() {
-        ListConfig config = new ListConfig(parameters.name);
-        config.setAsyncBackupCount(parameters.asyncBackupCount);
-        config.setBackupCount(parameters.backupCount);
-        config.setMaxSize(parameters.maxSize);
+        ReplicatedMapConfig config = new ReplicatedMapConfig(parameters.name);
+        config.setAsyncFillup(parameters.asyncFillup);
+        config.setInMemoryFormat(InMemoryFormat.valueOf(parameters.inMemoryFormat));
+        config.setMergePolicy(parameters.mergePolicy);
         config.setStatisticsEnabled(parameters.statisticsEnabled);
         if (parameters.listenerConfigs != null && !parameters.listenerConfigs.isEmpty()) {
-            List<ItemListenerConfig> itemListenerConfigs = adaptItemListenerConfigs(parameters.listenerConfigs);
-            config.setItemListenerConfigs(itemListenerConfigs);
+            // todo handle listenerConfigs / entryListenerConfigs here?
         }
         return new AddDynamicConfigOperationFactory(config);
+    }
+
+    @Override
+    public Object[] getParameters() {
+        return new Object[0];
     }
 }

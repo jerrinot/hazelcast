@@ -20,6 +20,8 @@ import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.MapSizeCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractCallableMessageTask;
 import com.hazelcast.client.impl.protocol.task.AbstractMessageTask;
+import com.hazelcast.config.ItemListenerConfig;
+import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.instance.Node;
 import com.hazelcast.internal.dynamicconfig.ConfigurationService;
 import com.hazelcast.nio.Connection;
@@ -27,6 +29,8 @@ import com.hazelcast.spi.OperationFactory;
 import com.hazelcast.util.InvocationUtil;
 
 import java.security.Permission;
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.hazelcast.internal.dynamicconfig.ConfigurationService.CONFIG_PUBLISH_MAX_ATTEMPT_COUNT;
 
@@ -77,5 +81,27 @@ public abstract class AbstractAddConfigMessageTask<P> extends AbstractCallableMe
 
     protected abstract OperationFactory getOperationFactory();
 
+    protected List<ListenerConfig> adaptListenerConfigs(List<ListenerConfigHolder> listenerConfigHolders) {
+        if (listenerConfigHolders == null || listenerConfigHolders.isEmpty()) {
+            return null;
+        }
 
+        List<ListenerConfig> itemListenerConfigs = new ArrayList<ListenerConfig>();
+        for (ListenerConfigHolder listenerConfigHolder : listenerConfigHolders) {
+            itemListenerConfigs.add(listenerConfigHolder.asListenerConfig(serializationService));
+        }
+        return itemListenerConfigs;
+    }
+
+    protected List<ItemListenerConfig> adaptItemListenerConfigs(List<ItemListenerConfigHolder> configHolders) {
+        if (configHolders == null || configHolders.isEmpty()) {
+            return null;
+        }
+
+        List<ItemListenerConfig> itemListenerConfigs = new ArrayList<ItemListenerConfig>(configHolders.size());
+        for (ItemListenerConfigHolder listenerConfigHolder : configHolders) {
+            itemListenerConfigs.add(listenerConfigHolder.asItemListenerConfig(serializationService));
+        }
+        return itemListenerConfigs;
+    }
 }

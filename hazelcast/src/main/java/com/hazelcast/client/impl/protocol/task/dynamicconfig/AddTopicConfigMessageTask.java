@@ -17,43 +17,41 @@
 package com.hazelcast.client.impl.protocol.task.dynamicconfig;
 
 import com.hazelcast.client.impl.protocol.ClientMessage;
-import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddListConfigCodec;
-import com.hazelcast.config.ItemListenerConfig;
-import com.hazelcast.config.ListConfig;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddSemaphoreConfigCodec;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddSetConfigCodec;
+import com.hazelcast.client.impl.protocol.codec.DynamicConfigAddTopicConfigCodec;
+import com.hazelcast.config.SemaphoreConfig;
+import com.hazelcast.config.TopicConfig;
 import com.hazelcast.instance.Node;
 import com.hazelcast.internal.dynamicconfig.AddDynamicConfigOperationFactory;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.spi.OperationFactory;
 
-import java.util.List;
+public class AddTopicConfigMessageTask
+        extends AbstractAddConfigMessageTask<DynamicConfigAddTopicConfigCodec.RequestParameters> {
 
-public class AddListConfigMessageTask
-        extends AbstractAddConfigMessageTask<DynamicConfigAddListConfigCodec.RequestParameters> {
-
-    public AddListConfigMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
+    public AddTopicConfigMessageTask(ClientMessage clientMessage, Node node, Connection connection) {
         super(clientMessage, node, connection);
     }
 
     @Override
-    protected DynamicConfigAddListConfigCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
-        return DynamicConfigAddListConfigCodec.decodeRequest(clientMessage);
+    protected DynamicConfigAddTopicConfigCodec.RequestParameters decodeClientMessage(ClientMessage clientMessage) {
+        return DynamicConfigAddTopicConfigCodec.decodeRequest(clientMessage);
     }
 
     @Override
     protected ClientMessage encodeResponse(Object response) {
-        return DynamicConfigAddListConfigCodec.encodeResponse();
+        return DynamicConfigAddTopicConfigCodec.encodeResponse();
     }
 
     @Override
     protected OperationFactory getOperationFactory() {
-        ListConfig config = new ListConfig(parameters.name);
-        config.setAsyncBackupCount(parameters.asyncBackupCount);
-        config.setBackupCount(parameters.backupCount);
-        config.setMaxSize(parameters.maxSize);
+        TopicConfig config = new TopicConfig(parameters.name);
+        config.setGlobalOrderingEnabled(parameters.globalOrderingEnabled);
+        config.setMultiThreadingEnabled(parameters.multiThreadingEnabled);
         config.setStatisticsEnabled(parameters.statisticsEnabled);
         if (parameters.listenerConfigs != null && !parameters.listenerConfigs.isEmpty()) {
-            List<ItemListenerConfig> itemListenerConfigs = adaptItemListenerConfigs(parameters.listenerConfigs);
-            config.setItemListenerConfigs(itemListenerConfigs);
+            config.setMessageListenerConfigs(adaptListenerConfigs(parameters.listenerConfigs));
         }
         return new AddDynamicConfigOperationFactory(config);
     }
