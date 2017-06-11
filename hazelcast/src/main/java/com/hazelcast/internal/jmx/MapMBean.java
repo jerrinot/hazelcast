@@ -200,7 +200,6 @@ public class MapMBean extends HazelcastMBean<IMap> {
     @ManagedAnnotation("config")
     @ManagedDescription("MapConfig")
     public String getConfig() {
-        //todo: take dynamic config into consideration
         return service.instance.node.nodeEngine.getConfigurationService().getMapConfig(managedObject.getName()).toString();
     }
 

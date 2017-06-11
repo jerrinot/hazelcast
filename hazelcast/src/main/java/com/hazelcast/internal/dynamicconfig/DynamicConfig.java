@@ -382,7 +382,8 @@ public class DynamicConfig extends Config {
 
     @Override
     public Config addTopicConfig(TopicConfig topicConfig) {
-        return delegate.addTopicConfig(topicConfig);
+        configurationService.broadcastConfig(topicConfig);
+        return this;
     }
 
     @Override

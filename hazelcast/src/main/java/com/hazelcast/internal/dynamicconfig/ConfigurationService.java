@@ -92,6 +92,18 @@ public class ConfigurationService implements MigrationAwareService,
         return mapConfig;
     }
 
+    public TopicConfig getTopicConfig(String name) {
+        Map<String, TopicConfig> staticMapConfigs = staticConfig.getTopicConfigs();
+        TopicConfig topicConfig = Config.lookupByPattern(staticMapConfigs, name);
+        if (topicConfig == null) {
+            topicConfig = topicConfigs.get(name);
+        }
+        if (topicConfig == null) {
+            topicConfig = staticConfig.getTopicConfig(name);
+        }
+        return topicConfig;
+    }
+
     public CardinalityEstimatorConfig getCardinalityEstimatorConfig(String name) {
         Map<String, CardinalityEstimatorConfig> staticConfigs = staticConfig.getCardinalityEstimatorConfigs();
         CardinalityEstimatorConfig config = Config.lookupByPattern(staticConfigs, name);

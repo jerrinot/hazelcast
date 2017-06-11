@@ -227,7 +227,7 @@ public class TimedMemberStateFactory {
                 } else if (service instanceof QueueService) {
                     count = handleQueue(memberState, count, config, ((QueueService) service).getStats(), longInstanceNames);
                 } else if (service instanceof TopicService) {
-                    count = handleTopic(memberState, count, config, ((TopicService) service).getStats(), longInstanceNames);
+                    count = handleTopic(memberState, count, configurationService, ((TopicService) service).getStats(), longInstanceNames);
                 } else if (service instanceof DistributedExecutorService) {
                     count = handleExecutorService(memberState, count, config,
                             ((DistributedExecutorService) service).getStats(), longInstanceNames);
@@ -310,13 +310,13 @@ public class TimedMemberStateFactory {
         return count;
     }
 
-    private int handleTopic(MemberStateImpl memberState, int count, Config config, Map<String, LocalTopicStats> topics,
-                            Set<String> longInstanceNames) {
+    private int handleTopic(MemberStateImpl memberState, int count, ConfigurationService configurationService,
+                            Map<String, LocalTopicStats> topics, Set<String> longInstanceNames) {
         for (Map.Entry<String, LocalTopicStats> entry : topics.entrySet()) {
             String name = entry.getKey();
             if (count >= maxVisibleInstanceCount) {
                 break;
-            } else if (config.findTopicConfig(name).isStatisticsEnabled()) {
+            } else if (configurationService.getTopicConfig(name).isStatisticsEnabled()) {
                 LocalTopicStats stats = entry.getValue();
                 memberState.putLocalTopicStats(name, stats);
                 longInstanceNames.add("t:" + name);
