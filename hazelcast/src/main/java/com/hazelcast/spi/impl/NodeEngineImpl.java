@@ -36,6 +36,7 @@ import com.hazelcast.internal.diagnostics.SlowOperationPlugin;
 import com.hazelcast.internal.diagnostics.StoreLatencyPlugin;
 import com.hazelcast.internal.diagnostics.SystemLogPlugin;
 import com.hazelcast.internal.diagnostics.SystemPropertiesPlugin;
+import com.hazelcast.internal.dynamicconfig.DynamicConfigListener;
 import com.hazelcast.internal.management.ManagementCenterService;
 import com.hazelcast.internal.metrics.MetricsRegistry;
 import com.hazelcast.internal.metrics.ProbeLevel;
@@ -137,7 +138,8 @@ public class NodeEngineImpl implements NodeEngine {
         this.eventService = new EventServiceImpl(this);
         this.operationParker = new OperationParkerImpl(this);
         this.userCodeDeploymentService = new UserCodeDeploymentService();
-        this.configurationService = new ConfigurationService(this);
+        DynamicConfigListener dynamicConfigListener = node.getNodeExtension().createDynamicConfigListener();
+        this.configurationService = new ConfigurationService(this, dynamicConfigListener);
         ClassLoader configClassLoader = node.getConfigClassLoader();
         if (configClassLoader instanceof UserCodeDeploymentClassLoader) {
             ((UserCodeDeploymentClassLoader) configClassLoader).setUserCodeDeploymentService(userCodeDeploymentService);

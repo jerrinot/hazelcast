@@ -23,7 +23,6 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.PartitionMigrationEvent;
 import com.hazelcast.spi.PartitionReplicationEvent;
-import com.hazelcast.spi.PostJoinAwareService;
 import com.hazelcast.version.Version;
 
 import java.util.Map;
@@ -34,10 +33,12 @@ import java.util.concurrent.ConcurrentMap;
 import static com.hazelcast.internal.cluster.Versions.V3_8;
 import static com.hazelcast.util.InvocationUtil.invokeOnStableCluster;
 
-public class ConfigurationService implements PostJoinAwareService, MigrationAwareService,
+public class ConfigurationService implements MigrationAwareService,
         CoreService, ClusterVersionListener, ManagedService {
     public static final String SERVICE_NAME = "configuration-service";
     public static final int CONFIG_PUBLISH_MAX_ATTEMPT_COUNT = 100;
+    
+    private final DynamicConfigListener listener;
 
     private NodeEngine nodeEngine;
     private ConcurrentMap<String, MultiMapConfig> multiMapConfigs = new ConcurrentHashMap<String, MultiMapConfig>();
@@ -61,14 +62,10 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
     private Config staticConfig;
     private volatile Version version;
 
-    public ConfigurationService(NodeEngine nodeEngine) {
+    public ConfigurationService(NodeEngine nodeEngine, DynamicConfigListener dynamicConfigListener) {
         this.nodeEngine = nodeEngine;
         this.staticConfig = nodeEngine.getConfig();
-    }
-
-    @Override
-    public Operation getPostJoinOperation() {
-        return null;
+        this.listener = dynamicConfigListener;
     }
 
     public MultiMapConfig getMultiMapConfig(String name) {
@@ -197,7 +194,10 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
             multiMapConfigs.putIfAbsent(multiMapConfig.getName(), multiMapConfig);
         } else if (config instanceof MapConfig) {
             MapConfig mapConfig = (MapConfig) config;
-            mapConfigs.putIfAbsent(mapConfig.getName(), mapConfig);
+            MapConfig previousConfig = mapConfigs.putIfAbsent(mapConfig.getName(), mapConfig);
+            if (previousConfig == null) {
+                listener.onConfigRegistered(mapConfig);
+            }
         } else if (config instanceof CardinalityEstimatorConfig) {
             CardinalityEstimatorConfig cardinalityEstimatorConfig = (CardinalityEstimatorConfig) config;
             cardinalityEstimatorConfigs.putIfAbsent(cardinalityEstimatorConfig.getName(), cardinalityEstimatorConfig);
@@ -271,7 +271,7 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
-        //no-op
+        listener.onServiceInitialized(this);
     }
 
     @Override
@@ -283,4 +283,5 @@ public class ConfigurationService implements PostJoinAwareService, MigrationAwar
     public void shutdown(boolean terminate) {
         //no-op
     }
+
 }
