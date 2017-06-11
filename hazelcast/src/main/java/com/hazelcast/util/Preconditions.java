@@ -16,6 +16,7 @@
 
 package com.hazelcast.util;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -319,6 +320,12 @@ public final class Preconditions {
     public static void checkState(boolean condition, String message) throws IllegalStateException {
         if (!condition) {
             throw new IllegalStateException(message);
+        }
+    }
+
+    public static void checkNotEmpty(Collection<?> collection, String message) {
+        if (collection.isEmpty()) {
+            throw new IllegalArgumentException(message);
         }
     }
 }
