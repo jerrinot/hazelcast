@@ -229,7 +229,7 @@ public class TimedMemberStateFactory {
                 } else if (service instanceof TopicService) {
                     count = handleTopic(memberState, count, configurationService, ((TopicService) service).getStats(), longInstanceNames);
                 } else if (service instanceof DistributedExecutorService) {
-                    count = handleExecutorService(memberState, count, config,
+                    count = handleExecutorService(memberState, count, configurationService,
                             ((DistributedExecutorService) service).getStats(), longInstanceNames);
                 } else if (service instanceof ReplicatedMapService) {
                     count = handleReplicatedMap(memberState, count, config, ((ReplicatedMapService) service).getStats(),
@@ -260,7 +260,7 @@ public class TimedMemberStateFactory {
         timedMemberState.setInstanceNames(longInstanceNames);
     }
 
-    private int handleExecutorService(MemberStateImpl memberState, int count, Config config,
+    private int handleExecutorService(MemberStateImpl memberState, int count, ConfigurationService configurationService,
                                       Map<String, LocalExecutorStats> executorServices,
                                       Set<String> longInstanceNames) {
 
@@ -268,7 +268,7 @@ public class TimedMemberStateFactory {
             String name = entry.getKey();
             if (count >= maxVisibleInstanceCount) {
                 break;
-            } else if (config.findExecutorConfig(name).isStatisticsEnabled()) {
+            } else if (configurationService.getExecutorConfig(name).isStatisticsEnabled()) {
                 LocalExecutorStats stats = entry.getValue();
                 memberState.putLocalExecutorStats(name, stats);
                 longInstanceNames.add("e:" + name);

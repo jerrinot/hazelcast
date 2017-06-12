@@ -463,7 +463,8 @@ public class DynamicConfig extends Config {
 
     @Override
     public Config addExecutorConfig(ExecutorConfig executorConfig) {
-        return delegate.addExecutorConfig(executorConfig);
+        configurationService.broadcastConfig(executorConfig);
+        return this;
     }
 
     @Override
