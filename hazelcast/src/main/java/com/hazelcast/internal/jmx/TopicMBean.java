@@ -19,7 +19,6 @@ package com.hazelcast.internal.jmx;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.core.ITopic;
-import com.hazelcast.internal.dynamicconfig.ConfigurationService;
 
 /**
  * Management bean for {@link com.hazelcast.core.ITopic}
@@ -58,8 +57,8 @@ public class TopicMBean extends HazelcastMBean<ITopic> {
 
     @ManagedAnnotation("config")
     public String getConfig() {
-        ConfigurationService configurationService = service.instance.node.nodeEngine.getConfigurationService();
-        TopicConfig topicConfig = configurationService.getTopicConfig(managedObject.getName());
+        Config config = service.instance.getConfig();
+        TopicConfig topicConfig = config.getTopicConfig(managedObject.getName());
         return topicConfig.toString();
     }
 }

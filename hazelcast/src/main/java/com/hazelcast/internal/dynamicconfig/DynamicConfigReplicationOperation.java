@@ -1,15 +1,12 @@
 package com.hazelcast.internal.dynamicconfig;
 
 import com.hazelcast.config.ConfigDataSerializerHook;
-import com.hazelcast.config.MultiMapConfig;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
-import com.hazelcast.spi.Operation;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +28,7 @@ public class DynamicConfigReplicationOperation extends AbstractDynamicConfigOper
 
     @Override
     public void run() throws Exception {
-        ConfigurationService service = getService();
+        ClusterWideConfigurationService service = getService();
         for (IdentifiedDataSerializable multiMapConfig : configs) {
             service.registerLocally(multiMapConfig);
         }

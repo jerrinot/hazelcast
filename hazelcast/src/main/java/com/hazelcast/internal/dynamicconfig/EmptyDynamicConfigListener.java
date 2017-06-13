@@ -15,7 +15,7 @@ public class EmptyDynamicConfigListener implements DynamicConfigListener {
     }
 
     @Override
-    public void onServiceInitialized(ConfigurationService configurationService) {
+    public void onServiceInitialized(ClusterWideConfigurationService configurationService) {
         //intentionally no-op
     }
 }

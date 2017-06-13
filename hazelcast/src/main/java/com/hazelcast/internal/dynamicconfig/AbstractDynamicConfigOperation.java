@@ -29,6 +29,6 @@ public abstract class AbstractDynamicConfigOperation extends Operation implement
 
     @Override
     public String getServiceName() {
-        return ConfigurationService.SERVICE_NAME;
+        return ClusterWideConfigurationService.SERVICE_NAME;
     }
 }

@@ -21,7 +21,7 @@ public class AddDynamicConfigOperation extends AbstractDynamicConfigOperation {
 
     @Override
     public void run() throws Exception {
-        ConfigurationService service = getService();
+        ClusterWideConfigurationService service = getService();
         service.registerLocally(config);
     }
 
