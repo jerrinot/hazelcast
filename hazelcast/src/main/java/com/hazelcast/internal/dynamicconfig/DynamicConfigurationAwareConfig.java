@@ -152,7 +152,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public MapConfig findMapConfig(String name) {
-        return getMapConfigInternal(name, "default");
+        return getMapConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -192,7 +192,12 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public CacheSimpleConfig findCacheConfig(String name) {
-        return getCacheConfigInternal(name, "default");
+        //intentional: as of Hazelcast 3.x we do not use default for JCache!
+        CacheSimpleConfig cacheConfig = getCacheConfigInternal(name, null);
+        if (cacheConfig == null) {
+            return null;
+        }
+        return cacheConfig.getAsReadOnly();
     }
 
     @Override
@@ -206,7 +211,7 @@ public class DynamicConfigurationAwareConfig extends Config {
         if (cacheSimpleConfig == null) {
             cacheSimpleConfig = configurationService.getCacheConfig(name);
         }
-        if (cacheSimpleConfig == null) {
+        if (cacheSimpleConfig == null && fallbackName != null) {
             cacheSimpleConfig = staticConfig.getCacheConfig(fallbackName);
         }
         return cacheSimpleConfig;
@@ -233,7 +238,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public QueueConfig findQueueConfig(String name) {
-        return getQueueConfigInternal(name, "default");
+        return getQueueConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -273,7 +278,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public LockConfig findLockConfig(String name) {
-        return getLockConfigInternal(name, "default");
+        return getLockConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -313,7 +318,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public ListConfig findListConfig(String name) {
-        return getListConfigInternal(name, "default");
+        return getListConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -354,7 +359,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public SetConfig findSetConfig(String name) {
-        return getSetConfigInternal(name, "default");
+        return getSetConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -394,7 +399,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public MultiMapConfig findMultiMapConfig(String name) {
-        return getMultiMapConfigInternal(name, "default");
+        return getMultiMapConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -436,7 +441,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public ReplicatedMapConfig findReplicatedMapConfig(String name) {
-        return getReplicatedMapConfigInternal(name, "default");
+        return getReplicatedMapConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -477,7 +482,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public RingbufferConfig findRingbufferConfig(String name) {
-        return getRingbufferConfigInternal(name, "default");
+        return getRingbufferConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -518,7 +523,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public TopicConfig findTopicConfig(String name) {
-        return getTopicConfigInternal(name, "default");
+        return getTopicConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -559,7 +564,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public ReliableTopicConfig findReliableTopicConfig(String name) {
-        return getReliableTopicConfigInternal(name, "default");
+        return getReliableTopicConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -600,7 +605,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public ExecutorConfig findExecutorConfig(String name) {
-        return getExecutorConfigInternal(name, "default");
+        return getExecutorConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
@@ -766,7 +771,7 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public SemaphoreConfig findSemaphoreConfig(String name) {
-        return getSemaphoreConfigInternal(name, "default");
+        return getSemaphoreConfigInternal(name, "default").getAsReadOnly();
     }
 
     @Override
