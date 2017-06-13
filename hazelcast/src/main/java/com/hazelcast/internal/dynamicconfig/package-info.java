@@ -14,24 +14,7 @@
  * limitations under the License.
  */
 
-package com.hazelcast.internal.dynamicconfig;
-
-import com.hazelcast.config.MapConfig;
-
-
 /**
- * Empty implementation of {@link DynamicConfigListener}
- *
+ * Classes related to Dynamic Configuration.
  */
-public class EmptyDynamicConfigListener implements DynamicConfigListener {
-
-    @Override
-    public void onConfigRegistered(MapConfig configObject) {
-        //intentionally no-op
-    }
-
-    @Override
-    public void onServiceInitialized(ClusterWideConfigurationService configurationService) {
-        //intentionally no-op
-    }
-}
+package com.hazelcast.internal.dynamicconfig;
