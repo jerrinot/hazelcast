@@ -16,6 +16,7 @@
 
 package com.hazelcast.internal.dynamicconfig;
 
+import com.hazelcast.config.CacheSimpleConfig;
 import com.hazelcast.config.MapConfig;
 
 
@@ -27,6 +28,11 @@ public class EmptyDynamicConfigListener implements DynamicConfigListener {
 
     @Override
     public void onConfigRegistered(MapConfig configObject) {
+        //intentionally no-op
+    }
+
+    @Override
+    public void onConfigRegistered(CacheSimpleConfig configObject) {
         //intentionally no-op
     }
 

@@ -16,6 +16,7 @@
 
 package com.hazelcast.internal.dynamicconfig;
 
+import com.hazelcast.config.CacheSimpleConfig;
 import com.hazelcast.config.MapConfig;
 
 /**
@@ -36,4 +37,11 @@ public interface DynamicConfigListener {
      * @param configObject
      */
     void onConfigRegistered(MapConfig configObject);
+
+    /**
+     * Called when a new {@link com.hazelcast.config.CacheSimpleConfig} object is created locally.
+     *
+     * @param configObject
+     */
+    void onConfigRegistered(CacheSimpleConfig configObject);
 }

@@ -203,7 +203,10 @@ public class ClusterWideConfigurationService implements MigrationAwareService,
             reliableTopicConfigs.putIfAbsent(reliableTopicConfig.getName(), reliableTopicConfig);
         } else if (config instanceof CacheSimpleConfig) {
             CacheSimpleConfig cacheSimpleConfig = (CacheSimpleConfig) config;
-            cacheSimpleConfigs.putIfAbsent(cacheSimpleConfig.getName(), cacheSimpleConfig);
+            CacheSimpleConfig previous = cacheSimpleConfigs.putIfAbsent(cacheSimpleConfig.getName(), cacheSimpleConfig);
+            if (previous == null) {
+                listener.onConfigRegistered(cacheSimpleConfig);
+            }
         } else {
             throw new UnsupportedOperationException("Unsupported config type: " + config);
         }
