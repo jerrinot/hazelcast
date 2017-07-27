@@ -98,6 +98,11 @@ public class RestTest extends HazelcastTestSupport {
     }
 
     @Test
+    public void foo() throws InterruptedException {
+        Thread.sleep(Long.MAX_VALUE);
+    }
+
+    @Test
     public void testMapPutGet() throws Exception {
         String name = randomMapName();
 
