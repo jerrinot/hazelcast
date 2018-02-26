@@ -20,6 +20,7 @@ import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.RingbufferConfig;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.VersionAware;
@@ -158,7 +159,7 @@ public class RingbufferContainer<T, E> implements IdentifiedDataSerializable, No
         if (logger != null) {
             logger.info(message);
         } else {
-            System.out.println(" !!!!! " + this + "Called logging, but logger was not set!");
+            Logger.getLogger(RingbufferContainer.class).info("Uninitiazed container logging. " + message);
         }
     }
 
