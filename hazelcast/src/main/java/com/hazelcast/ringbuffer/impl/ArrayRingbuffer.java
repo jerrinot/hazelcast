@@ -16,6 +16,7 @@
 
 package com.hazelcast.ringbuffer.impl;
 
+import com.hazelcast.logging.Logger;
 import com.hazelcast.ringbuffer.StaleSequenceException;
 import com.hazelcast.spi.SplitBrainMergePolicy;
 import com.hazelcast.spi.merge.MergingValueHolder;
@@ -160,6 +161,7 @@ public class ArrayRingbuffer<E> implements Ringbuffer<E> {
 
     @Override
     public long merge(MergingValueHolder<E> mergingValue, SplitBrainMergePolicy mergePolicy, long remainingCapacity) {
+        Logger.getLogger(ArrayRingbuffer.class).info("Merging " + mergingValue + ", with " + mergePolicy);
         serializationService.getManagedContext().initialize(mergePolicy);
         mergingValue.setSerializationService(serializationService);
 
