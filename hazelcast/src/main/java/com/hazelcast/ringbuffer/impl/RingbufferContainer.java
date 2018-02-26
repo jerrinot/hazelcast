@@ -19,6 +19,7 @@ package com.hazelcast.ringbuffer.impl;
 import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.RingbufferConfig;
 import com.hazelcast.core.HazelcastException;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.VersionAware;
@@ -77,6 +78,7 @@ public class RingbufferContainer<T, E> implements IdentifiedDataSerializable, No
      * </ul>
      */
     private Ringbuffer<E> ringbuffer;
+    private ILogger logger;
 
     /**
      * For purposes of {@link IdentifiedDataSerializable} instance creation.
@@ -131,6 +133,7 @@ public class RingbufferContainer<T, E> implements IdentifiedDataSerializable, No
         this.config = config;
         this.serializationService = nodeEngine.getSerializationService();
         ringbuffer.setSerializationService(serializationService);
+        this.logger = nodeEngine.getLogger(RingbufferContainer.class);
         initRingbufferStore(nodeEngine.getConfigClassLoader());
     }
 
@@ -148,6 +151,14 @@ public class RingbufferContainer<T, E> implements IdentifiedDataSerializable, No
             } catch (Exception e) {
                 throw new HazelcastException(e);
             }
+        }
+    }
+
+    private void log(String message) {
+        if (logger != null) {
+            logger.info(message);
+        } else {
+            System.out.println(" !!!!! " + this + "Called logging, but logger was not set!");
         }
     }
 
@@ -304,24 +315,35 @@ public class RingbufferContainer<T, E> implements IdentifiedDataSerializable, No
      */
     @SuppressWarnings("unchecked")
     public void set(long sequenceId, T item) {
+        log("Calling 'set()' with item " + item + " and sequence id " + sequenceId);
+
         final E rbItem = convertToRingbufferFormat(item);
 
         // first we write the dataItem in the ring.
         ringbuffer.set(sequenceId, rbItem);
 
-        if (sequenceId > tailSequence()) {
+        long tailSequence = tailSequence();
+        if (sequenceId > tailSequence) {
+            log("Called with sequence id = " + sequenceId + ", but the current tail sequence is " + tailSequence
+                + ", setting new tail to " + sequenceId);
             ringbuffer.setTailSequence(sequenceId);
 
             if (ringbuffer.size() > ringbuffer.getCapacity()) {
-                ringbuffer.setHeadSequence(ringbuffer.tailSequence() - ringbuffer.getCapacity() + 1);
+                long newHeadSequence = ringbuffer.tailSequence() - ringbuffer.getCapacity() + 1;
+                log("Ring buffer is over capacity, setting new head sequence to " + newHeadSequence);
+                ringbuffer.setHeadSequence(newHeadSequence);
             }
         }
-        if (sequenceId < headSequence()) {
+        long headSequence = headSequence();
+        if (sequenceId < headSequence) {
+            log("Called with sequence id = " + sequenceId + ", but the current head sequence is " + headSequence
+                    + ", setting new head to " + sequenceId);
             ringbuffer.setHeadSequence(sequenceId);
         }
 
         // and then we optionally write the expiration.
         if (expirationPolicy != null) {
+            log("Setting expiration to " + sequenceId);
             expirationPolicy.setExpirationAt(sequenceId);
         }
     }
@@ -554,7 +576,9 @@ public class RingbufferContainer<T, E> implements IdentifiedDataSerializable, No
         inMemoryFormat = values()[in.readInt()];
 
         ringbuffer = new ArrayRingbuffer(capacity);
+        log("While deserializing " + this + " setting tail to " + tailSequence);
         ringbuffer.setTailSequence(tailSequence);
+        log("While deserializing " + this + " setting head to " + headSequence);
         ringbuffer.setHeadSequence(headSequence);
         ringbuffer.setSerializationService(serializationService);
 

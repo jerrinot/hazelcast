@@ -20,6 +20,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.ringbuffer.impl.RingbufferContainer;
 import com.hazelcast.spi.ReadonlyOperation;
+import com.hazelcast.spi.impl.operationexecutor.impl.PartitionOperationThread;
 
 import java.io.IOException;
 
@@ -50,6 +51,10 @@ public class GenericOperation extends AbstractRingBufferOperation implements Rea
 
     @Override
     public void run() throws Exception {
+        if (!(Thread.currentThread() instanceof PartitionOperationThread)) {
+            throw new AssertionError();
+        }
+
         RingbufferContainer ringbuffer = getRingBufferContainer();
         switch (operation) {
             case OPERATION_SIZE:
