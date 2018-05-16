@@ -148,6 +148,8 @@ import com.hazelcast.spi.impl.sequence.CallIdSequence;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.streamer.Streamer;
+import com.hazelcast.streamer.impl.StreamerService;
 import com.hazelcast.topic.impl.TopicService;
 import com.hazelcast.topic.impl.reliable.ReliableTopicService;
 import com.hazelcast.transaction.HazelcastXAResource;
@@ -635,6 +637,12 @@ public class HazelcastClientInstanceImpl implements HazelcastInstance, Serializa
     @Override
     public IScheduledExecutorService getScheduledExecutorService(String name) {
         return getDistributedObject(DistributedScheduledExecutorService.SERVICE_NAME, name);
+    }
+
+    @Override
+    public <T> Streamer<T> getStreamer(String name) {
+        checkNotNull(name, "Retrieving a streamer instance with a null name is not allowed!");
+        return getDistributedObject(StreamerService.SERVICE_NAME, name);
     }
 
     @Override

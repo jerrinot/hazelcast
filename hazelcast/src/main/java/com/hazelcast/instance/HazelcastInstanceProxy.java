@@ -53,6 +53,7 @@ import com.hazelcast.ringbuffer.Ringbuffer;
 import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import com.hazelcast.spi.annotation.PrivateApi;
 import com.hazelcast.spi.impl.SerializationServiceSupport;
+import com.hazelcast.streamer.Streamer;
 import com.hazelcast.transaction.HazelcastXAResource;
 import com.hazelcast.transaction.TransactionContext;
 import com.hazelcast.transaction.TransactionException;
@@ -297,6 +298,11 @@ public final class HazelcastInstanceProxy implements HazelcastInstance, Serializ
     @Override
     public IScheduledExecutorService getScheduledExecutorService(String name) {
         return getOriginal().getScheduledExecutorService(name);
+    }
+
+    @Override
+    public <T> Streamer<T> getStreamer(String name) {
+        return getOriginal().getStreamer(name);
     }
 
     @Override

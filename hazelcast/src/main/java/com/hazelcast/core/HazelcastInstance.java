@@ -27,6 +27,7 @@ import com.hazelcast.quorum.QuorumService;
 import com.hazelcast.replicatedmap.ReplicatedMapCantBeCreatedOnLiteMemberException;
 import com.hazelcast.ringbuffer.Ringbuffer;
 import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
+import com.hazelcast.streamer.Streamer;
 import com.hazelcast.transaction.HazelcastXAResource;
 import com.hazelcast.transaction.TransactionContext;
 import com.hazelcast.transaction.TransactionException;
@@ -484,6 +485,8 @@ public interface HazelcastInstance {
      * @return the scheduled executor service for the given name
      */
     IScheduledExecutorService getScheduledExecutorService(String name);
+
+    <T> Streamer<T> getStreamer(String name);
 
     /**
      * Shuts down this HazelcastInstance. For more information see {@link com.hazelcast.core.LifecycleService#shutdown()}.

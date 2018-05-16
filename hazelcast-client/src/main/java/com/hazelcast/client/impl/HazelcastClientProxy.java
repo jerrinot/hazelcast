@@ -54,6 +54,7 @@ import com.hazelcast.ringbuffer.Ringbuffer;
 import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import com.hazelcast.spi.impl.SerializationServiceSupport;
 import com.hazelcast.spi.serialization.SerializationService;
+import com.hazelcast.streamer.Streamer;
 import com.hazelcast.transaction.HazelcastXAResource;
 import com.hazelcast.transaction.TransactionContext;
 import com.hazelcast.transaction.TransactionException;
@@ -230,6 +231,11 @@ public class HazelcastClientProxy implements HazelcastInstance, SerializationSer
     @Override
     public IScheduledExecutorService getScheduledExecutorService(String name) {
         return getClient().getScheduledExecutorService(name);
+    }
+
+    @Override
+    public <T> Streamer<T> getStreamer(String name) {
+        throw new UnsupportedOperationException("client impl not done yet");
     }
 
     @Override

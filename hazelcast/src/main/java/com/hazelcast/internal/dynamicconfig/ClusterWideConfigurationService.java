@@ -39,6 +39,7 @@ import com.hazelcast.config.RingbufferConfig;
 import com.hazelcast.config.ScheduledExecutorConfig;
 import com.hazelcast.config.SemaphoreConfig;
 import com.hazelcast.config.SetConfig;
+import com.hazelcast.config.StreamerConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.ICompletableFuture;
@@ -71,6 +72,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import static com.hazelcast.internal.cluster.Versions.V3_10;
+import static com.hazelcast.internal.cluster.Versions.V3_11;
 import static com.hazelcast.internal.cluster.Versions.V3_8;
 import static com.hazelcast.internal.cluster.Versions.V3_9;
 import static com.hazelcast.internal.config.ConfigUtils.lookupByPattern;
@@ -134,6 +136,8 @@ public class ClusterWideConfigurationService implements PreJoinAwareService,
             new ConcurrentHashMap<String, EventJournalConfig>();
     private final ConcurrentMap<String, FlakeIdGeneratorConfig> flakeIdGeneratorConfigs =
             new ConcurrentHashMap<String, FlakeIdGeneratorConfig>();
+    private final ConcurrentMap<String, StreamerConfig> streamerConfigs =
+            new ConcurrentHashMap<String, StreamerConfig>();
 
     private final ConfigPatternMatcher configPatternMatcher;
     private final ILogger logger;
@@ -354,6 +358,9 @@ public class ClusterWideConfigurationService implements PreJoinAwareService,
         } else if (newConfig instanceof PNCounterConfig) {
             PNCounterConfig config = (PNCounterConfig) newConfig;
             currentConfig = pnCounterConfigs.putIfAbsent(config.getName(), config);
+        } else if (newConfig instanceof StreamerConfig) {
+            StreamerConfig config = (StreamerConfig) newConfig;
+            currentConfig = streamerConfigs.putIfAbsent(config.getName(), config);
         } else {
             throw new UnsupportedOperationException("Unsupported config type: " + newConfig);
         }
@@ -643,6 +650,16 @@ public class ClusterWideConfigurationService implements PreJoinAwareService,
     }
 
     @Override
+    public Map<String, StreamerConfig> getStreamerConfigs() {
+        return streamerConfigs;
+    }
+
+    @Override
+    public StreamerConfig findStreamerConfig(String name) {
+        return lookupByPattern(configPatternMatcher, streamerConfigs, name);
+    }
+
+    @Override
     public Runnable prepareMergeRunnable() {
         if (version.isLessOrEqual(V3_8)) {
             return null;
@@ -708,6 +725,9 @@ public class ClusterWideConfigurationService implements PreJoinAwareService,
         configToVersion.put(CountDownLatchConfig.class, V3_10);
         configToVersion.put(FlakeIdGeneratorConfig.class, V3_10);
         configToVersion.put(PNCounterConfig.class, V3_10);
+
+        // I my own branch
+        configToVersion.put(StreamerConfig.class, V3_11);
 
         return Collections.unmodifiableMap(configToVersion);
     }
