@@ -19,6 +19,7 @@ package com.hazelcast.map.impl.operation;
 import com.hazelcast.core.EntryEventType;
 import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.map.impl.record.RecordInfo;
+import com.hazelcast.map.impl.recordstore.NullRecordStore;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.BackupAwareOperation;
 import com.hazelcast.spi.Operation;
@@ -65,12 +66,20 @@ public abstract class BasePutOperation extends LockAwareOperation implements Bac
 
     @Override
     public boolean shouldBackup() {
+        //todo: remove instance of check. probably the best solution is to
+        //      stop (ab-)using the map journal and implement journal as a proper
+        //      data structure
         Record record = recordStore.getRecord(dataKey);
-        return record != null;
+        return record != null || recordStore instanceof NullRecordStore;
     }
 
     @Override
     public Operation getBackupOperation() {
+        //todo: again, same issue as with shouldBackup
+        if (recordStore instanceof NullRecordStore) {
+            return new PutBackupOperation(name, dataKey, dataValue, null, putTransient);
+        }
+
         final Record record = recordStore.getRecord(dataKey);
         final RecordInfo replicationInfo = buildRecordInfo(record);
         if (isPostProcessing(recordStore)) {

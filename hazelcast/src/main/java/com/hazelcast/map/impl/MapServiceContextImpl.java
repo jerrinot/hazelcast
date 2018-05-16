@@ -63,6 +63,7 @@ import com.hazelcast.map.impl.record.DataRecordComparator;
 import com.hazelcast.map.impl.record.ObjectRecordComparator;
 import com.hazelcast.map.impl.record.RecordComparator;
 import com.hazelcast.map.impl.recordstore.DefaultRecordStore;
+import com.hazelcast.map.impl.recordstore.NullRecordStore;
 import com.hazelcast.map.impl.recordstore.RecordStore;
 import com.hazelcast.map.listener.MapPartitionLostListener;
 import com.hazelcast.map.merge.MergePolicyProvider;
@@ -763,7 +764,14 @@ class MapServiceContextImpl implements MapServiceContext {
         assert partitionId != GENERIC_PARTITION_ID : "Cannot be called with GENERIC_PARTITION_ID";
 
         ILogger logger = nodeEngine.getLogger(DefaultRecordStore.class);
-        return new DefaultRecordStore(mapContainer, partitionId, keyLoader, logger);
+
+        boolean journalOnly = mapContainer.getMapConfig().isJournalOnly();
+        if (journalOnly) {
+            return new NullRecordStore(mapContainer, partitionId, logger);
+        } else {
+            return new DefaultRecordStore(mapContainer, partitionId, keyLoader, logger);
+        }
+
     }
 
     @Override

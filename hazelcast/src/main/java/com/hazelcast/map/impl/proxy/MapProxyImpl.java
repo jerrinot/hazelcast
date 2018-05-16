@@ -906,6 +906,8 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
         final MapEventJournalReadOperation<K, V, T> op = new MapEventJournalReadOperation<K, V, T>(
                 name, startSequence, minSize, maxSize, predicate, projection);
         op.setPartitionId(partitionId);
+        //todo: wait timeout to be externalized. also: what happens during retrying?
+        op.setWaitTimeout(TimeUnit.SECONDS.toMillis(10));
         return operationService.invokeOnPartition(op);
     }
 

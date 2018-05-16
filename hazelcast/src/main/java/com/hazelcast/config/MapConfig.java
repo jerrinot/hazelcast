@@ -167,6 +167,7 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
     // and #setCacheDeserializedValues()
     private transient boolean optimizeQueryExplicitlyInvoked;
     private transient boolean setCacheDeserializedValuesExplicitlyInvoked;
+    private boolean journalOnly;
 
 
     public MapConfig(String name) {
@@ -205,6 +206,7 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
                 ? new PartitioningStrategyConfig(config.getPartitioningStrategyConfig()) : null;
         this.quorumName = config.quorumName;
         this.hotRestartConfig = new HotRestartConfig(config.hotRestartConfig);
+        this.journalOnly = config.journalOnly;
     }
 
     /**
@@ -614,6 +616,10 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
         return this;
     }
 
+    public void setJournalOnly(boolean journalOnly) {
+        this.journalOnly = journalOnly;
+    }
+
     /**
      * Checks if read-backup-data (reading local backup entries) is enabled for this map.
      *
@@ -983,6 +989,9 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
         if (quorumName != null ? !quorumName.equals(that.quorumName) : that.quorumName != null) {
             return false;
         }
+        if (journalOnly != that.journalOnly) {
+            return false;
+        }
         return hotRestartConfig != null ? hotRestartConfig.equals(that.hotRestartConfig) : that.hotRestartConfig == null;
     }
 
@@ -1012,6 +1021,7 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
         result = 31 * result + (partitioningStrategyConfig != null ? partitioningStrategyConfig.hashCode() : 0);
         result = 31 * result + (quorumName != null ? quorumName.hashCode() : 0);
         result = 31 * result + (hotRestartConfig != null ? hotRestartConfig.hashCode() : 0);
+        result = 31 * result + (journalOnly ? 1 : 0);
         return result;
     }
 
@@ -1041,6 +1051,7 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
                 + ", quorumName=" + quorumName
                 + ", queryCacheConfigs=" + queryCacheConfigs
                 + ", cacheDeserializedValues=" + cacheDeserializedValues
+                + ", journalOnly=" + journalOnly
                 + '}';
     }
 
@@ -1085,6 +1096,9 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
         out.writeObject(partitioningStrategyConfig);
         out.writeUTF(quorumName);
         out.writeObject(hotRestartConfig);
+        if (out.getVersion().isGreaterOrEqual(Versions.V3_11)) {
+            out.writeBoolean(isJournalOnly());
+        }
     }
 
     @Override
@@ -1118,5 +1132,12 @@ public class MapConfig implements SplitBrainMergeTypeProvider, IdentifiedDataSer
         partitioningStrategyConfig = in.readObject();
         quorumName = in.readUTF();
         hotRestartConfig = in.readObject();
+        if (in.getVersion().isGreaterOrEqual(Versions.V3_11)) {
+            journalOnly = in.readBoolean();
+        }
+    }
+
+    public boolean isJournalOnly() {
+        return journalOnly;
     }
 }
