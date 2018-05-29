@@ -39,6 +39,7 @@ import java.util.Set;
  * @author mdogan 7/24/12
  */
 public class MapReplicationOperation extends AbstractOperation {
+    private static final boolean COMPAT_324 = Boolean.getBoolean("hazelcast.compat.324");
 
     private Map<String, Set<RecordReplicationInfo>> data;
 
@@ -111,6 +112,12 @@ public class MapReplicationOperation extends AbstractOperation {
             }
             data.put(name, recordReplicationInfos);
         }
+        if (COMPAT_324) {
+            int i = in.readInt();
+            if (i != 0) {
+                throw new AssertionError();
+            }
+        }
     }
 
     protected void writeInternal(final ObjectDataOutput out) throws IOException {
@@ -122,6 +129,9 @@ public class MapReplicationOperation extends AbstractOperation {
             for (RecordReplicationInfo recordReplicationInfo : recordReplicationInfos) {
                 out.writeObject(recordReplicationInfo);
             }
+        }
+        if (COMPAT_324) {
+            out.writeInt(0);
         }
     }
 
