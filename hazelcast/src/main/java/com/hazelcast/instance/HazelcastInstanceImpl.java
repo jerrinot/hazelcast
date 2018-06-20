@@ -77,6 +77,8 @@ import com.hazelcast.scheduledexecutor.impl.DistributedScheduledExecutorService;
 import com.hazelcast.spi.ProxyService;
 import com.hazelcast.spi.annotation.PrivateApi;
 import com.hazelcast.spi.impl.SerializationServiceSupport;
+import com.hazelcast.streamer.Streamer;
+import com.hazelcast.streamer.impl.StreamerService;
 import com.hazelcast.topic.impl.TopicService;
 import com.hazelcast.topic.impl.reliable.ReliableTopicService;
 import com.hazelcast.transaction.HazelcastXAResource;
@@ -429,6 +431,12 @@ public class HazelcastInstanceImpl implements HazelcastInstance, SerializationSe
     public IScheduledExecutorService getScheduledExecutorService(String name) {
         checkNotNull(name, "Retrieving a scheduled executor instance with a null name is not allowed!");
         return getDistributedObject(DistributedScheduledExecutorService.SERVICE_NAME, name);
+    }
+
+    @Override
+    public <T> Streamer<T> getStreamer(String name) {
+        checkNotNull(name, "Retrieving a streamer instance with a null name is not allowed!");
+        return getDistributedObject(StreamerService.SERVICE_NAME, name);
     }
 
     @Override

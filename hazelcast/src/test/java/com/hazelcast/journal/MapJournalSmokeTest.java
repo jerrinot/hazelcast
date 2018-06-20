@@ -4,9 +4,9 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.spi.properties.GroupProperty;
+import com.hazelcast.streamer.Streamer;
 import com.hazelcast.streamer.JournalValue;
 import com.hazelcast.streamer.StreamConsumer;
-import com.hazelcast.streamer.Streamer;
 import com.hazelcast.streamer.Subscription;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastSerialClassRunner;
@@ -21,17 +21,42 @@ import org.junit.runner.RunWith;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
-import static com.hazelcast.streamer.Subscription.LOGGING_ERROR_COLLECTOR;
 import static com.hazelcast.streamer.SubscriptionMode.FROM_OLDEST;
+import static com.hazelcast.streamer.Subscription.LOGGING_ERROR_COLLECTOR;
 import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.unmodifiableSet;
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public class MapJournalSmokeTest extends HazelcastTestSupport {
+
+    @Test
+    public void testStreamerInterface() {
+        HazelcastInstance i1 = createHazelcastInstance(createConfig("foo", 1, 271));
+        Streamer<String> s = i1.getStreamer("streamer");
+
+        s.send("foo");
+        s.send("bar");
+    }
+
+    @Test
+    public void testStreamerInterface_poll() {
+        HazelcastInstance i1 = createHazelcastInstance(createConfig("foo", 1, 271));
+        Streamer<String> s = i1.getStreamer("streamer");
+
+        s.send(0, "foo");
+        s.send(1, "bar");
+
+        List<JournalValue<String>> poll = s.poll(0, 0, 1, 100, 1, MINUTES);
+        assertEquals(1, poll.size());
+
+        poll = s.poll(1, 0, 2, 100, 10, SECONDS);
+        assertEquals(1, poll.size());
+    }
 
     @Test
     public void testDoesNotStoreEntries() {
@@ -50,14 +75,14 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
     @Test
     public void testStoreEvents() {
         String streamerName = randomMapName();
-        int keyCount = 100000;
+        int keyCount = 1000;
         int journalCapacity = 100000;
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(3);
         HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(streamerName, journalCapacity, 271));
         HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(streamerName, journalCapacity, 271));
 
-        Streamer<String> streamer = Streamer.newStreamer(i1, streamerName);
+        Streamer<String> streamer = i1.getStreamer(streamerName);
 
         final StoringCollector<String> valueCollector = new StoringCollector<String>();
         streamer.subscribeAllPartitions(FROM_OLDEST, valueCollector, LOGGING_ERROR_COLLECTOR);
@@ -83,18 +108,18 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(1);
         HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(streamerName, journalCapacity, 271));
 
-        Streamer<String> streamer = Streamer.newStreamer(i1, streamerName);
+        Streamer<String> streamer = i1.getStreamer(streamerName);
         for (int i = 0; i < keyCount; i++) {
             streamer.send(0, "bar" + i);
         }
 
-        List<JournalValue<String>> results = streamer.poll(0, 0, 100, 100, 30, TimeUnit.SECONDS);
+        List<JournalValue<String>> results = streamer.poll(0, 0, 100, 100, 30, SECONDS);
         assertEquals(keyCount, results.size());
     }
 
 
     @Test
-    public void testSyncBarrierAndBackup() {
+    public void testSyncBarrierAndBackup() throws InterruptedException {
         String streamerName = randomMapName();
         int partitionCount = 2;
 
@@ -105,19 +130,21 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
         HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(streamerName, journalCapacity, partitionCount));
         HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(streamerName, journalCapacity, partitionCount));
 
-        Streamer<String> streamer = Streamer.newStreamer(i1, streamerName);
+        Streamer<String> streamer = i1.getStreamer(streamerName);
         for (int i = 0; i < keyCount; i++) {
             streamer.send(0, "bar" + i);
             streamer.send(1, "bar" + i);
         }
         streamer.syncBarrier();
+        Thread.sleep(1000);
 
         i1.getLifecycleService().terminate();
 
-        streamer = Streamer.newStreamer(i2, streamerName);
-        List<JournalValue<String>> results = streamer.poll(0, 0, 100, keyCount, 30, TimeUnit.SECONDS);
+        streamer = i2.getStreamer(streamerName);
+        List<JournalValue<String>> results = streamer.poll(0, 0, 1, keyCount, 30, SECONDS);
         assertEquals(keyCount, results.size());
-        results = streamer.poll(1, 0, 100, keyCount, 30, TimeUnit.SECONDS);
+
+        results = streamer.poll(1, 0, 100, keyCount, 30, SECONDS);
         assertEquals(keyCount, results.size());
     }
 
@@ -132,7 +159,7 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
         HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(streamerName, journalCapacity, 271));
         HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(streamerName, journalCapacity, 271));
 
-        Streamer<String> streamer = Streamer.newStreamer(i1, streamerName);
+        Streamer<String> streamer = i1.getStreamer(streamerName);
 
         final StoringCollector<String> valueCollector = new StoringCollector<String>();
         Subscription<String> subscription = streamer.subscribeAllPartitions(FROM_OLDEST, valueCollector, LOGGING_ERROR_COLLECTOR);

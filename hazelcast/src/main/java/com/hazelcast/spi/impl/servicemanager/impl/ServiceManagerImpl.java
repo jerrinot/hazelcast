@@ -62,6 +62,7 @@ import com.hazelcast.spi.impl.servicemanager.RemoteServiceDescriptor;
 import com.hazelcast.spi.impl.servicemanager.RemoteServiceDescriptorProvider;
 import com.hazelcast.spi.impl.servicemanager.ServiceInfo;
 import com.hazelcast.spi.impl.servicemanager.ServiceManager;
+import com.hazelcast.streamer.impl.StreamerService;
 import com.hazelcast.topic.impl.TopicService;
 import com.hazelcast.topic.impl.reliable.ReliableTopicService;
 import com.hazelcast.transaction.impl.TransactionManagerServiceImpl;
@@ -171,6 +172,7 @@ public final class ServiceManagerImpl implements ServiceManager {
         registerService(PNCounterService.SERVICE_NAME, new PNCounterService());
         registerService(CRDTReplicationMigrationService.SERVICE_NAME, new CRDTReplicationMigrationService());
         registerService(DistributedScheduledExecutorService.SERVICE_NAME, new DistributedScheduledExecutorService());
+        registerService(StreamerService.SERVICE_NAME, new StreamerService());
         registerCacheServiceIfAvailable();
         readServiceDescriptors();
     }

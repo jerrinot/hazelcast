@@ -1,4 +1,4 @@
-package com.hazelcast.streamer;
+package com.hazelcast.streamer.impl;
 
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.ICompletableFuture;

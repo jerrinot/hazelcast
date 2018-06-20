@@ -164,8 +164,6 @@ public abstract class EventJournalReadOperation<T, J> extends Operation
 
     @Override
     public void onWaitExpire() {
-        //todo: is this a good idea?
-        getOperationResponseHandler().sendResponse(this, getResponse());
     }
 
     @Override
