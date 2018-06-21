@@ -2,6 +2,7 @@ package com.hazelcast.streamer;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.DataSerializable;
 
 import java.io.IOException;
@@ -20,7 +21,6 @@ public final class JournalValue<T> implements DataSerializable {
         this.offset = offset;
         this.partitionId = partitionId;
     }
-
     public T getValue() {
         return value;
     }
@@ -35,14 +35,14 @@ public final class JournalValue<T> implements DataSerializable {
 
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
-        out.writeObject(value);
+        out.writeData((Data)value);
         out.writeLong(offset);
         out.writeInt(partitionId);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
-        value = in.readObject();
+        value = (T) in.readData();
         offset = in.readLong();
         partitionId = in.readInt();
     }

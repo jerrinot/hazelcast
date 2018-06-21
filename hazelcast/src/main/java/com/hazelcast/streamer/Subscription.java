@@ -2,10 +2,12 @@ package com.hazelcast.streamer;
 
 import com.hazelcast.core.ExecutionCallback;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
+import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
+import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.streamer.impl.PollResult;
 import com.hazelcast.streamer.impl.StreamerService;
 import com.hazelcast.streamer.impl.operations.PollOperation;
@@ -24,68 +26,74 @@ public final class Subscription<T> {
         }
     };
 
-    private final ReadResultSetExecutionCallback[] callbacks;
+    private final Callback[] callbacks;
 
 
     public Subscription(NodeEngine nodeEngine, int[] partitions, SubscriptionMode mode, final StreamConsumer<T> consumer, Consumer<Throwable> errorCollector, String name) {
         //todo: refactor this mess!
         //todo: what if we get StaleSequenceException? Perhaps we should retry with a new sequence ID during initial registration
-        this.callbacks = new ReadResultSetExecutionCallback[partitions.length];
+        this.callbacks = new Callback[partitions.length];
         for (int i = 0; i < partitions.length; i++) {
             int partition = partitions[i];
-            ReadResultSetExecutionCallback<T> callback = new ReadResultSetExecutionCallback<T>(consumer, errorCollector, partition, nodeEngine.getOperationService(), name);
+            OperationService operationService = nodeEngine.getOperationService();
+            SerializationService serializationService = nodeEngine.getSerializationService();
+            Callback<T> callback = new Callback<T>(consumer, errorCollector, partition, operationService, serializationService, name);
             this.callbacks[i] = callback;
 
             //todo: implement initial sequence fetch
             long initialSequence = 0;
 
-            Operation pollOperation = new PollOperation<T>(name, initialSequence, MIN_BATCH_SIZE, MAX_BATCH_SIZE);
-            InternalCompletableFuture<PollResult<T>> f = nodeEngine.getOperationService().createInvocationBuilder(StreamerService.SERVICE_NAME, pollOperation, partition)
+            Operation pollOperation = new PollOperation(name, initialSequence, MIN_BATCH_SIZE, MAX_BATCH_SIZE);
+            InternalCompletableFuture<PollResult> f = operationService.createInvocationBuilder(StreamerService.SERVICE_NAME, pollOperation, partition)
                     .invoke();
             f.andThen(callback);
         }
     }
 
     public void cancel() {
-        for (ReadResultSetExecutionCallback<?> callback : callbacks) {
+        for (Callback<?> callback : callbacks) {
             callback.cancel();
         }
     }
 
-    private static class ReadResultSetExecutionCallback<T> implements ExecutionCallback<PollResult<T>> {
+    private static class Callback<T> implements ExecutionCallback<PollResult> {
         private final StreamConsumer<T> consumer;
         private final int partition;
         private final Consumer<Throwable> errorCollector;
         private final OperationService operationService;
         private final String name;
+        private final SerializationService serializationService;
 
         private volatile boolean cancelled;
 
-        private ReadResultSetExecutionCallback(StreamConsumer<T> consumer, Consumer<Throwable> errorCollector, int partition, OperationService operationService, String name) {
+        private Callback(StreamConsumer<T> consumer, Consumer<Throwable> errorCollector, int partition,
+                         OperationService operationService, SerializationService serializationService, String name) {
             this.consumer = consumer;
             this.partition = partition;
             this.operationService = operationService;
             this.errorCollector = errorCollector;
             this.name = name;
+            this.serializationService = serializationService;
         }
 
         @Override
-        public void onResponse(PollResult<T> response) {
+        public void onResponse(PollResult response) {
             long nextSequence = response.getNextSequence();
             if (cancelled) {
                 return;
             }
             PollOperation operation = new PollOperation(name, nextSequence, MIN_BATCH_SIZE, MAX_BATCH_SIZE);
-            InternalCompletableFuture<PollResult<T>> f = operationService.createInvocationBuilder(StreamerService.SERVICE_NAME, operation, partition)
+            InternalCompletableFuture<PollResult> f = operationService.createInvocationBuilder(StreamerService.SERVICE_NAME, operation, partition)
                     .invoke();
 
             f.andThen(this);
 
-            List<JournalValue<T>> results = response.getResults();
+            List<JournalValue<Data>> results = response.getResults();
             int size = results.size();
             for (int i = 0; i < size && !cancelled; i++) {
-                JournalValue<T> value = results.get(i);
-                consumer.accept(partition, value.getOffset(), value.getValue());
+                JournalValue<Data> binaryValue = results.get(i);
+                T deserialized = serializationService.toObject(binaryValue.getValue());
+                consumer.accept(partition, binaryValue.getOffset(), deserialized);
             }
         }
 

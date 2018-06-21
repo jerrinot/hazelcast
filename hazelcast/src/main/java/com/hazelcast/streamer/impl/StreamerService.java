@@ -9,6 +9,7 @@ import com.hazelcast.spi.PartitionMigrationEvent;
 import com.hazelcast.spi.PartitionReplicationEvent;
 import com.hazelcast.spi.RemoteService;
 import com.hazelcast.spi.partition.MigrationEndpoint;
+import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.streamer.impl.PartitionContainer;
 import com.hazelcast.streamer.impl.DummyStore;
 import com.hazelcast.streamer.impl.PollResult;
@@ -33,9 +34,10 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
 
     private PartitionContainer[] createPartitionContainers() {
         int partitionCount = nodeEngine.getPartitionService().getPartitionCount();
+        SerializationService serializationService = nodeEngine.getSerializationService();
         PartitionContainer[] containers = new PartitionContainer[partitionCount];
         for (int i = 0; i < partitionCount; i++) {
-            containers[i] = new PartitionContainer(i);
+            containers[i] = new PartitionContainer(i, serializationService);
         }
         return containers;
     }
@@ -77,7 +79,7 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
         return !store.hasEnoughRecordsToRead(offset, minRecords);
     }
 
-    public <T> int read(String name, int partitionId, long offset, int maxRecords, PollResult<T> response) {
+    public <T> int read(String name, int partitionId, long offset, int maxRecords, PollResult response) {
         DummyStore store = getStore(name, partitionId);
         return store.read(offset, maxRecords, response);
     }
@@ -131,6 +133,8 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
 
     public void addStores(List<DummyStore<?>> stores) {
         for (DummyStore<?> store : stores) {
+            //todo: hack. perhaps the container shouldnt be used as a transport mechanism
+            store.setSerializationService(nodeEngine.getSerializationService());
             int partitionId = store.getPartitionId();
             PartitionContainer container = partitionContainers[partitionId];
             container.addStore(store);

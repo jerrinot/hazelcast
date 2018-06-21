@@ -2,11 +2,13 @@ package com.hazelcast.streamer.impl;
 
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.internal.util.ThreadLocalRandomProvider;
+import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.AbstractDistributedObject;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
+import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.streamer.JournalValue;
 import com.hazelcast.streamer.StreamConsumer;
 import com.hazelcast.streamer.Streamer;
@@ -27,6 +29,7 @@ public class StreamerProxy<T> extends AbstractDistributedObject<StreamerService>
     private final StreamerBackpressure backpressure;
     private final int partitionCount;
     private final OperationService operationService;
+    private final SerializationService serializationService;
     private final int[] allPartitions;
 
     protected StreamerProxy(String name, NodeEngine nodeEngine, StreamerService service) {
@@ -35,6 +38,7 @@ public class StreamerProxy<T> extends AbstractDistributedObject<StreamerService>
         this.backpressure = new StreamerBackpressure();
         this.partitionCount = nodeEngine.getPartitionService().getPartitionCount();
         this.operationService = nodeEngine.getOperationService();
+        this.serializationService = nodeEngine.getSerializationService();
         this.allPartitions = getAllPartitions(partitionCount);
     }
 
@@ -95,10 +99,17 @@ public class StreamerProxy<T> extends AbstractDistributedObject<StreamerService>
         op.setWaitTimeout(timeUnit.toMillis(timeout));
 
         //todo: what to do with timeout?
-        InternalCompletableFuture<PollResult<T>> future = operationService.createInvocationBuilder(SERVICE_NAME, op, partitionId)
+        InternalCompletableFuture<PollResult> future = operationService.createInvocationBuilder(SERVICE_NAME, op, partitionId)
                 .invoke();
 
-        return future.join().getResults();
+
+        List<JournalValue> results = (List)future.join().getResults();
+        for (int i = 0; i < results.size(); i++) {
+            JournalValue<Data> dataJournalValue = results.get(i);
+            Object deserializedValue = serializationService.toObject(dataJournalValue.getValue());
+            results.set(i, new JournalValue<Object>(deserializedValue, dataJournalValue.getOffset(), partitionId));
+        }
+        return (List)results;
     }
 
     @Override

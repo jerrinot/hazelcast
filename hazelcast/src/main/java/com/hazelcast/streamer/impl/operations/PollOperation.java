@@ -12,14 +12,14 @@ import com.hazelcast.streamer.impl.StreamerWaitNotifyKey;
 
 import java.io.IOException;
 
-public class PollOperation<T> extends Operation implements DataSerializable, BlockingOperation {
+public class PollOperation extends Operation implements DataSerializable, BlockingOperation {
 
     private String name;
     private long offset;
     private int minRecords;
     private int maxRecords;
 
-    private PollResult<T> response;
+    private PollResult response;
 
     public PollOperation() {
 
@@ -33,7 +33,7 @@ public class PollOperation<T> extends Operation implements DataSerializable, Blo
     }
 
     @Override
-    public PollResult<T> getResponse() {
+    public PollResult getResponse() {
         return response;
     }
 
@@ -73,7 +73,7 @@ public class PollOperation<T> extends Operation implements DataSerializable, Blo
     @Override
     public boolean shouldWait() {
         if (response == null) {
-            response = new PollResult<T>();
+            response = new PollResult();
         }
 
         StreamerService service = getService();

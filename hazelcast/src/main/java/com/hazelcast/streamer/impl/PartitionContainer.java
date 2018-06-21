@@ -1,5 +1,6 @@
 package com.hazelcast.streamer.impl;
 
+import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.util.ConcurrencyUtil;
 import com.hazelcast.util.ConstructorFunction;
 
@@ -9,15 +10,17 @@ public final class PartitionContainer {
     private final ConstructorFunction<String, DummyStore> STORE_CONSTRUCTOR_FUNCTION = new ConstructorFunction<String, DummyStore>() {
         @Override
         public DummyStore createNew(String name) {
-            return new DummyStore(name, partitionId);
+            return new DummyStore(name, partitionId, serializationService);
         }
     };
 
     private final ConcurrentHashMap<String, DummyStore> stores = new ConcurrentHashMap<String, DummyStore>();
     private final int partitionId;
+    private final SerializationService serializationService;
 
-    public PartitionContainer(int partitionId) {
+    public PartitionContainer(int partitionId, SerializationService serializationService) {
         this.partitionId = partitionId;
+        this.serializationService = serializationService;
     }
 
     public DummyStore getOrCreateStore(String name) {
