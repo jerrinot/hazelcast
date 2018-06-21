@@ -1,6 +1,7 @@
 package com.hazelcast.streamer.impl;
 
 import com.hazelcast.core.DistributedObject;
+import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.MigrationAwareService;
 import com.hazelcast.spi.NodeEngine;
@@ -10,10 +11,6 @@ import com.hazelcast.spi.PartitionReplicationEvent;
 import com.hazelcast.spi.RemoteService;
 import com.hazelcast.spi.partition.MigrationEndpoint;
 import com.hazelcast.spi.serialization.SerializationService;
-import com.hazelcast.streamer.impl.PartitionContainer;
-import com.hazelcast.streamer.impl.DummyStore;
-import com.hazelcast.streamer.impl.PollResult;
-import com.hazelcast.streamer.impl.StreamerProxy;
 import com.hazelcast.streamer.impl.operations.StreamerMigrationOperation;
 
 import java.util.ArrayList;
@@ -24,20 +21,20 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
     public static final String SERVICE_NAME = "streamer";
     private NodeEngine nodeEngine;
     private PartitionContainer[] partitionContainers;
-
+    private SerializationService serializationService;
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
         this.nodeEngine = nodeEngine;
         this.partitionContainers = createPartitionContainers();
+        this.serializationService = nodeEngine.getSerializationService();
     }
 
     private PartitionContainer[] createPartitionContainers() {
         int partitionCount = nodeEngine.getPartitionService().getPartitionCount();
-        SerializationService serializationService = nodeEngine.getSerializationService();
         PartitionContainer[] containers = new PartitionContainer[partitionCount];
         for (int i = 0; i < partitionCount; i++) {
-            containers[i] = new PartitionContainer(i, serializationService);
+            containers[i] = new PartitionContainer(i);
         }
         return containers;
     }
@@ -64,7 +61,8 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
 
     public void addValue(String name, int partitionId, Object value) {
         DummyStore store = getStore(name, partitionId);
-        store.add(value);
+        Data data = serializationService.toData(value);
+        store.add(data);
     }
 
     private DummyStore getStore(String name, int partitionId) {
@@ -133,8 +131,6 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
 
     public void addStores(List<DummyStore<?>> stores) {
         for (DummyStore<?> store : stores) {
-            //todo: hack. perhaps the container shouldnt be used as a transport mechanism
-            store.setSerializationService(nodeEngine.getSerializationService());
             int partitionId = store.getPartitionId();
             PartitionContainer container = partitionContainers[partitionId];
             container.addStore(store);

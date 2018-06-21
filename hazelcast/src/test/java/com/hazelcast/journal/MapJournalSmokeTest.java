@@ -20,6 +20,7 @@ import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.hazelcast.streamer.SubscriptionMode.FROM_OLDEST;
@@ -75,7 +76,7 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
     @Test
     public void testStoreEvents() {
         String streamerName = randomMapName();
-        int keyCount = 1000;
+        int keyCount = 100000;
         int journalCapacity = 100000;
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(3);
@@ -96,6 +97,35 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
         }
 
         assertSizeEventually(2 * keyCount, valueCollector.getValues());
+    }
+
+    @Test
+    public void testMigration() {
+        String streamerName = randomMapName();
+        int keyCount = 100000;
+        int journalCapacity = 100000;
+
+        TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(3);
+        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(streamerName, journalCapacity, 271));
+        Streamer<String> streamer = i1.getStreamer(streamerName);
+        for (int i = 0; i < keyCount; i++) {
+            streamer.send(UUID.randomUUID().toString());
+        }
+
+        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(streamerName, journalCapacity, 271));
+        for (int i = 0; i < keyCount; i++) {
+            streamer.send(UUID.randomUUID().toString());
+        }
+
+        HazelcastInstance i3 = factory.newHazelcastInstance(createConfig(streamerName, journalCapacity, 271));
+        for (int i = 0; i < keyCount; i++) {
+            streamer.send(UUID.randomUUID().toString());
+        }
+
+        final StoringCollector<String> valueCollector = new StoringCollector<String>();
+        streamer.subscribeAllPartitions(FROM_OLDEST, valueCollector, LOGGING_ERROR_COLLECTOR);
+
+        assertSizeEventually(3 * keyCount, valueCollector.getValues());
     }
 
 
