@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 final class StreamerBackpressure {
-    private static final int MAX_INFLIGHT_OPERATION_COUNT = 10000;
+    private static final int MAX_INFLIGHT_OPERATION_COUNT = 20000;
     private final AtomicInteger inflightOpCounter = new AtomicInteger();
     private ExecutionCallback callback = new DecrementingCallback();
     private IdleStrategy idleStrategy = new BackoffIdleStrategy(1000, 1000, MICROSECONDS.toNanos(10),
