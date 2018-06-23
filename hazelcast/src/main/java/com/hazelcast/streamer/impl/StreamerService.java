@@ -21,6 +21,12 @@ import java.util.Collection;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
+//todo:
+// 1. introduce a proper configuration
+// 2. clarify difference offset vs. sequence no.
+// 3. offload storing from memory into disk into non-op thread
+// 4. do something about huge dataset migrations
+// 5. integrate with Raft
 public final class StreamerService implements ManagedService, RemoteService, MigrationAwareService {
     public static final String SERVICE_NAME = "streamer";
     private NodeEngine nodeEngine;
