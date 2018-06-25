@@ -21,9 +21,9 @@ import java.util.Collection;
 import java.util.Properties;
 
 //todo:
-// - clarify difference offset vs. sequence no.
-// - offload storing from memory into disk into non-op thread
+// - what to do with lost partitions?
 // - do something about huge dataset migrations. fragmenent service?
+// - offload storing from memory into disk into non-op thread
 // - integrate with Raft
 public final class StreamerService implements ManagedService, RemoteService, MigrationAwareService {
     public static final String SERVICE_NAME = "streamer";
@@ -43,7 +43,7 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
         PartitionContainer[] containers = new PartitionContainer[partitionCount];
         Config config = nodeEngine.getConfig();
         for (int i = 0; i < partitionCount; i++) {
-            containers[i] = new PartitionContainer(i, config);
+            containers[i] = new PartitionContainer(i, partitionCount, config);
         }
         return containers;
     }
@@ -84,12 +84,6 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
         PartitionContainer partitionContainer = partitionContainers[partitionId];
         DummyStore store = partitionContainer.getOrCreateStore(name);
         return store;
-    }
-
-
-    public boolean shouldWait(String name, int partitionId, long offset, int minRecords) {
-        DummyStore store = getStore(name, partitionId);
-        return !store.hasEnoughRecordsToRead(offset, minRecords);
     }
 
     public <T> int read(String name, int partitionId, long offset, int maxRecords, PollResult response) {

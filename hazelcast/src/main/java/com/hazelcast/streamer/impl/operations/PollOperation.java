@@ -78,9 +78,11 @@ public class PollOperation extends Operation implements DataSerializable, Blocki
 
         StreamerService service = getService();
         int read = service.read(name, getPartitionId(), offset, maxRecords, response);
-        minRecords -= read;
-        maxRecords -= read;
-        offset += read;
+        if (read != 0) {
+            minRecords -= read;
+            maxRecords -= read;
+            offset = response.getNextSequence();
+        }
 
         return minRecords > 0;
     }

@@ -41,9 +41,9 @@ public final class Subscription<T> {
             this.callbacks[i] = callback;
 
             //todo: implement initial sequence fetch
-            long initialSequence = 0;
+            long initialOffset = 0;
 
-            Operation pollOperation = new PollOperation(name, initialSequence, MIN_BATCH_SIZE, MAX_BATCH_SIZE);
+            Operation pollOperation = new PollOperation(name, initialOffset, MIN_BATCH_SIZE, MAX_BATCH_SIZE);
             InternalCompletableFuture<PollResult> f = operationService.createInvocationBuilder(StreamerService.SERVICE_NAME, pollOperation, partition)
                     .invoke();
             f.andThen(callback);

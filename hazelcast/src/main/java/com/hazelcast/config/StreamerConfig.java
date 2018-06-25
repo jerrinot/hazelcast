@@ -7,15 +7,15 @@ import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 import java.io.IOException;
 
 public class StreamerConfig implements IdentifiedDataSerializable {
-    private static final int DEFAULT_MAX_IN_MEMORY_ENTRIES = 1024;
+    private static final int DEFAULT_MAX_IN_MEMORY_MB = 10;
 
     private String name;
-    private int maxSizeInMemory = DEFAULT_MAX_IN_MEMORY_ENTRIES;
+    private int maxSizeInMemoryMB = DEFAULT_MAX_IN_MEMORY_MB;
     private String overflowDir;
 
     public StreamerConfig(StreamerConfig defConfig) {
         this.name = defConfig.name;
-        this.maxSizeInMemory = defConfig.maxSizeInMemory;
+        this.maxSizeInMemoryMB = defConfig.maxSizeInMemoryMB;
         this.overflowDir = defConfig.overflowDir;
     }
 
@@ -32,12 +32,12 @@ public class StreamerConfig implements IdentifiedDataSerializable {
         return this;
     }
 
-    public int getMaxSizeInMemory() {
-        return maxSizeInMemory;
+    public int getMaxSizeInMemoryMB() {
+        return maxSizeInMemoryMB;
     }
 
-    public StreamerConfig setMaxSizeInMemory(int maxSizeInMemory) {
-        this.maxSizeInMemory = maxSizeInMemory;
+    public StreamerConfig setMaxSizeInMemoryMB(int maxSizeInMemoryMB) {
+        this.maxSizeInMemoryMB = maxSizeInMemoryMB;
         return this;
     }
 
@@ -58,14 +58,14 @@ public class StreamerConfig implements IdentifiedDataSerializable {
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
-        out.writeInt(maxSizeInMemory);
+        out.writeInt(maxSizeInMemoryMB);
         out.writeUTF(overflowDir);
     }
 
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
-        maxSizeInMemory = in.readInt();
+        maxSizeInMemoryMB = in.readInt();
         overflowDir = in.readUTF();
     }
 
