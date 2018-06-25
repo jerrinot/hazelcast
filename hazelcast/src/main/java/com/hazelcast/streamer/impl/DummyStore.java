@@ -17,8 +17,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,7 +54,7 @@ public final class DummyStore implements Disposable {
         }
 
         int bufferSizeBytes = (streamerConfig.getMaxSizeInMemoryMB() * 1024 * 1024) / totalPartitionCount;
-        this.memoryBuffer = ByteBuffer.allocate(bufferSizeBytes);
+        this.memoryBuffer = ByteBuffer.allocateDirect(bufferSizeBytes);
         //todo: if the directory exists then check it's empty
     }
 
@@ -89,12 +87,12 @@ public final class DummyStore implements Disposable {
 
     private void writeCurrentBufferToDisk() {
         File file = fileForOffset(memoryOffsetStart);
+        memoryBuffer.flip();
         RandomAccessFile raf = null;
         try {
             raf = new RandomAccessFile(file, "rw");
-            MappedByteBuffer buffer = raf.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, memoryBuffer.position());
-            memoryBuffer.flip();
-            buffer.put(memoryBuffer);
+            int writtenBytes = raf.getChannel().write(memoryBuffer);
+            assert writtenBytes == highWatermark - memoryOffsetStart;
         } catch (FileNotFoundException e) {
             throw new IllegalStateException("Cannot write streamer file to a disk", e);
         } catch (IOException e) {

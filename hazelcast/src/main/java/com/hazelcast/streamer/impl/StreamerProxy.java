@@ -63,7 +63,8 @@ public class StreamerProxy<T> extends AbstractDistributedObject<StreamerService>
     @Override
     public ICompletableFuture<Object> send(T value) {
         int partitionId = randomPartition();
-        return send(partitionId, value);
+        Data data = serializationService.toData(value);
+        return send0(partitionId, data);
     }
 
     private int randomPartition() {
@@ -72,7 +73,12 @@ public class StreamerProxy<T> extends AbstractDistributedObject<StreamerService>
 
     @Override
     public ICompletableFuture<Object> send(int partitionId, T value) {
-        Operation op = new SendOperation(value, name);
+        Data data = serializationService.toData(value);
+        return send0(partitionId, data);
+    }
+
+    private ICompletableFuture<Object> send0(int partitionId, Data data) {
+        Operation op = new SendOperation(data, name);
 
         backpressure.waitForSlot();
         InternalCompletableFuture<Object> future = operationService.createInvocationBuilder(SERVICE_NAME, op, partitionId)

@@ -35,10 +35,6 @@ public final class PartitionContainer {
         return stores.keySet();
     }
 
-    public void addStore(DummyStore store) {
-        stores.put(store.getName(), store);
-    }
-
     public void clear() {
         for (DummyStore store : stores.values()) {
             store.dispose();

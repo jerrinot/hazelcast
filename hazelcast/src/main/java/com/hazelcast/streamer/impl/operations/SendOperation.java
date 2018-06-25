@@ -2,6 +2,7 @@ package com.hazelcast.streamer.impl.operations;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
+import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.nio.serialization.DataSerializable;
 import com.hazelcast.spi.BackupAwareOperation;
 import com.hazelcast.spi.Notifier;
@@ -14,14 +15,14 @@ import java.io.IOException;
 
 //todo: implement IDS
 public class SendOperation extends Operation implements DataSerializable, Notifier, BackupAwareOperation {
-    private Object value;
+    private Data value;
     private String name;
 
     public SendOperation() {
 
     }
 
-    public SendOperation(Object value, String name) {
+    public SendOperation(Data value, String name) {
         this.value = value;
         this.name = name;
     }
@@ -40,14 +41,14 @@ public class SendOperation extends Operation implements DataSerializable, Notifi
     @Override
     protected void writeInternal(ObjectDataOutput out) throws IOException {
         super.writeInternal(out);
-        out.writeObject(value);
+        out.writeData(value);
         out.writeUTF(name);
     }
 
     @Override
     protected void readInternal(ObjectDataInput in) throws IOException {
         super.readInternal(in);
-        value = in.readObject();
+        value = in.readData();
         name = in.readUTF();
     }
 

@@ -74,9 +74,8 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
         clearEverything();
     }
 
-    public void addValue(String name, int partitionId, Object value) {
+    public void addValue(String name, int partitionId, Data data) {
         DummyStore store = getStore(name, partitionId);
-        Data data = serializationService.toData(value);
         store.add(data);
     }
 
@@ -86,7 +85,7 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
         return store;
     }
 
-    public <T> int read(String name, int partitionId, long offset, int maxRecords, PollResult response) {
+    public int read(String name, int partitionId, long offset, int maxRecords, PollResult response) {
         DummyStore store = getStore(name, partitionId);
         return store.read(offset, maxRecords, response);
     }
