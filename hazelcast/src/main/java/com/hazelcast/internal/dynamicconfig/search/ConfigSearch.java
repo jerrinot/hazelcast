@@ -38,6 +38,7 @@ import com.hazelcast.config.RingbufferConfig;
 import com.hazelcast.config.ScheduledExecutorConfig;
 import com.hazelcast.config.SemaphoreConfig;
 import com.hazelcast.config.SetConfig;
+import com.hazelcast.config.StreamerConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.internal.dynamicconfig.ConfigurationService;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
@@ -403,6 +404,24 @@ public final class ConfigSearch {
             @Override
             public Map<String, PNCounterConfig> getStaticConfigs(@Nonnull Config staticConfig) {
                 return staticConfig.getPNCounterConfigs();
+            }
+        });
+        CONFIG_SUPPLIERS.put(StreamerConfig.class, new ConfigSupplier() {
+            @Nullable
+            @Override
+            public StreamerConfig getDynamicConfig(@Nonnull ConfigurationService configurationService, @Nonnull String name) {
+                return configurationService.findStreamerConfig(name);
+            }
+
+            @Nullable
+            @Override
+            public StreamerConfig getStaticConfig(@Nonnull Config staticConfig, @Nonnull String name) {
+                return staticConfig.getStreamerConfig(name);
+            }
+
+            @Override
+            public Map<String, StreamerConfig> getStaticConfigs(@Nonnull Config staticConfig) {
+                return staticConfig.getStreamerConfigs();
             }
         });
     }

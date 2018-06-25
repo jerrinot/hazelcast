@@ -131,6 +131,8 @@ public class Config {
 
     private final Map<String, PNCounterConfig> pnCounterConfigs = new ConcurrentHashMap<String, PNCounterConfig>();
 
+    private final Map<String, StreamerConfig> streamerConfigs = new ConcurrentHashMap<String, StreamerConfig>();
+
     private ServicesConfig servicesConfig = new ServicesConfig();
 
     private SecurityConfig securityConfig = new SecurityConfig();
@@ -2088,6 +2090,28 @@ public class Config {
         return getPNCounterConfig("default").getAsReadOnly();
     }
 
+    public StreamerConfig findStreamerConfig(String name) {
+        name = getBaseName(name);
+        StreamerConfig config = lookupByPattern(configPatternMatcher, streamerConfigs, name);
+        if (config != null) {
+            return config.getAsReadOnly();
+        }
+        return getStreamerConfig("default").getAsReadOnly();
+    }
+
+    public Map<String, StreamerConfig> getStreamerConfigs() {
+        return streamerConfigs;
+    }
+
+    public Config setStreamerConfigs(Map<String, StreamerConfig> streamerConfigs) {
+        this.streamerConfigs.clear();
+        this.streamerConfigs.putAll(streamerConfigs);
+        for (Entry<String, StreamerConfig> entry : streamerConfigs.entrySet()) {
+            entry.getValue().setName(entry.getKey());
+        }
+        return this;
+    }
+
     /**
      * Returns the ExecutorConfig for the given name, creating one
      * if necessary and adding it to the collection of known configurations.
@@ -2317,6 +2341,24 @@ public class Config {
         return config;
     }
 
+    public StreamerConfig getStreamerConfig(String name) {
+        name = getBaseName(name);
+        StreamerConfig config = lookupByPattern(configPatternMatcher, streamerConfigs, name);
+        if (config != null) {
+            return config;
+        }
+        StreamerConfig defConfig = streamerConfigs.get("default");
+        if (defConfig == null) {
+            defConfig = new StreamerConfig();
+            defConfig.setName("default");
+            addStreamerConfig(defConfig);
+        }
+        config = new StreamerConfig(defConfig);
+        config.setName(name);
+        addStreamerConfig(config);
+        return config;
+    }
+
     /**
      * Adds the executor configuration. The configuration is saved under
      * the config name, which may be a pattern with which the configuration
@@ -2379,6 +2421,11 @@ public class Config {
      */
     public Config addPNCounterConfig(PNCounterConfig pnCounterConfig) {
         this.pnCounterConfigs.put(pnCounterConfig.getName(), pnCounterConfig);
+        return this;
+    }
+
+    public Config addStreamerConfig(StreamerConfig streamerConfig) {
+        this.streamerConfigs.put(streamerConfig.getName(), streamerConfig);
         return this;
     }
 

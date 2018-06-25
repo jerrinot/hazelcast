@@ -37,6 +37,7 @@ import com.hazelcast.config.RingbufferConfig;
 import com.hazelcast.config.ScheduledExecutorConfig;
 import com.hazelcast.config.SemaphoreConfig;
 import com.hazelcast.config.SetConfig;
+import com.hazelcast.config.StreamerConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
@@ -402,4 +403,8 @@ public interface ConfigurationService {
      * @return registered FlakeIdGenerator configurations
      */
     Map<String, FlakeIdGeneratorConfig> getFlakeIdGeneratorConfigs();
+
+    Map<String,StreamerConfig> getStreamerConfigs();
+
+    StreamerConfig findStreamerConfig(String name);
 }

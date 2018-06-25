@@ -37,6 +37,7 @@ import com.hazelcast.config.RingbufferConfig;
 import com.hazelcast.config.ScheduledExecutorConfig;
 import com.hazelcast.config.SemaphoreConfig;
 import com.hazelcast.config.SetConfig;
+import com.hazelcast.config.StreamerConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
@@ -278,6 +279,16 @@ class EmptyConfigurationService implements ConfigurationService {
     @Override
     public Map<String, FlakeIdGeneratorConfig> getFlakeIdGeneratorConfigs() {
         return emptyMap();
+    }
+
+    @Override
+    public Map<String, StreamerConfig> getStreamerConfigs() {
+        return emptyMap();
+    }
+
+    @Override
+    public StreamerConfig findStreamerConfig(String name) {
+        return null;
     }
 
     @Override

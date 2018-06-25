@@ -1,5 +1,6 @@
 package com.hazelcast.streamer.impl;
 
+import com.hazelcast.config.Config;
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.nio.BufferObjectDataInput;
@@ -15,28 +16,20 @@ import com.hazelcast.spi.RemoteService;
 import com.hazelcast.spi.partition.MigrationEndpoint;
 import com.hazelcast.streamer.impl.operations.StreamerMigrationOperation;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
 
 //todo:
-// 1. introduce a proper configuration
-// 2. clarify difference offset vs. sequence no.
-// 3. offload storing from memory into disk into non-op thread
-// 4. do something about huge dataset migrations
-// 5. integrate with Raft
+// - clarify difference offset vs. sequence no.
+// - offload storing from memory into disk into non-op thread
+// - do something about huge dataset migrations. fragmenent service?
+// - integrate with Raft
 public final class StreamerService implements ManagedService, RemoteService, MigrationAwareService {
     public static final String SERVICE_NAME = "streamer";
     private NodeEngine nodeEngine;
     private PartitionContainer[] partitionContainers;
     private InternalSerializationService serializationService;
-
-    private static final AtomicInteger COUNTER = new AtomicInteger();
-
-    //todo: move to configuration
-    private File baseDir = new File("/tmp/streamers/test-dir-" + System.currentTimeMillis() + "-" + COUNTER.incrementAndGet());
 
     @Override
     public void init(NodeEngine nodeEngine, Properties properties) {
@@ -48,8 +41,9 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
     private PartitionContainer[] createPartitionContainers() {
         int partitionCount = nodeEngine.getPartitionService().getPartitionCount();
         PartitionContainer[] containers = new PartitionContainer[partitionCount];
+        Config config = nodeEngine.getConfig();
         for (int i = 0; i < partitionCount; i++) {
-            containers[i] = new PartitionContainer(i, baseDir);
+            containers[i] = new PartitionContainer(i, config);
         }
         return containers;
     }
@@ -71,8 +65,8 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
     }
 
     @Override
-    public DistributedObject createDistributedObject(String objectName) {
-        return new StreamerProxy(objectName, nodeEngine, this);
+    public DistributedObject createDistributedObject(String name) {
+        return new StreamerProxy(name, nodeEngine, this);
     }
 
     @Override

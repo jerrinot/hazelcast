@@ -1,22 +1,27 @@
 package com.hazelcast.journal;
 
 import com.hazelcast.config.Config;
+import com.hazelcast.config.StreamerConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.streamer.Streamer;
 import com.hazelcast.streamer.JournalValue;
 import com.hazelcast.streamer.StreamConsumer;
 import com.hazelcast.streamer.Subscription;
+import com.hazelcast.streamer.SubscriptionMode;
 import com.hazelcast.test.AssertTask;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -34,10 +39,16 @@ import static org.junit.Assert.assertEquals;
 @Category({QuickTest.class, ParallelTest.class})
 public class MapJournalSmokeTest extends HazelcastTestSupport {
 
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
+    private static final int DEFAULT_IN_MEMORY_SIZE = 1000;
+
     @Test
-    public void testStreamerInterface_poll() {
-        HazelcastInstance i1 = createHazelcastInstance(createConfig(271));
-        Streamer<String> s = i1.getStreamer("streamer");
+    public void testStreamerInterface_poll() throws Exception {
+        String streamerName = randomName();
+        HazelcastInstance i1 = createHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE));
+        Streamer<String> s = i1.getStreamer(streamerName);
 
         s.send(0, "foo");
         s.send(1, "bar");
@@ -50,13 +61,35 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testStoreEvents() {
+    public void testDynamicConfiguration() throws Exception {
+        int valueCount = 1000;
+
+        TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(2);
+        //intentionally passing wrong streamerName
+        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(271, "fooName", DEFAULT_IN_MEMORY_SIZE));
+        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(271, "fooName", DEFAULT_IN_MEMORY_SIZE));
+
+        String realName = randomName();
+        i1.getConfig().addStreamerConfig(new StreamerConfig().setName(realName).setOverflowDir(folder.newFolder().getAbsolutePath()));
+
+        Streamer<String> streamer = i1.getStreamer(realName);
+        for (int i = 0; i < valueCount; i++) {
+            streamer.send(UUID.randomUUID().toString());
+        }
+        final StoringCollector<String> valueCollector = new StoringCollector<String>();
+        streamer.subscribeAllPartitions(SubscriptionMode.FROM_OLDEST, valueCollector, LOGGING_ERROR_COLLECTOR);
+
+        assertSizeEventually(valueCount, valueCollector.getValues());
+    }
+
+    @Test
+    public void testStoreEvents() throws Exception {
         String streamerName = randomName();
         int keyCount = 100000;
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(3);
-        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(271));
-        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(271));
+        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE));
+        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE));
 
         Streamer<String> streamer = i1.getStreamer(streamerName);
 
@@ -66,7 +99,7 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
         for (int i = 0; i < keyCount; i++) {
             streamer.send(Integer.toString(i));
         }
-        HazelcastInstance i3 = factory.newHazelcastInstance(createConfig(271));
+        HazelcastInstance i3 = factory.newHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE));
         for (int i = keyCount; i < keyCount * 2; i++) {
             streamer.send(Integer.toString(i));
         }
@@ -75,19 +108,19 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testMigration_simple() {
+    public void testMigration_simple() throws Exception {
         String streamerName = randomName();
         int keyCount = 3;
         int partitionCount = 2;
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(2);
-        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(partitionCount));
+        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, DEFAULT_IN_MEMORY_SIZE));
         Streamer<String> streamer = i1.getStreamer(streamerName);
         for (int i = 0; i < keyCount; i++) {
             streamer.send(UUID.randomUUID().toString());
         }
 
-        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(partitionCount));
+        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, DEFAULT_IN_MEMORY_SIZE));
         for (int i = 0; i < keyCount; i++) {
             streamer.send(UUID.randomUUID().toString());
         }
@@ -99,24 +132,24 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testMigration() {
+    public void testMigration() throws Exception {
         String streamerName = randomName();
         int keyCount = 10000;
         int partitionCount = 271;
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(3);
-        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(partitionCount));
+        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, DEFAULT_IN_MEMORY_SIZE));
         Streamer<String> streamer = i1.getStreamer(streamerName);
         for (int i = 0; i < keyCount; i++) {
             streamer.send(UUID.randomUUID().toString());
         }
 
-        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(partitionCount));
+        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, DEFAULT_IN_MEMORY_SIZE));
         for (int i = 0; i < keyCount; i++) {
             streamer.send(UUID.randomUUID().toString());
         }
 
-        HazelcastInstance i3 = factory.newHazelcastInstance(createConfig(partitionCount));
+        HazelcastInstance i3 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, DEFAULT_IN_MEMORY_SIZE));
         for (int i = 0; i < keyCount; i++) {
             streamer.send(UUID.randomUUID().toString());
         }
@@ -128,12 +161,12 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testTimeout() {
+    public void testTimeout() throws Exception {
         String streamerName = randomName();
         int keyCount = 5;
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(1);
-        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(271));
+        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE));
 
         Streamer<String> streamer = i1.getStreamer(streamerName);
         for (int i = 0; i < keyCount; i++) {
@@ -145,15 +178,15 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testSyncBarrierAndBackup() throws InterruptedException {
+    public void testSyncBarrierAndBackup() throws Exception {
         String streamerName = randomName();
         int partitionCount = 271;
 
         int keyCount = 10000;
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(3);
-        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(partitionCount));
-        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(partitionCount));
+        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, DEFAULT_IN_MEMORY_SIZE));
+        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, DEFAULT_IN_MEMORY_SIZE));
 
         Streamer<String> streamer = i1.getStreamer(streamerName);
         for (int i = 0; i < keyCount; i++) {
@@ -174,13 +207,13 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testSubscribtionCancellation() {
+    public void testSubscribtionCancellation() throws Exception {
         String streamerName = randomName();
         final int keyCount = 100000;
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(2);
-        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(271));
-        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(271));
+        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE));
+        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE));
 
         Streamer<String> streamer = i1.getStreamer(streamerName);
 
@@ -224,9 +257,10 @@ public class MapJournalSmokeTest extends HazelcastTestSupport {
         }
     }
 
-    private Config createConfig(int partitionCount) {
+    private Config createConfig(int partitionCount, String streamerName, int maxMemory) throws IOException {
         Config config = getConfig();
         config.setProperty(GroupProperty.PARTITION_COUNT.getName(), Integer.toString(partitionCount));
+        config.getStreamerConfig(streamerName).setMaxSizeInMemory(maxMemory).setOverflowDir(folder.newFolder().getAbsolutePath());
         return config;
     }
 }

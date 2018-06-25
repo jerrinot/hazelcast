@@ -1,5 +1,7 @@
 package com.hazelcast.streamer.impl;
 
+import com.hazelcast.config.ConfigurationException;
+import com.hazelcast.config.StreamerConfig;
 import com.hazelcast.internal.serialization.impl.HeapData;
 import com.hazelcast.nio.BufferObjectDataOutput;
 import com.hazelcast.nio.Disposable;
@@ -8,6 +10,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.streamer.JournalValue;
+import com.hazelcast.util.Preconditions;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -20,35 +23,38 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.hazelcast.nio.IOUtil.closeResource;
+import static com.hazelcast.util.Preconditions.checkNotNull;
 import static java.lang.Math.abs;
 import static java.util.Collections.binarySearch;
 
 public final class DummyStore implements Disposable {
-    private static final int IN_MEMORY_MAX_ENTRIES = 1024;
-    private File dir;
+    private final File dir;
 
-    private String name;
-    private int partitionId;
+    private final String name;
+    private final int partitionId;
 
-    private List<Data> values = new ArrayList<Data>();
-    private long bytesInMemory;
+    private final List<Data> values = new ArrayList<Data>();
+    private final List<Long> offsetsInFiles = new ArrayList<Long>();
+    private final int inMemoryMaxEntries;
     private long memoryOffsetStart;
-    private List<Long> offsetsInFiles = new ArrayList<Long>();
+    private long bytesInMemory;
 
-    public DummyStore(String name, int partitionId, File baseDir) {
+    public DummyStore(String name, int partitionId, StreamerConfig streamerConfig) {
+        checkNotNull("Streamer " + name + " has no overflow directory configured", streamerConfig.getOverflowDir());
+
         this.name = name;
         this.partitionId = partitionId;
-        File storeDir = new File(baseDir, name);
+        File storeDir = new File(streamerConfig.getOverflowDir());
+        if (!storeDir.isDirectory()) {
+            throw new ConfigurationException("Streamer " + name + " has a wrong overflow directory configured: " + storeDir);
+        }
         this.dir = new File(storeDir, Integer.toString(partitionId));
         if (!dir.exists()) {
             boolean mkdirs = dir.mkdirs();
             assert mkdirs;
         }
+        this.inMemoryMaxEntries = streamerConfig.getMaxSizeInMemory();
         //todo: if the directory exists then check it's empty
-    }
-
-    public DummyStore() {
-
     }
 
     public void add(Data value) {
@@ -64,7 +70,7 @@ public final class DummyStore implements Disposable {
     }
 
     private boolean isMemoryFull() {
-        return values.size() == IN_MEMORY_MAX_ENTRIES;
+        return values.size() == inMemoryMaxEntries;
     }
 
     private void writeCurrentBufferToDisk() {
@@ -162,12 +168,16 @@ public final class DummyStore implements Disposable {
                     closeResource(raf);
                 }
             }
-        } while (maxRecords > 0);
+        } while (entriesRead < maxRecords);
         return entriesRead;
     }
 
     private File fileForOffset(long startingOffset) {
-        return new File(dir, Long.toString(startingOffset));
+        return new File(dir, filenameForOffset(startingOffset));
+    }
+
+    private String filenameForOffset(long startingOffset) {
+        return Long.toString(startingOffset);
     }
 
     private long findStartingOffset(long offset) {

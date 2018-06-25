@@ -54,6 +54,7 @@ import com.hazelcast.config.SemaphoreConfig;
 import com.hazelcast.config.SerializationConfig;
 import com.hazelcast.config.ServicesConfig;
 import com.hazelcast.config.SetConfig;
+import com.hazelcast.config.StreamerConfig;
 import com.hazelcast.config.TopicConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.config.WanReplicationConfig;
@@ -881,6 +882,42 @@ public class DynamicConfigurationAwareConfig extends Config {
 
     @Override
     public Config setCardinalityEstimatorConfigs(Map<String, CardinalityEstimatorConfig> cardinalityEstimatorConfigs) {
+        throw new UnsupportedOperationException("Unsupported operation");
+    }
+
+    @Override
+    public StreamerConfig findStreamerConfig(String name) {
+        return getStreamerConfigInternal(name, "default");
+    }
+
+    @Override
+    public StreamerConfig getStreamerConfig(String name) {
+        return getStreamerConfigInternal(name, name);
+    }
+
+    private StreamerConfig getStreamerConfigInternal(String name, String fallbackName) {
+        return (StreamerConfig) configSearcher.getConfig(name, fallbackName,
+                supplierFor(StreamerConfig.class));
+    }
+
+    @Override
+    public Config addStreamerConfig(StreamerConfig streamerConfig) {
+        checkStaticConfigurationDoesNotExist(staticConfig.getStreamerConfigs(),
+                streamerConfig.getName(), streamerConfig);
+        configurationService.broadcastConfig(streamerConfig);
+        return this;
+    }
+
+    @Override
+    public Map<String, StreamerConfig> getStreamerConfigs() {
+        Map<String, StreamerConfig> staticConfigs = staticConfig.getStreamerConfigs();
+        Map<String, StreamerConfig> dynamicConfigs = configurationService.getStreamerConfigs();
+
+        return aggregate(staticConfigs, dynamicConfigs);
+    }
+
+    @Override
+    public Config setStreamerConfigs(Map<String, StreamerConfig> streamerConfigs) {
         throw new UnsupportedOperationException("Unsupported operation");
     }
 
