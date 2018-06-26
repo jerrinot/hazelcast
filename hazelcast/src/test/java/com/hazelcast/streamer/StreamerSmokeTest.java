@@ -1,43 +1,28 @@
 package com.hazelcast.streamer;
 
-import com.hazelcast.config.Config;
 import com.hazelcast.config.StreamerConfig;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.spi.properties.GroupProperty;
 import com.hazelcast.test.AssertTask;
-import com.hazelcast.test.HazelcastParallelClassRunner;
-import com.hazelcast.test.HazelcastTestSupport;
+import com.hazelcast.test.HazelcastSerialClassRunner;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.hazelcast.streamer.SubscriptionMode.FROM_OLDEST;
 import static com.hazelcast.streamer.Subscription.LOGGING_ERROR_COLLECTOR;
-import static java.util.Collections.newSetFromMap;
-import static java.util.Collections.unmodifiableSet;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(HazelcastParallelClassRunner.class)
+@RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
-public class StreamerSmokeTest extends HazelcastTestSupport {
-
-    @Rule
-    public TemporaryFolder folder = new TemporaryFolder();
-
-    private static final int DEFAULT_IN_MEMORY_SIZE_MB = 20;
+public final class StreamerSmokeTest extends StreamerTestSupport {
 
     @Test
     public void testStreamerInterface_poll() throws Exception {
@@ -104,31 +89,6 @@ public class StreamerSmokeTest extends HazelcastTestSupport {
         }
 
         assertSizeEventually(2 * valueCount, valueCollector.getValues());
-    }
-
-    @Test
-    public void testStoreEvents() throws Exception {
-        String streamerName = randomName();
-        int keyCount = 100000;
-
-        TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(3);
-        HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE_MB));
-        HazelcastInstance i2 = factory.newHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE_MB));
-
-        Streamer<String> streamer = i1.getStreamer(streamerName);
-
-        final StoringCollector<String> valueCollector = new StoringCollector<String>();
-        streamer.subscribeAllPartitions(FROM_OLDEST, valueCollector, LOGGING_ERROR_COLLECTOR);
-
-        for (int i = 0; i < keyCount; i++) {
-            streamer.send(Integer.toString(i));
-        }
-        HazelcastInstance i3 = factory.newHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE_MB));
-        for (int i = keyCount; i < keyCount * 2; i++) {
-            streamer.send(Integer.toString(i));
-        }
-
-        assertSizeEventually(2 * keyCount, valueCollector.getValues());
     }
 
     @Test
@@ -266,25 +226,5 @@ public class StreamerSmokeTest extends HazelcastTestSupport {
         }, 10); //10 seconds
 
 
-    }
-
-    private static class StoringCollector<T> implements StreamConsumer<T> {
-        private Set<T> valueSet = newSetFromMap(new ConcurrentHashMap<T, Boolean>());
-
-        public Set<T> getValues() {
-            return unmodifiableSet(valueSet);
-        }
-
-        @Override
-        public void accept(int partition, long offset, T value) {
-            valueSet.add(value);
-        }
-    }
-
-    private Config createConfig(int partitionCount, String streamerName, int maxMemory) throws IOException {
-        Config config = getConfig();
-        config.setProperty(GroupProperty.PARTITION_COUNT.getName(), Integer.toString(partitionCount));
-        config.getStreamerConfig(streamerName).setMaxSizeInMemoryMB(maxMemory).setOverflowDir(folder.newFolder().getAbsolutePath());
-        return config;
     }
 }

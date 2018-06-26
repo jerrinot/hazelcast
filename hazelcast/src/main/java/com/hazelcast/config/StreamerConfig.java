@@ -8,10 +8,12 @@ import java.io.IOException;
 
 public class StreamerConfig implements IdentifiedDataSerializable {
     private static final int DEFAULT_MAX_IN_MEMORY_MB = 10;
+    private static final int DEFAULT_CHUNK_SIZE_MB = 50;
 
     private String name;
     private int maxSizeInMemoryMB = DEFAULT_MAX_IN_MEMORY_MB;
     private String overflowDir;
+    private int chunkSizeMB = DEFAULT_CHUNK_SIZE_MB;
 
     public StreamerConfig(StreamerConfig defConfig) {
         this.name = defConfig.name;
@@ -21,6 +23,15 @@ public class StreamerConfig implements IdentifiedDataSerializable {
 
     public StreamerConfig() {
 
+    }
+
+    public int getChunkSizeMB() {
+        return chunkSizeMB;
+    }
+
+    public StreamerConfig setChunkSizeMB(int chunkSizeMB) {
+        this.chunkSizeMB = chunkSizeMB;
+        return this;
     }
 
     public String getName() {
@@ -59,6 +70,7 @@ public class StreamerConfig implements IdentifiedDataSerializable {
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeUTF(name);
         out.writeInt(maxSizeInMemoryMB);
+        out.writeInt(chunkSizeMB);
         out.writeUTF(overflowDir);
     }
 
@@ -66,6 +78,7 @@ public class StreamerConfig implements IdentifiedDataSerializable {
     public void readData(ObjectDataInput in) throws IOException {
         name = in.readUTF();
         maxSizeInMemoryMB = in.readInt();
+        chunkSizeMB = in.readInt();
         overflowDir = in.readUTF();
     }
 

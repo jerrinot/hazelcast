@@ -19,6 +19,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.nio.IOUtil.closeResource;
 import static com.hazelcast.util.Preconditions.checkNotNull;
@@ -31,12 +32,18 @@ public final class DummyStore implements Disposable {
     private final File dir;
     private final String name;
     private final int partitionId;
+    private final int chunkSizeBytes;
 
     private final ByteBuffer memoryBuffer;
     private final List<Long> startingOffsetInFiles = new ArrayList<Long>();
 
+    private RandomAccessFile currentChunk;
+    private long bytesInTheCurrentChunk;
+
     private long memoryOffsetStart;
     private long highWatermark;
+
+    private long maximumWriteLatencyNanos = 0;
 
     public DummyStore(String name, int partitionId, int totalPartitionCount, StreamerConfig streamerConfig) {
         checkNotNull("Streamer " + name + " has no overflow directory configured", streamerConfig.getOverflowDir());
@@ -47,6 +54,7 @@ public final class DummyStore implements Disposable {
         if (!storeDir.isDirectory()) {
             throw new ConfigurationException("Streamer " + name + " has a wrong overflow directory configured: " + storeDir);
         }
+        //todo: if the directory exists then check it's empty
         this.dir = new File(storeDir, Integer.toString(partitionId));
         if (!dir.exists()) {
             boolean mkdirs = dir.mkdirs();
@@ -55,7 +63,8 @@ public final class DummyStore implements Disposable {
 
         int bufferSizeBytes = (streamerConfig.getMaxSizeInMemoryMB() * 1024 * 1024) / totalPartitionCount;
         this.memoryBuffer = ByteBuffer.allocateDirect(bufferSizeBytes);
-        //todo: if the directory exists then check it's empty
+
+        this.chunkSizeBytes = streamerConfig.getChunkSizeMB() * 1024 * 1024;
     }
 
     public void add(Data value) {
@@ -86,21 +95,34 @@ public final class DummyStore implements Disposable {
     }
 
     private void writeCurrentBufferToDisk() {
-        File file = fileForOffset(memoryOffsetStart);
+        long bytesToBeWritten = highWatermark - memoryOffsetStart;
+        if (currentChunk == null || bytesToBeWritten + bytesInTheCurrentChunk > chunkSizeBytes) {
+            closeResource(currentChunk);
+            try {
+                currentChunk = new RandomAccessFile(fileForOffset(memoryOffsetStart), "rw");
+            } catch (FileNotFoundException e) {
+                throw new IllegalStateException("cannot create a new chunk", e);
+            }
+            startingOffsetInFiles.add(memoryOffsetStart);
+            bytesInTheCurrentChunk = 0;
+        }
+
         memoryBuffer.flip();
-        RandomAccessFile raf = null;
         try {
-            raf = new RandomAccessFile(file, "rw");
-            int writtenBytes = raf.getChannel().write(memoryBuffer);
-            assert writtenBytes == highWatermark - memoryOffsetStart;
+            long startingTimeNanos = System.nanoTime();
+            int writtenBytes = currentChunk.getChannel().write(memoryBuffer);
+            long writtingTimeNanos = System.nanoTime() - startingTimeNanos;
+            if (writtingTimeNanos > maximumWriteLatencyNanos) {
+                maximumWriteLatencyNanos = writtingTimeNanos;
+                System.out.println("Write latency: " + TimeUnit.NANOSECONDS.toMicros(writtingTimeNanos) + " micros");
+            }
+            bytesInTheCurrentChunk += writtenBytes;
+            assert writtenBytes == bytesToBeWritten;
         } catch (FileNotFoundException e) {
             throw new IllegalStateException("Cannot write streamer file to a disk", e);
         } catch (IOException e) {
             throw new IllegalStateException("Cannot write streamer file to a disk", e);
-        } finally {
-            closeResource(raf);
         }
-        startingOffsetInFiles.add(memoryOffsetStart);
         memoryOffsetStart = highWatermark;
         memoryBuffer.clear();
     }
@@ -203,6 +225,7 @@ public final class DummyStore implements Disposable {
 
     @Override
     public void dispose() {
+        closeResource(currentChunk);
         for (long startingOffset : startingOffsetInFiles) {
             File file = fileForOffset(startingOffset);
             file.delete();
