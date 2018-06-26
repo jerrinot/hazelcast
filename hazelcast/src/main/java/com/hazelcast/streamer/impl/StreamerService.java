@@ -21,10 +21,12 @@ import java.util.Collection;
 import java.util.Properties;
 
 //todo:
-// - what to do with lost partitions?
-// - do something about huge dataset migrations. fragmenent service?
+// - implement consumer groups
+// - do something about huge dataset migrations. fragmented service?
 // - offload storing from memory into disk into non-op thread
 // - integrate with Raft
+// - what to do with lost partitions?
+// - zero-copy polling?
 public final class StreamerService implements ManagedService, RemoteService, MigrationAwareService {
     public static final String SERVICE_NAME = "streamer";
     private NodeEngine nodeEngine;
