@@ -5,7 +5,6 @@ import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.nio.BufferObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.streamer.JournalValue;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.ParallelTest;
@@ -56,14 +55,14 @@ public class DummyStoreTest extends HazelcastTestSupport {
         long nextOffset = 0;
         for (int i = 0; i < entryCount; i++) {
             store.read(nextOffset, 1, pollResult);
-            nextOffset = pollResult.getNextSequence();
+            nextOffset = pollResult.getNextOffset();
         }
-        List<JournalValue<Data>> results = pollResult.getResults();
+        List<Data> results = pollResult.getResults();
         assertEquals(entryCount, results.size());
 
         for (int i = 0; i < entryCount; i++) {
-            JournalValue<Data> journalValue = results.get(i);
-            assertEquals(serializationService.toData(i), journalValue.getValue());
+            Data data = results.get(i);
+            assertEquals(serializationService.toData(i), data);
         }
     }
 
@@ -93,14 +92,14 @@ public class DummyStoreTest extends HazelcastTestSupport {
         long nextOffset = 0;
         for (int i = 0; i < entryCount; i++) {
             store.read(nextOffset, 1, pollResult);
-            nextOffset = pollResult.getNextSequence();
+            nextOffset = pollResult.getNextOffset();
         }
-        List<JournalValue<Data>> results = pollResult.getResults();
+        List<Data> results = pollResult.getResults();
         assertEquals(entryCount, results.size());
 
         for (int i = 0; i < entryCount; i++) {
-            JournalValue<Data> journalValue = results.get(i);
-            assertEquals(serializationService.toData(i), journalValue.getValue());
+            Data data = results.get(i);
+            assertEquals(serializationService.toData(i), data);
         }
     }
 
@@ -127,16 +126,16 @@ public class DummyStoreTest extends HazelcastTestSupport {
             }
             PollResult pollResult = new PollResult();
             store.read(nextOffset, batchSize, pollResult);
-            nextOffset = pollResult.getNextSequence();
+            nextOffset = pollResult.getNextOffset();
 
-            List<JournalValue<Data>> results = pollResult.getResults();
+            List<Data> results = pollResult.getResults();
             assertEquals(results.size(), batchSize);
 
             for (int nested = 0; i < 0; i++) {
                 int expectedValue = i * batchSize + nested;
-                JournalValue<Data> journalValue = results.get(nested);
+                Data journalValue = results.get(nested);
                 Data expectedData = serializationService.toData(expectedValue);
-                assertEquals(expectedData, journalValue.getValue());
+                assertEquals(expectedData, journalValue);
             }
         }
     }

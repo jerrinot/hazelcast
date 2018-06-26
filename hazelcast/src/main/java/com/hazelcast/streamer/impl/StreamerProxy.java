@@ -109,11 +109,14 @@ public class StreamerProxy<T> extends AbstractDistributedObject<StreamerService>
                 .invoke();
 
 
-        List<JournalValue> results = (List)future.join().getResults();
+        PollResult pollResult = future.join();
+        List results = pollResult.getResults();
+        List<Long> offsets = pollResult.getOffsets();
         for (int i = 0; i < results.size(); i++) {
-            JournalValue<Data> dataJournalValue = results.get(i);
-            Object deserializedValue = serializationService.toObject(dataJournalValue.getValue());
-            results.set(i, new JournalValue<Object>(deserializedValue, dataJournalValue.getOffset(), partitionId));
+            Data data = (Data) results.get(i);
+            long entryOffset = offsets.get(i);
+            T deserializedValue = serializationService.toObject(data);
+            results.set(i, new JournalValue<Object>(deserializedValue, entryOffset, partitionId));
         }
         return (List)results;
     }

@@ -78,7 +78,7 @@ public final class Subscription<T> {
 
         @Override
         public void onResponse(PollResult response) {
-            long nextSequence = response.getNextSequence();
+            long nextSequence = response.getNextOffset();
             if (cancelled) {
                 return;
             }
@@ -88,12 +88,14 @@ public final class Subscription<T> {
 
             f.andThen(this);
 
-            List<JournalValue<Data>> results = response.getResults();
+            List<Data> results = response.getResults();
+            List<Long> offsets = response.getOffsets();
             int size = results.size();
             for (int i = 0; i < size && !cancelled; i++) {
-                JournalValue<Data> binaryValue = results.get(i);
-                T deserialized = serializationService.toObject(binaryValue.getValue());
-                consumer.accept(partition, binaryValue.getOffset(), deserialized);
+                Data data = results.get(i);
+                long offset = offsets.get(i);
+                T deserialized = serializationService.toObject(data);
+                consumer.accept(partition, offset, deserialized);
             }
         }
 

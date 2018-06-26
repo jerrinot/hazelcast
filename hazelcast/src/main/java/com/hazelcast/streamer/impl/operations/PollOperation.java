@@ -81,7 +81,7 @@ public class PollOperation extends Operation implements DataSerializable, Blocki
         if (read != 0) {
             minRecords -= read;
             maxRecords -= read;
-            offset = response.getNextSequence();
+            offset = response.getNextOffset();
         }
 
         return minRecords > 0;

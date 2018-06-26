@@ -85,5 +85,4 @@ public abstract class StreamerTestSupport extends HazelcastTestSupport {
             return counter.get();
         }
     }
-
 }

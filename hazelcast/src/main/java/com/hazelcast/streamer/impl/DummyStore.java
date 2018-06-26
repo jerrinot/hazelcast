@@ -8,7 +8,6 @@ import com.hazelcast.nio.Disposable;
 import com.hazelcast.nio.IOUtil;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.streamer.JournalValue;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -127,14 +126,13 @@ public final class DummyStore implements Disposable {
         memoryBuffer.clear();
     }
 
-    public int read(long currentOffset, final int maxRecords, final PollResult response) {
+    public int read(long currentOffset, final int maxRecords, final InternalConsumer consumer) {
         //todo: refactor this mess!
         int entriesRead = 0;
-        List<JournalValue<Data>> results = response.getResults();
         while (entriesRead < maxRecords) {
             if (currentOffset >= memoryOffsetStart) {
                 //fast path - reading from memory
-                return readFromMemory(currentOffset, entriesRead, maxRecords, response);
+                return readFromMemory(currentOffset, entriesRead, maxRecords, consumer);
             } else {
                 long fileStartingOffset = findStartingOffset(currentOffset);
                 RandomAccessFile raf = null;
@@ -156,12 +154,11 @@ public final class DummyStore implements Disposable {
                         byte[] buffer = new byte[recordSize];
                         raf.readFully(buffer);
                         Data data = new HeapData(buffer);
-                        JournalValue<Data> journalValue = new JournalValue<Data>(data, currentOffset, partitionId);
-                        results.add(journalValue);
+                        long nextRecordOffset = currentOffset + recordSize + RECORD_HEADER_SIZE;
+                        consumer.accept(partitionId, currentOffset, data, nextRecordOffset);
 
                         offsetInsideFile += recordSize;
-                        currentOffset += recordSize + RECORD_HEADER_SIZE;
-                        response.setNextSequence(currentOffset);
+                        currentOffset = nextRecordOffset;
                         entriesRead++;
                     } while (raf.getFilePointer() != raf.length() && entriesRead < maxRecords);
                 } catch (FileNotFoundException e) {
@@ -176,8 +173,7 @@ public final class DummyStore implements Disposable {
         return entriesRead;
     }
 
-    private int readFromMemory(long currentOffset, int entriesRead, int maxRecords, PollResult response) {
-        List<JournalValue<Data>> results = response.getResults();
+    private int readFromMemory(long currentOffset, int entriesRead, int maxRecords, InternalConsumer consumer) {
         for (; entriesRead < maxRecords && currentOffset < highWatermark; entriesRead++) {
             int offsetInsideBuffer = (int) (currentOffset - memoryOffsetStart);
             long checksumOffset = memoryBuffer.getLong(offsetInsideBuffer);
@@ -194,11 +190,11 @@ public final class DummyStore implements Disposable {
                 memoryBuffer.position(origPosition);
             }
 
-            JournalValue<Data> journalValue = new JournalValue<Data>(new HeapData(recordBuffer), currentOffset, partitionId);
-            results.add(journalValue);
-            currentOffset += recordSize + RECORD_HEADER_SIZE;
+            Data data = new HeapData(recordBuffer);
+            long nextRecordOffset = currentOffset + recordSize + RECORD_HEADER_SIZE;
+            consumer.accept(partitionId, currentOffset, data, nextRecordOffset);
+            currentOffset = nextRecordOffset;
         }
-        response.setNextSequence(currentOffset);
         return entriesRead;
     }
 
