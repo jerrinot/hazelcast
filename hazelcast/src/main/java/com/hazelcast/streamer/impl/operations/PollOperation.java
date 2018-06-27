@@ -73,18 +73,13 @@ public class PollOperation extends Operation implements DataSerializable, Blocki
     @Override
     public boolean shouldWait() {
         if (response == null) {
-            response = new PollResult();
+            response = new PollResult(maxRecords, offset);
         }
 
         StreamerService service = getService();
-        int read = service.read(name, getPartitionId(), offset, maxRecords, response);
-        if (read != 0) {
-            minRecords -= read;
-            maxRecords -= read;
-            offset = response.getNextOffset();
-        }
-
-        return minRecords > 0;
+        service.read(name, getPartitionId(), offset, response);
+        offset = response.getNextOffset();
+        return response.getResults().size() < minRecords;
     }
 
     @Override

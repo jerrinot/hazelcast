@@ -15,6 +15,12 @@ public final class PollResult implements DataSerializable, InternalConsumer {
     private List<Long> offsets;
 
     private long nextOffset;
+    private transient int maxRecords;
+
+    public PollResult(int maxRecords, long nextOffset) {
+        this.maxRecords = maxRecords;
+        this.nextOffset = nextOffset;
+    }
 
     public PollResult() {
 
@@ -36,10 +42,6 @@ public final class PollResult implements DataSerializable, InternalConsumer {
 
     public long getNextOffset() {
         return nextOffset;
-    }
-
-    public void setNextOffset(long nextOffset) {
-        this.nextOffset = nextOffset;
     }
 
     @Override
@@ -77,10 +79,18 @@ public final class PollResult implements DataSerializable, InternalConsumer {
     }
 
     @Override
-    public void accept(int partition, long offset, Data value, long nextEntryOffset) {
-        getResults().add(value);
+    public boolean accept(int partition, long offset, Data value, long nextEntryOffset) {
+        List<Data> results = getResults();
+
+        if (maxRecords == results.size()) {
+            return false;
+        }
+
+        results.add(value);
         getOffsets().add(offset);
-        assert offsets.size() == results.size();
+        assert offsets.size() == this.results.size();
         nextOffset = nextEntryOffset;
+
+        return true;
     }
 }

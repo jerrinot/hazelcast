@@ -51,7 +51,7 @@ public abstract class StreamerTestSupport extends HazelcastTestSupport {
             valueSet.add(value);
 
             int size = valueSet.size();
-            if (size % 100000 == 0) {
+            if (size % 10000 == 0) {
                 System.out.println("Collected " + size + " values so far");
             }
         }

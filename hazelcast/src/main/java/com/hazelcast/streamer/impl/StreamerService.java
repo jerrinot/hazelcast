@@ -87,9 +87,9 @@ public final class StreamerService implements ManagedService, RemoteService, Mig
         return store;
     }
 
-    public int read(String name, int partitionId, long offset, int maxRecords, InternalConsumer consumer) {
+    public void read(String name, int partitionId, long offset, InternalConsumer consumer) {
         DummyStore store = getStore(name, partitionId);
-        return store.read(offset, maxRecords, consumer);
+        store.read(offset, consumer);
     }
 
     @Override

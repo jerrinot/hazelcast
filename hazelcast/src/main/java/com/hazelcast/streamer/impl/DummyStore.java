@@ -113,7 +113,7 @@ public final class DummyStore implements Disposable {
             long writtingTimeNanos = System.nanoTime() - startingTimeNanos;
             if (writtingTimeNanos > maximumWriteLatencyNanos) {
                 maximumWriteLatencyNanos = writtingTimeNanos;
-                System.out.println("Write latency: " + TimeUnit.NANOSECONDS.toMicros(writtingTimeNanos) + " micros");
+//                System.out.println("Write latency: " + TimeUnit.NANOSECONDS.toMicros(writtingTimeNanos) + " micros");
             }
             bytesInTheCurrentChunk += writtenBytes;
             assert writtenBytes == bytesToBeWritten;
@@ -126,13 +126,13 @@ public final class DummyStore implements Disposable {
         memoryBuffer.clear();
     }
 
-    public int read(long currentOffset, final int maxRecords, final InternalConsumer consumer) {
+    public void read(long currentOffset, final InternalConsumer consumer) {
         //todo: refactor this mess!
-        int entriesRead = 0;
-        while (entriesRead < maxRecords) {
+        for (;;) {
             if (currentOffset >= memoryOffsetStart) {
                 //fast path - reading from memory
-                return readFromMemory(currentOffset, entriesRead, maxRecords, consumer);
+                readFromMemory(currentOffset, consumer);
+                return;
             } else {
                 long fileStartingOffset = findStartingOffset(currentOffset);
                 RandomAccessFile raf = null;
@@ -155,12 +155,12 @@ public final class DummyStore implements Disposable {
                         raf.readFully(buffer);
                         Data data = new HeapData(buffer);
                         long nextRecordOffset = currentOffset + recordSize + RECORD_HEADER_SIZE;
-                        consumer.accept(partitionId, currentOffset, data, nextRecordOffset);
-
+                        if (!consumer.accept(partitionId, currentOffset, data, nextRecordOffset)) {
+                            return;
+                        }
                         offsetInsideFile += recordSize;
                         currentOffset = nextRecordOffset;
-                        entriesRead++;
-                    } while (raf.getFilePointer() != raf.length() && entriesRead < maxRecords);
+                    } while (raf.getFilePointer() != raf.length());
                 } catch (FileNotFoundException e) {
                     throw new IllegalStateException("Error while opening offset file", e);
                 } catch (IOException e) {
@@ -170,11 +170,10 @@ public final class DummyStore implements Disposable {
                 }
             }
         }
-        return entriesRead;
     }
 
-    private int readFromMemory(long currentOffset, int entriesRead, int maxRecords, InternalConsumer consumer) {
-        for (; entriesRead < maxRecords && currentOffset < highWatermark; entriesRead++) {
+    private void readFromMemory(long currentOffset, InternalConsumer consumer) {
+        while (currentOffset < highWatermark) {
             int offsetInsideBuffer = (int) (currentOffset - memoryOffsetStart);
             long checksumOffset = memoryBuffer.getLong(offsetInsideBuffer);
             if (checksumOffset != currentOffset) {
@@ -192,10 +191,11 @@ public final class DummyStore implements Disposable {
 
             Data data = new HeapData(recordBuffer);
             long nextRecordOffset = currentOffset + recordSize + RECORD_HEADER_SIZE;
-            consumer.accept(partitionId, currentOffset, data, nextRecordOffset);
+            if (!consumer.accept(partitionId, currentOffset, data, nextRecordOffset)) {
+                return;
+            }
             currentOffset = nextRecordOffset;
         }
-        return entriesRead;
     }
 
     private File fileForOffset(long startingOffset) {

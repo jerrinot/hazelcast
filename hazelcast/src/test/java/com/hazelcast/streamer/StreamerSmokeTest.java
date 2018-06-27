@@ -13,6 +13,7 @@ import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static com.hazelcast.streamer.SubscriptionMode.FROM_OLDEST;
 import static com.hazelcast.streamer.Subscription.LOGGING_ERROR_COLLECTOR;
@@ -23,6 +24,18 @@ import static org.junit.Assert.assertEquals;
 @RunWith(HazelcastSerialClassRunner.class)
 @Category({QuickTest.class, ParallelTest.class})
 public final class StreamerSmokeTest extends StreamerTestSupport {
+
+    @Test
+    public void testNextOffsetDoesNotResetToZeroWhenNoEntryIsAvailable() throws Exception {
+        String streamerName = randomName();
+        long nonExistingOffset = 5000;
+        HazelcastInstance i1 = createHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE_MB));
+        Streamer<String> s = i1.getStreamer(streamerName);
+
+        List<JournalValue<String>> poll = s.poll(0, nonExistingOffset, 1, 1, 5, TimeUnit.SECONDS);
+        assertEquals(0, poll.size());
+        assertEquals(nonExistingOffset, poll.)
+    }
 
     @Test
     public void testStreamerInterface_poll() throws Exception {
@@ -68,8 +81,8 @@ public final class StreamerSmokeTest extends StreamerTestSupport {
     @Test
     public void testOverflow_with_Migration() throws Exception {
         String streamerName = randomName();
-        int valueCount = 10000;
-        int partitionCount = 99;
+        int valueCount = 1;
+        int partitionCount = 2;
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(3);
         HazelcastInstance i1 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, 1));
@@ -77,7 +90,7 @@ public final class StreamerSmokeTest extends StreamerTestSupport {
         Streamer<byte[]> streamer = i1.getStreamer(streamerName);
 
         for (int i = 0; i < valueCount; i++) {
-            streamer.send(new byte[3 * 1024]);
+            streamer.send(0, new byte[3 * 1024]);
         }
 
         final StoringCollector<byte[]> valueCollector = new StoringCollector<byte[]>();
@@ -85,7 +98,7 @@ public final class StreamerSmokeTest extends StreamerTestSupport {
 
         HazelcastInstance i3 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, 1));
         for (int i = 0; i < valueCount; i++) {
-            streamer.send(new byte[3 * 1024]);
+            streamer.send(0, new byte[3 * 1024]);
         }
 
         assertSizeEventually(2 * valueCount, valueCollector.getValues());

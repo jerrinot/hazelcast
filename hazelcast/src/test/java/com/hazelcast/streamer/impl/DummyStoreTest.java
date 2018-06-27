@@ -16,6 +16,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -51,17 +52,19 @@ public class DummyStoreTest extends HazelcastTestSupport {
             store.add(serializationService.toData(i));
         }
 
-        PollResult pollResult = new PollResult();
         long nextOffset = 0;
+        List<Data> combinedResults = new ArrayList<Data>();
         for (int i = 0; i < entryCount; i++) {
-            store.read(nextOffset, 1, pollResult);
+            PollResult pollResult = new PollResult(1, nextOffset);
+            store.read(nextOffset, pollResult);
+            assertEquals(1, pollResult.getResults().size());
+            combinedResults.addAll(pollResult.getResults());
             nextOffset = pollResult.getNextOffset();
         }
-        List<Data> results = pollResult.getResults();
-        assertEquals(entryCount, results.size());
+        assertEquals(entryCount, combinedResults.size());
 
         for (int i = 0; i < entryCount; i++) {
-            Data data = results.get(i);
+            Data data = combinedResults.get(i);
             assertEquals(serializationService.toData(i), data);
         }
     }
@@ -88,17 +91,21 @@ public class DummyStoreTest extends HazelcastTestSupport {
         store.dispose();
         store.restorePayload(serializationService.createObjectDataInput(bodi.toByteArray()));
 
-        PollResult pollResult = new PollResult();
+        List<Data> combinedResults = new ArrayList<Data>();
         long nextOffset = 0;
         for (int i = 0; i < entryCount; i++) {
-            store.read(nextOffset, 1, pollResult);
+            PollResult pollResult = new PollResult(1, nextOffset);
+            store.read(nextOffset, pollResult);
+
+            assertEquals(1, pollResult.getResults().size());
+            combinedResults.addAll(pollResult.getResults());
+
             nextOffset = pollResult.getNextOffset();
         }
-        List<Data> results = pollResult.getResults();
-        assertEquals(entryCount, results.size());
+        assertEquals(entryCount, combinedResults.size());
 
         for (int i = 0; i < entryCount; i++) {
-            Data data = results.get(i);
+            Data data = combinedResults.get(i);
             assertEquals(serializationService.toData(i), data);
         }
     }
@@ -124,8 +131,8 @@ public class DummyStoreTest extends HazelcastTestSupport {
             if (i % 10000 == 0) {
                 System.out.println("Pooling, at " + i);
             }
-            PollResult pollResult = new PollResult();
-            store.read(nextOffset, batchSize, pollResult);
+            PollResult pollResult = new PollResult(batchSize, nextOffset);
+            store.read(nextOffset, pollResult);
             nextOffset = pollResult.getNextOffset();
 
             List<Data> results = pollResult.getResults();
