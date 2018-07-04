@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class PollResult implements DataSerializable, InternalConsumer {
+public final class InternalPollResult implements DataSerializable, InternalConsumer {
 
     private List<Data> results;
     private List<Long> offsets;
@@ -17,12 +17,12 @@ public final class PollResult implements DataSerializable, InternalConsumer {
     private long nextOffset;
     private transient int maxRecords;
 
-    public PollResult(int maxRecords, long nextOffset) {
+    public InternalPollResult(int maxRecords, long nextOffset) {
         this.maxRecords = maxRecords;
         this.nextOffset = nextOffset;
     }
 
-    public PollResult() {
+    public InternalPollResult() {
 
     }
 

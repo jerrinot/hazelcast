@@ -7,7 +7,7 @@ import com.hazelcast.spi.BlockingOperation;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.WaitNotifyKey;
 import com.hazelcast.streamer.impl.StreamerService;
-import com.hazelcast.streamer.impl.PollResult;
+import com.hazelcast.streamer.impl.InternalPollResult;
 import com.hazelcast.streamer.impl.StreamerWaitNotifyKey;
 
 import java.io.IOException;
@@ -19,7 +19,7 @@ public class PollOperation extends Operation implements DataSerializable, Blocki
     private int minRecords;
     private int maxRecords;
 
-    private PollResult response;
+    private InternalPollResult response;
 
     public PollOperation() {
 
@@ -33,7 +33,7 @@ public class PollOperation extends Operation implements DataSerializable, Blocki
     }
 
     @Override
-    public PollResult getResponse() {
+    public InternalPollResult getResponse() {
         return response;
     }
 
@@ -73,7 +73,7 @@ public class PollOperation extends Operation implements DataSerializable, Blocki
     @Override
     public boolean shouldWait() {
         if (response == null) {
-            response = new PollResult(maxRecords, offset);
+            response = new InternalPollResult(maxRecords, offset);
         }
 
         StreamerService service = getService();

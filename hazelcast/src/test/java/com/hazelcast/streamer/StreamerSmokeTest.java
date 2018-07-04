@@ -32,10 +32,9 @@ public final class StreamerSmokeTest extends StreamerTestSupport {
         HazelcastInstance i1 = createHazelcastInstance(createConfig(271, streamerName, DEFAULT_IN_MEMORY_SIZE_MB));
         Streamer<String> s = i1.getStreamer(streamerName);
 
-        List<JournalValue<String>> poll = s.poll(0, nonExistingOffset, 1, 1, 5, TimeUnit.SECONDS);
-        assertEquals(0, poll.size());
-
-        //todo: add next offset into the result
+        PollResult<String> poll = s.poll(0, nonExistingOffset, 1, 1, 5, TimeUnit.SECONDS);
+        assertEquals(0, poll.getValues().size());
+        assertEquals(nonExistingOffset, poll.getNextOffset());
     }
 
     @Test
@@ -47,11 +46,11 @@ public final class StreamerSmokeTest extends StreamerTestSupport {
         s.send(0, "foo");
         s.send(1, "bar");
 
-        List<JournalValue<String>> poll = s.poll(0, 0, 1, 100, 1, MINUTES);
-        assertEquals(1, poll.size());
+        PollResult<String> poll = s.poll(0, 0, 1, 100, 1, MINUTES);
+        assertEquals(1, poll.getValues().size());
 
         poll = s.poll(1, 0, 2, 100, 10, SECONDS);
-        assertEquals(1, poll.size());
+        assertEquals(1, poll.getValues().size());
     }
 
     @Test
@@ -171,8 +170,8 @@ public final class StreamerSmokeTest extends StreamerTestSupport {
             streamer.send(0, "bar" + i);
         }
 
-        List<JournalValue<String>> results = streamer.poll(0, 0, 100, 100, 30, SECONDS);
-        assertEquals(keyCount, results.size());
+        PollResult<String> results = streamer.poll(0, 0, 100, 100, 30, SECONDS);
+        assertEquals(keyCount, results.getValues().size());
     }
 
     @Test
@@ -197,11 +196,11 @@ public final class StreamerSmokeTest extends StreamerTestSupport {
         i1.getLifecycleService().terminate();
 
         streamer = i2.getStreamer(streamerName);
-        List<JournalValue<String>> results = streamer.poll(0, 0, 1, keyCount, 30, SECONDS);
-        assertEquals(keyCount, results.size());
+        PollResult<String> results = streamer.poll(0, 0, 1, keyCount, 30, SECONDS);
+        assertEquals(keyCount, results.getValues().size());
 
         results = streamer.poll(1, 0, 1, keyCount, 30, SECONDS);
-        assertEquals(keyCount, results.size());
+        assertEquals(keyCount, results.getValues().size());
     }
 
     @Test

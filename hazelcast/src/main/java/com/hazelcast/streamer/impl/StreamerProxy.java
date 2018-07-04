@@ -10,6 +10,7 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.streamer.JournalValue;
+import com.hazelcast.streamer.PollResult;
 import com.hazelcast.streamer.StreamConsumer;
 import com.hazelcast.streamer.Streamer;
 import com.hazelcast.streamer.Subscription;
@@ -100,25 +101,25 @@ public class StreamerProxy<T> extends AbstractDistributedObject<StreamerService>
     }
 
     @Override
-    public List<JournalValue<T>> poll(int partitionId, long offset, int minRecords, int maxRecords, long timeout, TimeUnit timeUnit) {
+    public PollResult<T> poll(int partitionId, long offset, int minRecords, int maxRecords, long timeout, TimeUnit timeUnit) {
         Operation op = new PollOperation(name, offset, minRecords, maxRecords);
         op.setWaitTimeout(timeUnit.toMillis(timeout));
 
         //todo: what to do with timeout?
-        InternalCompletableFuture<PollResult> future = operationService.createInvocationBuilder(SERVICE_NAME, op, partitionId)
+        InternalCompletableFuture<InternalPollResult> future = operationService.createInvocationBuilder(SERVICE_NAME, op, partitionId)
                 .invoke();
 
 
-        PollResult pollResult = future.join();
-        List results = pollResult.getResults();
-        List<Long> offsets = pollResult.getOffsets();
+        InternalPollResult internalPollResult = future.join();
+        List results = internalPollResult.getResults();
+        List<Long> offsets = internalPollResult.getOffsets();
         for (int i = 0; i < results.size(); i++) {
             Data data = (Data) results.get(i);
             long entryOffset = offsets.get(i);
             T deserializedValue = serializationService.toObject(data);
             results.set(i, new JournalValue<Object>(deserializedValue, entryOffset, partitionId));
         }
-        return (List)results;
+        return new PollResult<T>(results, internalPollResult.getNextOffset());
     }
 
     @Override

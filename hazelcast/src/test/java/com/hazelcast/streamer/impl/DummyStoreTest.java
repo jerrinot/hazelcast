@@ -55,7 +55,7 @@ public class DummyStoreTest extends HazelcastTestSupport {
         long nextOffset = 0;
         List<Data> combinedResults = new ArrayList<Data>();
         for (int i = 0; i < entryCount; i++) {
-            PollResult pollResult = new PollResult(1, nextOffset);
+            InternalPollResult pollResult = new InternalPollResult(1, nextOffset);
             store.read(nextOffset, pollResult);
             assertEquals(1, pollResult.getResults().size());
             combinedResults.addAll(pollResult.getResults());
@@ -94,7 +94,7 @@ public class DummyStoreTest extends HazelcastTestSupport {
         List<Data> combinedResults = new ArrayList<Data>();
         long nextOffset = 0;
         for (int i = 0; i < entryCount; i++) {
-            PollResult pollResult = new PollResult(1, nextOffset);
+            InternalPollResult pollResult = new InternalPollResult(1, nextOffset);
             store.read(nextOffset, pollResult);
 
             assertEquals(1, pollResult.getResults().size());
@@ -131,7 +131,7 @@ public class DummyStoreTest extends HazelcastTestSupport {
             if (i % 10000 == 0) {
                 System.out.println("Pooling, at " + i);
             }
-            PollResult pollResult = new PollResult(batchSize, nextOffset);
+            InternalPollResult pollResult = new InternalPollResult(batchSize, nextOffset);
             store.read(nextOffset, pollResult);
             nextOffset = pollResult.getNextOffset();
 

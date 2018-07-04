@@ -8,7 +8,7 @@ import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
 import com.hazelcast.spi.serialization.SerializationService;
-import com.hazelcast.streamer.impl.PollResult;
+import com.hazelcast.streamer.impl.InternalPollResult;
 import com.hazelcast.streamer.impl.StreamerService;
 import com.hazelcast.streamer.impl.operations.PollOperation;
 import com.hazelcast.util.function.Consumer;
@@ -44,7 +44,7 @@ public final class Subscription<T> {
             long initialOffset = 0;
 
             Operation pollOperation = new PollOperation(name, initialOffset, MIN_BATCH_SIZE, MAX_BATCH_SIZE);
-            InternalCompletableFuture<PollResult> f = operationService.createInvocationBuilder(StreamerService.SERVICE_NAME, pollOperation, partition)
+            InternalCompletableFuture<InternalPollResult> f = operationService.createInvocationBuilder(StreamerService.SERVICE_NAME, pollOperation, partition)
                     .invoke();
             f.andThen(callback);
         }
@@ -56,7 +56,7 @@ public final class Subscription<T> {
         }
     }
 
-    private static class Callback<T> implements ExecutionCallback<PollResult> {
+    private static class Callback<T> implements ExecutionCallback<InternalPollResult> {
         private final StreamConsumer<T> consumer;
         private final int partition;
         private final Consumer<Throwable> errorCollector;
@@ -77,13 +77,13 @@ public final class Subscription<T> {
         }
 
         @Override
-        public void onResponse(PollResult response) {
+        public void onResponse(InternalPollResult response) {
             long nextSequence = response.getNextOffset();
             if (cancelled) {
                 return;
             }
             PollOperation operation = new PollOperation(name, nextSequence, MIN_BATCH_SIZE, MAX_BATCH_SIZE);
-            InternalCompletableFuture<PollResult> f = operationService.createInvocationBuilder(StreamerService.SERVICE_NAME, operation, partition)
+            InternalCompletableFuture<InternalPollResult> f = operationService.createInvocationBuilder(StreamerService.SERVICE_NAME, operation, partition)
                     .invoke();
 
             f.andThen(this);
