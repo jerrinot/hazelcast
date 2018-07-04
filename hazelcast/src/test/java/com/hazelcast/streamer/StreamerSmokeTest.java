@@ -34,7 +34,8 @@ public final class StreamerSmokeTest extends StreamerTestSupport {
 
         List<JournalValue<String>> poll = s.poll(0, nonExistingOffset, 1, 1, 5, TimeUnit.SECONDS);
         assertEquals(0, poll.size());
-        assertEquals(nonExistingOffset, poll.)
+
+        //todo: add next offset into the result
     }
 
     @Test

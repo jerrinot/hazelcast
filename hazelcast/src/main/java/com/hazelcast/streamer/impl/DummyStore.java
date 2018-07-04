@@ -110,10 +110,9 @@ public final class DummyStore implements Disposable {
         try {
             long startingTimeNanos = System.nanoTime();
             int writtenBytes = currentChunk.getChannel().write(memoryBuffer);
-            long writtingTimeNanos = System.nanoTime() - startingTimeNanos;
-            if (writtingTimeNanos > maximumWriteLatencyNanos) {
-                maximumWriteLatencyNanos = writtingTimeNanos;
-//                System.out.println("Write latency: " + TimeUnit.NANOSECONDS.toMicros(writtingTimeNanos) + " micros");
+            long writingTimeNanos = System.nanoTime() - startingTimeNanos;
+            if (writingTimeNanos > maximumWriteLatencyNanos) {
+                maximumWriteLatencyNanos = writingTimeNanos;
             }
             bytesInTheCurrentChunk += writtenBytes;
             assert writtenBytes == bytesToBeWritten;
