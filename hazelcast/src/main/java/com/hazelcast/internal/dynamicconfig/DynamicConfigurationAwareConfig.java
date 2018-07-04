@@ -1019,8 +1019,18 @@ public class DynamicConfigurationAwareConfig extends Config {
     }
 
     private StreamerConfig getStreamerConfigInternal(String name, String fallbackName) {
-        return (StreamerConfig) configSearcher.getConfig(name, fallbackName,
-                supplierFor(StreamerConfig.class));
+        String baseName = getBaseName(name);
+        Map<String, StreamerConfig> streamerConfigs =
+                staticConfig.getStreamerConfigs();
+        StreamerConfig streamerConfig = lookupByPattern(configPatternMatcher,
+                streamerConfigs, baseName);
+        if (streamerConfig == null) {
+            streamerConfig = configurationService.findStreamerConfig(baseName);
+        }
+        if (streamerConfig == null) {
+            streamerConfig = staticConfig.getStreamerConfig(fallbackName);
+        }
+        return streamerConfig;
     }
 
     @Override
