@@ -111,6 +111,10 @@ public class StreamerProxy<T> extends AbstractDistributedObject<StreamerService>
 
 
         InternalPollResult internalPollResult = future.join();
+        return toPollResult(internalPollResult, partitionId, serializationService);
+    }
+
+    public static <T> PollResult<T> toPollResult(InternalPollResult internalPollResult, int partitionId, SerializationService serializationService) {
         List results = internalPollResult.getResults();
         List<Long> offsets = internalPollResult.getOffsets();
         for (int i = 0; i < results.size(); i++) {

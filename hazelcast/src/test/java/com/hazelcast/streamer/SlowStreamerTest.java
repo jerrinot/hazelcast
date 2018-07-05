@@ -17,14 +17,14 @@ import static com.hazelcast.streamer.SubscriptionMode.FROM_OLDEST;
 @RunWith(HazelcastParallelClassRunner.class)
 @Category({SlowTest.class, ParallelTest.class})
 public class SlowStreamerTest extends StreamerTestSupport {
-    private static final long TEST_TIMEOUT_MS = 30 * 60 * 1000; //30 minutes
+    private static final long TEST_TIMEOUT_MS = 2 * 60 * 60 * 1000; //2 hours
 
     @Test(timeout = TEST_TIMEOUT_MS)
     public void testStoreEvents() throws Exception {
         long startNanos = System.nanoTime();
 
         String streamerName = randomName();
-        long keyCount = 5000000;
+        long keyCount = 5000000000L;
         int partitionCount = 271;
 
         TestHazelcastInstanceFactory factory = createHazelcastInstanceFactory(3);
@@ -38,19 +38,19 @@ public class SlowStreamerTest extends StreamerTestSupport {
 
         for (long i = 0; i < keyCount; i++) {
             streamer.send(Long.toString(i));
-            if (i % 100000 == 0) {
+            if (i % 1000000 == 0) {
                 System.out.println("Send " + i + " values so far");
             }
         }
-        HazelcastInstance i3 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, DEFAULT_IN_MEMORY_SIZE_MB));
-        for (long i = keyCount; i < keyCount * 2; i++) {
-            streamer.send(Long.toString(i));
-            if (i % 100000 == 0) {
-                System.out.println("Send " + i + " values so far");
-            }
-        }
+//        HazelcastInstance i3 = factory.newHazelcastInstance(createConfig(partitionCount, streamerName, DEFAULT_IN_MEMORY_SIZE_MB));
+//        for (long i = keyCount; i < keyCount * 2; i++) {
+//            streamer.send(Long.toString(i));
+//            if (i % 100000 == 0) {
+//                System.out.println("Send " + i + " values so far");
+//            }
+//        }
 
-        assertSizeEventually(2 * keyCount, valueCollector);
+        assertSizeEventually(keyCount, valueCollector);
 
         long totalSecond = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos);
         long txPerSecond = keyCount / totalSecond;

@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
-final class StreamerBackpressure {
+public final class StreamerBackpressure {
     private static final int MAX_INFLIGHT_OPERATION_COUNT = 20000;
     private final AtomicInteger inflightOpCounter = new AtomicInteger();
     private ExecutionCallback callback = new DecrementingCallback();
@@ -17,13 +17,13 @@ final class StreamerBackpressure {
             MICROSECONDS.toNanos(100));
 
 
-    void waitForSlot() {
+    public void waitForSlot() {
         for (long i = 0; !hasSlot(); i++) {
             idleStrategy.idle(i);
         }
     }
 
-    void barrier() {
+    public void barrier() {
         for (long i = 0; inflightOpCounter.get() != 0; i++) {
             idleStrategy.idle(i);
         }
@@ -33,7 +33,7 @@ final class StreamerBackpressure {
         return inflightOpCounter.get() < MAX_INFLIGHT_OPERATION_COUNT;
     }
 
-    void registerFuture(ICompletableFuture<?> future) {
+    public void registerFuture(ICompletableFuture<?> future) {
         inflightOpCounter.incrementAndGet();
         future.andThen(callback);
     }

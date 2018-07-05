@@ -22,6 +22,7 @@ import com.hazelcast.config.raft.RaftAtomicReferenceConfig;
 import com.hazelcast.config.raft.RaftConfig;
 import com.hazelcast.config.raft.RaftLockConfig;
 import com.hazelcast.config.raft.RaftSemaphoreConfig;
+import com.hazelcast.config.raft.RaftStreamerConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ManagedContext;
 import com.hazelcast.flakeidgen.FlakeIdGenerator;
@@ -175,6 +176,7 @@ public class Config {
     private final Map<String, RaftSemaphoreConfig> raftSemaphoreConfigs = new ConcurrentHashMap<String, RaftSemaphoreConfig>();
     private final Map<String, RaftAtomicReferenceConfig> raftAtomicReferenceConfigs
             = new ConcurrentHashMap<String, RaftAtomicReferenceConfig>();
+    private final Map<String, RaftStreamerConfig> raftStreamerConfigs = new ConcurrentHashMap<String, RaftStreamerConfig>();
 
     public Config() {
     }
@@ -3718,6 +3720,11 @@ public class Config {
     public Config addRaftAtomicLongConfig(RaftAtomicLongConfig config) {
         raftAtomicLongConfigs.put(config.getName(), config);
         return this;
+    }
+
+    public RaftStreamerConfig findRaftStreamerConfig(String name) {
+        String baseName = getBaseName(name);
+        return lookupByPattern(configPatternMatcher, raftStreamerConfigs, baseName);
     }
 
     public RaftLockConfig findRaftLockConfig(String name) {

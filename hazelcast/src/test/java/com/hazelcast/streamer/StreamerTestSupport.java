@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Collections.newSetFromMap;
@@ -60,6 +61,8 @@ public abstract class StreamerTestSupport extends HazelcastTestSupport {
     static class CountingCollector<T> implements StreamConsumer<T> {
         private AtomicLong counter = new AtomicLong();
         private AtomicLong maximumOffset = new AtomicLong();
+        private final long startingTime = System.nanoTime();
+
 
         @Override
         public void accept(int partition, long offset, T value) {
@@ -76,8 +79,12 @@ public abstract class StreamerTestSupport extends HazelcastTestSupport {
             }
 
             long currentSize = counter.incrementAndGet();
-            if (currentSize % 100000 == 0) {
-                System.out.println("Collected " + currentSize + " values so far, maximum offset: " + newMaximum);
+            if (currentSize % 1000000 == 0) {
+                long currentTime = System.nanoTime();
+                long durationSeconds = TimeUnit.NANOSECONDS.toSeconds(currentTime - startingTime);
+                long throughput = currentSize / durationSeconds;
+                System.out.println("Collected " + currentSize + " values so far, that's " + throughput
+                        + " + tx/s, maximum offset: " + newMaximum);
             }
         }
 
