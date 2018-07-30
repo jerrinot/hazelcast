@@ -21,6 +21,9 @@
  ******************************************************************************/
 package com.hazelcast.internal.json;
 
+import com.hazelcast.nio.serialization.DataSerializable;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
@@ -60,7 +63,7 @@ import java.io.Writer;
  * </p>
  */
 @SuppressWarnings("serial") // use default serial UID
-public abstract class JsonValue implements Serializable, com.hazelcast.json.JsonValue {
+public abstract class JsonValue implements Serializable, com.hazelcast.json.JsonValue, IdentifiedDataSerializable {
 
   /**
    * Represents the JSON literal <code>true</code>.

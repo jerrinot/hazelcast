@@ -21,6 +21,8 @@
  ******************************************************************************/
 package com.hazelcast.internal.json;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.SerializableByConvention;
 
 import java.io.IOException;
@@ -29,7 +31,11 @@ import java.io.IOException;
 @SerializableByConvention
 public class JsonNumber extends JsonValue {
 
-  private final String string;
+  private String string;
+
+  public JsonNumber() {
+    //use during deserialization only
+  }
 
   public JsonNumber(String string) {
     if (string == null) {
@@ -93,4 +99,23 @@ public class JsonNumber extends JsonValue {
     return string.equals(other.string);
   }
 
+  @Override
+  public void writeData(ObjectDataOutput out) throws IOException {
+    out.writeUTF(string);
+  }
+
+  @Override
+  public void readData(ObjectDataInput in) throws IOException {
+    string = in.readUTF();
+  }
+
+  @Override
+  public int getFactoryId() {
+    return JsonFactoryHook.F_ID;
+  }
+
+  @Override
+  public int getId() {
+    return JsonFactoryHook.NUMBER;
+  }
 }

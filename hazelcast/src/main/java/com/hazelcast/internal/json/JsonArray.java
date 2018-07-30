@@ -21,6 +21,8 @@
  ******************************************************************************/
 package com.hazelcast.internal.json;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.SerializableByConvention;
 
 import java.io.IOException;
@@ -64,7 +66,7 @@ import java.util.List;
 @SerializableByConvention
 public class JsonArray extends JsonValue implements com.hazelcast.json.JsonArray {
 
-  private final List<com.hazelcast.json.JsonValue> values;
+  private List<com.hazelcast.json.JsonValue> values;
 
   /**
    * Creates a new empty JsonArray.
@@ -510,4 +512,30 @@ public class JsonArray extends JsonValue implements com.hazelcast.json.JsonArray
     return values.equals(other.values);
   }
 
+  @Override
+  public void writeData(ObjectDataOutput out) throws IOException {
+    out.writeInt(values.size());
+    for (com.hazelcast.json.JsonValue value : values) {
+      out.writeObject(value);
+    }
+  }
+
+  @Override
+  public void readData(ObjectDataInput in) throws IOException {
+    int size = in.readInt();
+    values = new ArrayList<com.hazelcast.json.JsonValue>(size);
+    for (int i = 0; i < size; i++) {
+      values.add((com.hazelcast.json.JsonValue) in.readObject());
+    }
+  }
+
+  @Override
+  public int getFactoryId() {
+    return JsonFactoryHook.F_ID;
+  }
+
+  @Override
+  public int getId() {
+    return JsonFactoryHook.ARRAY;
+  }
 }

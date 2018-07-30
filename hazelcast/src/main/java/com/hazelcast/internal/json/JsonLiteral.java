@@ -21,6 +21,8 @@
  ******************************************************************************/
 package com.hazelcast.internal.json;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.SerializableByConvention;
 
 import java.io.IOException;
@@ -29,10 +31,14 @@ import java.io.IOException;
 @SerializableByConvention
 public class JsonLiteral extends JsonValue {
 
-  private final String value;
-  private final boolean isNull;
-  private final boolean isTrue;
-  private final boolean isFalse;
+  private String value;
+  private boolean isNull;
+  private boolean isTrue;
+  private boolean isFalse;
+
+  public JsonLiteral() {
+    //use during deserialization only
+  }
 
   public JsonLiteral(String value) {
     this.value = value;
@@ -96,4 +102,29 @@ public class JsonLiteral extends JsonValue {
     return value.equals(other.value);
   }
 
+  @Override
+  public void writeData(ObjectDataOutput out) throws IOException {
+    out.writeUTF(value);
+    out.writeBoolean(isFalse);
+    out.writeBoolean(isNull);
+    out.writeBoolean(isTrue);
+  }
+
+  @Override
+  public void readData(ObjectDataInput in) throws IOException {
+    value = in.readUTF();
+    isFalse = in.readBoolean();
+    isNull = in.readBoolean();
+    isTrue = in.readBoolean();
+  }
+
+  @Override
+  public int getFactoryId() {
+    return JsonFactoryHook.F_ID;
+  }
+
+  @Override
+  public int getId() {
+    return JsonFactoryHook.LITERAL;
+  }
 }

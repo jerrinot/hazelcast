@@ -31,6 +31,8 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -246,6 +248,26 @@ public class JsonValue_Test {
   @Test
   public void isXxx_returnsFalseForIncompatibleType() {
     JsonValue jsonValue = new JsonValue() {
+      @Override
+      public int getFactoryId() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int getId() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public void writeData(ObjectDataOutput out) throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public void readData(ObjectDataInput in) throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
       @Override
       void write(JsonWriter writer) throws IOException {
       }

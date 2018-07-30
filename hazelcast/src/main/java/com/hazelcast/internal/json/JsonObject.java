@@ -22,12 +22,15 @@
 package com.hazelcast.internal.json;
 
 import com.hazelcast.json.JsonObjectEntry;
+import com.hazelcast.nio.ObjectDataInput;
+import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.SerializableByConvention;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -75,8 +78,8 @@ public class JsonObject extends JsonValue implements com.hazelcast.json.JsonObje
 
   private static final long serialVersionUID = -1139160206104439809L;
 
-  private final List<String> names;
-  private final List<com.hazelcast.json.JsonValue> values;
+  private List<String> names;
+  private List<com.hazelcast.json.JsonValue> values;
   private transient HashIndexTable table;
 
   /**
@@ -807,6 +810,76 @@ public class JsonObject extends JsonValue implements com.hazelcast.json.JsonObje
     for (int i = 0; i < size; i++) {
       table.add(names.get(i), i);
     }
+  }
+
+  @Override
+  public void writeData(ObjectDataOutput out) throws IOException {
+    out.writeInt(names.size());
+    for (String name : names) {
+      out.writeUTF(name);
+    }
+    for (com.hazelcast.json.JsonValue value : values) {
+      JsonValue specValue = (JsonValue) value;
+      Class<? extends JsonValue> aClass = specValue.getClass();
+      if (aClass == JsonObject.class) {
+        out.writeInt(0);
+      } else if (aClass == JsonLiteral.class) {
+        out.writeInt(1);
+      } else if (aClass == JsonNumber.class) {
+        out.writeInt(2);
+      } else if (aClass == JsonArray.class) {
+        out.writeInt(3);
+      } else if (aClass == JsonString.class) {
+        out.writeInt(4);
+      } else {
+        throw new UnsupportedOperationException("unknown: " + aClass);
+      }
+      specValue.writeData(out);
+    }
+  }
+
+  @Override
+  public void readData(ObjectDataInput in) throws IOException {
+    int size = in.readInt();
+    for (int i = 0; i < size; i++) {
+      names.add(in.readUTF());
+    }
+    JsonValue specValue;
+    for (int i = 0; i < size; i++) {
+      int type = in.readInt();
+      switch (type) {
+        case 0:
+          specValue = new JsonObject();
+          break;
+        case 1:
+          specValue = new JsonLiteral();
+          break;
+        case 2:
+          specValue = new JsonNumber();
+          break;
+        case 3:
+          specValue = new JsonArray();
+          break;
+        case 4:
+          specValue = new JsonString();
+          break;
+        default:
+          throw new UnsupportedOperationException();
+      }
+      specValue.readData(in);
+      values.add(specValue);
+    }
+    updateHashIndex();
+  }
+
+  @Override
+  public int getFactoryId() {
+    return JsonFactoryHook.F_ID;
+  }
+
+  @Override
+  public int getId() {
+    return JsonFactoryHook.OBJECT;
   }
 
   /**
