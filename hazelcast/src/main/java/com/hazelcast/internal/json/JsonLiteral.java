@@ -105,17 +105,14 @@ public class JsonLiteral extends JsonValue {
   @Override
   public void writeData(ObjectDataOutput out) throws IOException {
     out.writeUTF(value);
-    out.writeBoolean(isFalse);
-    out.writeBoolean(isNull);
-    out.writeBoolean(isTrue);
   }
 
   @Override
   public void readData(ObjectDataInput in) throws IOException {
     value = in.readUTF();
-    isFalse = in.readBoolean();
-    isNull = in.readBoolean();
-    isTrue = in.readBoolean();
+    isNull = "null".equals(value);
+    isTrue = "true".equals(value);
+    isFalse = "false".equals(value);
   }
 
   @Override
