@@ -63,7 +63,7 @@ public class JsonIntegrationTest extends HazelcastTestSupport {
     public static Collection<Object[]> parameters() {
         return Arrays.asList(new Object[][]{
                 {InMemoryFormat.BINARY},
-//                {InMemoryFormat.OBJECT},
+                {InMemoryFormat.OBJECT},
         });
     }
 
@@ -91,34 +91,6 @@ public class JsonIntegrationTest extends HazelcastTestSupport {
 
         records = getRecords(instance, mapName, "name", "sancar");
         assertEquals(1000, records.size());
-    }
-
-    @Test(timeout = Long.MAX_VALUE)
-    public void testPerf() {
-        Config config = new Config();
-        String mapName = "map";
-        config.getMapConfig(mapName).setInMemoryFormat(inMemoryFormat);
-        HazelcastInstance instance = createHazelcastInstance(config);
-        IMap<Integer, JsonValue> map = instance.getMap(mapName);
-//        map.addIndex("age", false);
-//        map.addIndex("active", false);
-//        map.addIndex("name", false);
-//
-
-
-        for (int i = 0; i < 1000000; i++) {
-            String jsonString = "{\"age\" : " + i + "  , \"name\" : \"sancar\" , \"active\" :  " + (i % 2 == 0) + " } ";
-            map.put(i, Json.parse(jsonString));
-        }
-
-        Predicate predicate = Predicates.equal("age", 40);
-        for (int i = 0; i < 1000000; i++) {
-            long startTime = System.nanoTime();
-            Collection<JsonValue> values = map.values(predicate);
-            long duration = System.nanoTime() - startTime;
-            System.out.println("Took " + TimeUnit.NANOSECONDS.toMicros(duration) + " micros");
-            assertEquals(1, values.size());
-        }
     }
 
     private Set<QueryableEntry> getRecords(HazelcastInstance instance, String mapName, String attribute, Comparable value) {
