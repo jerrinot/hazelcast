@@ -845,12 +845,12 @@ public class JsonObject_Test {
     assertFalse(new JsonObject().equals(null));
   }
 
-  @Test
-  public void equals_falseForSubclass() {
-    JsonObject jsonObject = new JsonObject();
-
-    assertFalse(jsonObject.equals(new JsonObject(jsonObject) {}));
-  }
+//  @Test
+//  public void equals_falseForSubclass() {
+//    JsonObject jsonObject = new JsonObject();
+//
+//    assertFalse(jsonObject.equals(new JsonObject(jsonObject) {}));
+//  }
 
   @Test
   public void hashCode_equalsForEqualObjects() {

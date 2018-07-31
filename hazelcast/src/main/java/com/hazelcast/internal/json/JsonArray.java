@@ -64,7 +64,7 @@ import java.util.List;
  */
 @SuppressWarnings("serial") // use default serial UID
 @SerializableByConvention
-public class JsonArray extends JsonValue implements com.hazelcast.json.JsonArray {
+public final class JsonArray extends JsonValue implements com.hazelcast.json.JsonArray {
 
   private List<com.hazelcast.json.JsonValue> values;
 

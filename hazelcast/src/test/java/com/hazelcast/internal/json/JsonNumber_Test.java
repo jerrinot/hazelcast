@@ -161,10 +161,10 @@ public class JsonNumber_Test {
     assertFalse(new JsonNumber("23").equals(null));
   }
 
-  @Test
-  public void equals_falseForSubclass() {
-    assertFalse(new JsonNumber("23").equals(new JsonNumber("23") {}));
-  }
+//  @Test
+//  public void equals_falseForSubclass() {
+//    assertFalse(new JsonNumber("23").equals(new JsonNumber("23") {}));
+//  }
 
   @Test
   public void hashCode_equalsForEqualStrings() {

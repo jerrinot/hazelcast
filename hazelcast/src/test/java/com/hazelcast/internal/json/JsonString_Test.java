@@ -104,10 +104,10 @@ public class JsonString_Test {
     assertFalse(new JsonString("foo").equals(null));
   }
 
-  @Test
-  public void equals_falseForSubclass() {
-    assertFalse(new JsonString("foo").equals(new JsonString("foo") {}));
-  }
+//  @Test
+//  public void equals_falseForSubclass() {
+//    assertFalse(new JsonString("foo").equals(new JsonString("foo") {}));
+//  }
 
   @Test
   public void hashCode_equalsForEqualStrings() {

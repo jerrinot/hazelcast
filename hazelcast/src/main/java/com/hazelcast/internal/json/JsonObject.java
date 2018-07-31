@@ -74,7 +74,7 @@ import java.util.List;
  * </p>
  */
 @SerializableByConvention
-public class JsonObject extends JsonValue implements com.hazelcast.json.JsonObject {
+public final class JsonObject extends JsonValue implements com.hazelcast.json.JsonObject {
 
   private static final long serialVersionUID = -1139160206104439809L;
 
@@ -821,19 +821,21 @@ public class JsonObject extends JsonValue implements com.hazelcast.json.JsonObje
     for (com.hazelcast.json.JsonValue value : values) {
       JsonValue specValue = (JsonValue) value;
       Class<? extends JsonValue> aClass = specValue.getClass();
+      byte typeId;
       if (aClass == JsonObject.class) {
-        out.writeInt(0);
+        typeId = 0;
       } else if (aClass == JsonLiteral.class) {
-        out.writeInt(1);
+        typeId = 1;
       } else if (aClass == JsonNumber.class) {
-        out.writeInt(2);
+        typeId = 2;
       } else if (aClass == JsonArray.class) {
-        out.writeInt(3);
+        typeId = 3;
       } else if (aClass == JsonString.class) {
-        out.writeInt(4);
+        typeId = 4;
       } else {
         throw new UnsupportedOperationException("unknown: " + aClass);
       }
+      out.writeByte(typeId);
       specValue.writeData(out);
     }
   }
@@ -846,7 +848,7 @@ public class JsonObject extends JsonValue implements com.hazelcast.json.JsonObje
     }
     JsonValue specValue;
     for (int i = 0; i < size; i++) {
-      int type = in.readInt();
+      int type = in.readByte();
       switch (type) {
         case 0:
           specValue = new JsonObject();

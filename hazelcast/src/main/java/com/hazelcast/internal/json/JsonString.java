@@ -29,7 +29,7 @@ import java.io.IOException;
 
 @SuppressWarnings("serial") // use default serial UID
 @SerializableByConvention
-public class JsonString extends JsonValue {
+public final class JsonString extends JsonValue {
 
   private String string;
 
