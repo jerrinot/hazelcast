@@ -104,15 +104,38 @@ public final class JsonLiteral extends JsonValue {
 
   @Override
   public void writeData(ObjectDataOutput out) throws IOException {
-    out.writeUTF(value);
+    byte b;
+    if (isNull) {
+      b = 0;
+    } else if (isTrue) {
+      b = 1;
+    } else if (isFalse) {
+      b = 2;
+    } else {
+      throw new UnsupportedOperationException("not supported, value: " + value);
+    }
+    out.writeByte(b);
   }
 
   @Override
   public void readData(ObjectDataInput in) throws IOException {
-    value = in.readUTF();
-    isNull = "null".equals(value);
-    isTrue = "true".equals(value);
-    isFalse = "false".equals(value);
+    byte b = in.readByte();
+    switch (b) {
+      case 0:
+        isNull = true;
+        value = "null";
+        break;
+      case 1:
+        isTrue = true;
+        value = "true";
+        break;
+      case 2:
+        isFalse = true;
+        value = "false";
+        break;
+      default:
+        throw new UnsupportedOperationException("unknown literal: " + b);
+    }
   }
 
   @Override

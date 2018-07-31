@@ -78,8 +78,8 @@ public final class JsonObject extends JsonValue implements com.hazelcast.json.Js
 
   private static final long serialVersionUID = -1139160206104439809L;
 
-  private List<String> names;
-  private List<com.hazelcast.json.JsonValue> values;
+  private final List<String> names;
+  private final List<com.hazelcast.json.JsonValue> values;
   private transient HashIndexTable table;
 
   /**
@@ -820,24 +820,29 @@ public final class JsonObject extends JsonValue implements com.hazelcast.json.Js
     }
     for (com.hazelcast.json.JsonValue value : values) {
       JsonValue specValue = (JsonValue) value;
-      Class<? extends JsonValue> aClass = specValue.getClass();
-      byte typeId;
-      if (aClass == JsonObject.class) {
-        typeId = 0;
-      } else if (aClass == JsonLiteral.class) {
-        typeId = 1;
-      } else if (aClass == JsonNumber.class) {
-        typeId = 2;
-      } else if (aClass == JsonArray.class) {
-        typeId = 3;
-      } else if (aClass == JsonString.class) {
-        typeId = 4;
-      } else {
-        throw new UnsupportedOperationException("unknown: " + aClass);
-      }
+      byte typeId = getValueType(specValue);
       out.writeByte(typeId);
       specValue.writeData(out);
     }
+  }
+
+  private byte getValueType(JsonValue specValue) {
+    Class<? extends JsonValue> aClass = specValue.getClass();
+    byte typeId;
+    if (aClass == JsonObject.class) {
+      typeId = 0;
+    } else if (aClass == JsonLiteral.class) {
+      typeId = 1;
+    } else if (aClass == JsonNumber.class) {
+      typeId = 2;
+    } else if (aClass == JsonArray.class) {
+      typeId = 3;
+    } else if (aClass == JsonString.class) {
+      typeId = 4;
+    } else {
+      throw new UnsupportedOperationException("unknown: " + aClass);
+    }
+    return typeId;
   }
 
   @Override
@@ -846,32 +851,37 @@ public final class JsonObject extends JsonValue implements com.hazelcast.json.Js
     for (int i = 0; i < size; i++) {
       names.add(in.readUTF());
     }
-    JsonValue specValue;
     for (int i = 0; i < size; i++) {
       int type = in.readByte();
-      switch (type) {
-        case 0:
-          specValue = new JsonObject();
-          break;
-        case 1:
-          specValue = new JsonLiteral();
-          break;
-        case 2:
-          specValue = new JsonNumber();
-          break;
-        case 3:
-          specValue = new JsonArray();
-          break;
-        case 4:
-          specValue = new JsonString();
-          break;
-        default:
-          throw new UnsupportedOperationException();
-      }
+      JsonValue specValue = createNewJsonValue(type);
       specValue.readData(in);
       values.add(specValue);
     }
     updateHashIndex();
+  }
+
+  private JsonValue createNewJsonValue(int type) {
+    JsonValue specValue;
+    switch (type) {
+      case 0:
+        specValue = new JsonObject();
+        break;
+      case 1:
+        specValue = new JsonLiteral();
+        break;
+      case 2:
+        specValue = new JsonNumber();
+        break;
+      case 3:
+        specValue = new JsonArray();
+        break;
+      case 4:
+        specValue = new JsonString();
+        break;
+      default:
+        throw new UnsupportedOperationException();
+    }
+    return specValue;
   }
 
   @Override
