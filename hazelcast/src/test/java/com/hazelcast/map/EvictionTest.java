@@ -863,13 +863,22 @@ public class EvictionTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testEviction_increasingEntrySize() {
+    public void testEviction_increasingEntrySize_explicitBatchSize() {
+        testEviction_increasingEntrySize(2);
+    }
+
+    @Test
+    public void testEviction_increasingEntrySize_autoBatchSize() {
+        testEviction_increasingEntrySize(-1);
+    }
+
+    private void testEviction_increasingEntrySize(int batchSize) {
         int maxSizeMB = 50;
         String mapName = randomMapName();
 
         Config config = newConfig(mapName, maxSizeMB, MaxSizeConfig.MaxSizePolicy.USED_HEAP_SIZE);
+        config.setProperty(GroupProperty.MAP_EVICTION_BATCH_SIZE.getName(), Integer.toString(batchSize));
         config.setProperty(GroupProperty.PARTITION_COUNT.getName(), "1");
-        config.setProperty(GroupProperty.MAP_EVICTION_BATCH_SIZE.getName(), "2");
 
         HazelcastInstance instance = createHazelcastInstance(config);
         IMap<Integer, byte[]> map = instance.getMap(mapName);

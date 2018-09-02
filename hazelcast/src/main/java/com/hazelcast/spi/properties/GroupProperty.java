@@ -550,12 +550,19 @@ public final class GroupProperty {
      * Maximum number of IMap entries Hazelcast will evict during a
      * single eviction cycle. Eviction cycle is triggered by a map
      * mutation. Typically it's OK to evict at most a single entry.
+     *
      * However imagine the scenario where you are inserting values in a
      * loop and in each iteration you double entry size. In this
      * situation Hazelcast has to evict more than just a single entry -
      * as all existing entries are smaller than the entry which is about
-     * to be added and removing any old entry cannot make sufficient
+     * to be added. Removing a single old entry cannot make sufficient
      * room for the new entry.
+     *
+     * When you set batch size to <code>-1</code> Hazelcast will try to
+     * evict as many items as necessary to honour configured max-size policy.
+     * This comes with a minor performance penalty and should be only used
+     * when entry size distribution varies significantly.
+     *
      *
      * Default: 1
      */

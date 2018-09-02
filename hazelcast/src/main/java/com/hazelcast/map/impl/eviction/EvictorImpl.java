@@ -39,26 +39,34 @@ public class EvictorImpl implements Evictor {
     protected final MapEvictionPolicy mapEvictionPolicy;
 
     private final int batchSize;
+    private final boolean aggressiveEviction;
 
     public EvictorImpl(MapEvictionPolicy mapEvictionPolicy,
                        EvictionChecker evictionChecker, IPartitionService partitionService, int batchSize) {
         this.evictionChecker = checkNotNull(evictionChecker);
         this.partitionService = checkNotNull(partitionService);
         this.mapEvictionPolicy = checkNotNull(mapEvictionPolicy);
-        this.batchSize = batchSize;
+        if (batchSize == -1) {
+            this.batchSize = 1;
+            this.aggressiveEviction = true;
+        } else {
+            this.batchSize = batchSize;
+            this.aggressiveEviction = false;
+        }
     }
 
     @Override
     public void evict(RecordStore recordStore, Data excludedKey) {
         assertRunningOnPartitionThread();
-
-        for (int i = 0; i < batchSize; i++) {
-            EntryView evictableEntry = selectEvictableEntry(recordStore, excludedKey);
-            if (evictableEntry == null) {
-                return;
+        do {
+            for (int i = 0; i < batchSize; i++) {
+                EntryView evictableEntry = selectEvictableEntry(recordStore, excludedKey);
+                if (evictableEntry == null) {
+                    return;
+                }
+                evictEntry(recordStore, evictableEntry);
             }
-            evictEntry(recordStore, evictableEntry);
-        }
+        } while (aggressiveEviction && checkEvictable(recordStore));
     }
 
     private EntryView selectEvictableEntry(RecordStore recordStore, Data excludedKey) {
