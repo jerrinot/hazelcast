@@ -28,13 +28,46 @@ import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.impl.MutatingOperation;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 
 public class RemoveOperation extends AbstractBackupAwareMultiMapOperation implements MutatingOperation {
 
+    private static final boolean HACK_ENABLED;
+    private static Field MAP_FIELD;
+    private static Method GET_ENTRY_METHOD;
+
     private Data value;
     private long recordId;
+
+    static {
+        HACK_ENABLED = enableHack();
+    }
+
+    private static boolean enableHack() {
+        try {
+            Field mapField = HashSet.class.getDeclaredField("map");
+            if (!mapField.isAccessible()) {
+                mapField.setAccessible(true);
+            }
+            Method getEntryMethod = HashMap.class.getDeclaredMethod("getEntry", Object.class);
+            if (!getEntryMethod.isAccessible()) {
+                getEntryMethod.setAccessible(true);
+            }
+
+            MAP_FIELD = mapField;
+            GET_ENTRY_METHOD = getEntryMethod;
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
 
     public RemoveOperation() {
     }
@@ -54,19 +87,55 @@ public class RemoveOperation extends AbstractBackupAwareMultiMapOperation implem
         }
         Collection<MultiMapRecord> coll = multiMapValue.getCollection(false);
         MultiMapRecord record = new MultiMapRecord(isBinary() ? value : toObject(value));
-        Iterator<MultiMapRecord> iterator = coll.iterator();
-        while (iterator.hasNext()) {
-            MultiMapRecord r = iterator.next();
-            if (r.equals(record)) {
-                iterator.remove();
-                recordId = r.getRecordId();
-                response = true;
-                if (coll.isEmpty()) {
-                    container.delete(dataKey);
+        MultiMapRecord matchingRecord = getMatchingMultimapRecordIfExist(coll, record);
+        if (matchingRecord == null) {
+            Iterator<MultiMapRecord> iterator = coll.iterator();
+            while (iterator.hasNext()) {
+                MultiMapRecord r = iterator.next();
+                if (r.equals(record)) {
+                    iterator.remove();
+                    recordId = r.getRecordId();
+                    response = true;
+                    if (coll.isEmpty()) {
+                        container.delete(dataKey);
+                    }
+                    break;
                 }
-                break;
+            }
+        } else {
+            coll.remove(record);
+            recordId = matchingRecord.getRecordId();
+            response = true;
+            if (coll.isEmpty()) {
+                container.delete(dataKey);
             }
         }
+    }
+
+    private static MultiMapRecord getMatchingMultimapRecordIfExist(Collection<MultiMapRecord> coll, MultiMapRecord r) {
+        if (!HACK_ENABLED) {
+            return null;
+        }
+        if (!(coll instanceof HashSet)) {
+            return null;
+        }
+        HashSet<MultiMapRecord> set = (HashSet<MultiMapRecord>) coll;
+        try {
+            HashMap backingMap = (HashMap) MAP_FIELD.get(set);
+            if (backingMap == null) {
+                return null;
+            }
+            Map.Entry<MultiMapRecord, ?> entry = (Map.Entry<MultiMapRecord, ?>) GET_ENTRY_METHOD.invoke(backingMap, r);
+            if (entry == null) {
+                return null;
+            }
+            return entry.getKey();
+        } catch (IllegalAccessException e) {
+            return null;
+        } catch (InvocationTargetException e) {
+            return null;
+        }
+
     }
 
     @Override
