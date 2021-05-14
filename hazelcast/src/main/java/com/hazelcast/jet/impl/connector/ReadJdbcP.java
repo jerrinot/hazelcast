@@ -24,6 +24,7 @@ import com.hazelcast.jet.core.ProcessorMetaSupplier;
 import com.hazelcast.jet.core.ProcessorSupplier;
 import com.hazelcast.jet.core.processor.SourceProcessors;
 import com.hazelcast.jet.function.ToResultSetFunction;
+import com.hazelcast.jet.impl.processor.Initializable;
 
 import javax.annotation.Nonnull;
 import java.sql.Connection;
@@ -109,6 +110,9 @@ public final class ReadJdbcP<T> extends AbstractProcessor {
     protected void init(@Nonnull Context context) {
         // workaround for https://github.com/hazelcast/hazelcast-jet/issues/2603
         DriverManager.getDrivers();
+        if (newConnectionFn instanceof Initializable) {
+            ((Initializable) newConnectionFn).init(context);
+        }
         this.connection = newConnectionFn.get();
         this.parallelism = context.totalParallelism();
         this.index = context.globalProcessorIndex();

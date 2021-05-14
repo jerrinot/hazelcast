@@ -17,6 +17,9 @@
 package com.hazelcast.function;
 
 import com.hazelcast.internal.util.ExceptionUtil;
+import com.hazelcast.jet.core.Processor;
+import com.hazelcast.jet.impl.processor.Initializable;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
 import java.util.function.Function;
@@ -33,7 +36,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
  * @since 4.0
  */
 @FunctionalInterface
-public interface FunctionEx<T, R> extends Function<T, R>, Serializable {
+public interface FunctionEx<T, R> extends Function<T, R>, Serializable, Initializable {
 
     /**
      * Exception-declaring version of {@link Function#apply}.
@@ -79,5 +82,10 @@ public interface FunctionEx<T, R> extends Function<T, R>, Serializable {
     default <V> FunctionEx<T, V> andThen(FunctionEx<? super R, ? extends V> after) {
         checkNotNull(after, "after");
         return t -> after.apply(apply(t));
+    }
+
+    @Override
+    default void init(@NotNull Processor.Context context) {
+        
     }
 }

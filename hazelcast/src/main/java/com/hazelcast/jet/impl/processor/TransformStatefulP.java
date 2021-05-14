@@ -23,11 +23,13 @@ import com.hazelcast.jet.Traverser;
 import com.hazelcast.jet.Traversers;
 import com.hazelcast.jet.core.AbstractProcessor;
 import com.hazelcast.jet.core.BroadcastKey;
+import com.hazelcast.jet.core.Processor;
 import com.hazelcast.jet.core.ResettableSingletonTraverser;
 import com.hazelcast.jet.core.Watermark;
 import com.hazelcast.jet.datamodel.TimestampedItem;
 import com.hazelcast.jet.function.TriFunction;
 import com.hazelcast.jet.impl.util.Util;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -71,6 +73,7 @@ public class TransformStatefulP<T, K, S, R> extends AbstractProcessor {
     private long currentWm = Long.MIN_VALUE;
     private Traverser<? extends Entry<?, ?>> snapshotTraverser;
     private boolean inComplete;
+    private Supplier<? extends S> createFn;
 
     public TransformStatefulP(
             long ttl,
@@ -86,6 +89,7 @@ public class TransformStatefulP<T, K, S, R> extends AbstractProcessor {
         this.createIfAbsentFn = k -> new TimestampedItem<>(Long.MIN_VALUE, createFn.get());
         this.statefulFlatMapFn = statefulFlatMapFn;
         this.onEvictFn = onEvictFn;
+        this.createFn = createFn;
     }
 
     @Override
@@ -190,6 +194,14 @@ public class TransformStatefulP<T, K, S, R> extends AbstractProcessor {
             @SuppressWarnings("unchecked")
             TimestampedItem<S> old = keyToState.put((K) key, (TimestampedItem<S>) value);
             assert old == null : "Duplicate key '" + key + '\'';
+        }
+    }
+
+    @Override
+    protected void init(@NotNull Processor.Context context) throws Exception {
+        context.managedContext().initialize(createFn);
+        if (createFn instanceof Initializable) {
+            ((Initializable) createFn).init(context);
         }
     }
 }

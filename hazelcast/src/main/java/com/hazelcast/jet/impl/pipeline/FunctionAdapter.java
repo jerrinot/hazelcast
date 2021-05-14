@@ -33,11 +33,14 @@ import com.hazelcast.jet.core.Processor;
 import com.hazelcast.jet.core.ProcessorMetaSupplier;
 import com.hazelcast.jet.function.TriFunction;
 import com.hazelcast.jet.impl.JetEvent;
+import com.hazelcast.jet.impl.processor.Initializable;
 import com.hazelcast.jet.impl.processor.ProcessorWrapper;
 import com.hazelcast.jet.impl.util.WrappingProcessorMetaSupplier;
 import com.hazelcast.jet.pipeline.JoinClause;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
@@ -47,7 +50,7 @@ import java.util.concurrent.CompletableFuture;
 import static com.hazelcast.jet.impl.JetEvent.jetEvent;
 import static com.hazelcast.jet.impl.util.Util.toList;
 
-public class FunctionAdapter {
+public class FunctionAdapter implements Serializable {
 
     @Nonnull
     public <T, K> FunctionEx<?, ? extends K> adaptKeyFn(@Nonnull FunctionEx<? super T, ? extends K> keyFn) {
@@ -291,7 +294,21 @@ class JetEventFunctionAdapter extends FunctionAdapter {
     public <T, K> FunctionEx<? super JetEvent<T>, ? extends K> adaptKeyFn(
             @Nonnull FunctionEx<? super T, ? extends K> keyFn
     ) {
-        return e -> keyFn.apply(e.payload());
+
+        return new FunctionEx<JetEvent<T>, K>() {
+            @Override
+            public K applyEx(JetEvent<T> tJetEvent) throws Exception {
+                return null;
+            }
+
+            @Override
+            public void init(Processor.@NotNull Context context) {
+                if (keyFn instanceof Initializable) {
+                    keyFn.init(context);
+                }
+            }
+        };
+//        return e -> keyFn.apply(e.payload());
     }
 
     @Nonnull @Override
@@ -303,7 +320,20 @@ class JetEventFunctionAdapter extends FunctionAdapter {
     <T, R> FunctionEx<? super JetEvent<T>, ?> adaptMapFn(
             @Nonnull FunctionEx<? super T, ? extends R> mapFn
     ) {
-        return e -> jetEvent(e.timestamp(), mapFn.apply(e.payload()));
+
+        return new FunctionEx<JetEvent<T>, Object>() {
+            @Override
+            public Object applyEx(JetEvent<T> e) {
+                return jetEvent(e.timestamp(), mapFn.apply(e.payload()));
+            }
+
+            @Override
+            public void init(Processor.@NotNull Context context) {
+                if (mapFn instanceof Initializable) {
+                    mapFn.init(context);
+                }
+            }
+        };
     }
 
     @Nonnull @Override

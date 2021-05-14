@@ -19,8 +19,11 @@ package com.hazelcast.jet.impl.processor;
 import com.hazelcast.function.FunctionEx;
 import com.hazelcast.jet.Traverser;
 import com.hazelcast.jet.core.AbstractProcessor;
+import com.hazelcast.jet.core.Processor;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
+import java.io.Serializable;
 
 /**
  * Processor which, for each received item, emits all the items from the
@@ -43,5 +46,10 @@ public class TransformP<T, R> extends AbstractProcessor {
     @SuppressWarnings("unchecked")
     protected boolean tryProcess(int ordinal, @Nonnull Object item) {
         return flatMapper.tryProcess((T) item);
+    }
+
+    @Override
+    protected void init(@NotNull Processor.Context context) throws Exception {
+        flatMapper.init(context);
     }
 }

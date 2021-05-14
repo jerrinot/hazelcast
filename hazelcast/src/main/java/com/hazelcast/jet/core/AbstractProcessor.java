@@ -18,7 +18,9 @@ package com.hazelcast.jet.core;
 
 import com.hazelcast.jet.Traverser;
 import com.hazelcast.jet.Traversers;
+import com.hazelcast.jet.impl.processor.Initializable;
 import com.hazelcast.logging.ILogger;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -542,7 +544,7 @@ public abstract class AbstractProcessor implements Processor {
      * @param <T> type of the input item
      * @param <R> type of the emitted item
      */
-    protected final class FlatMapper<T, R> {
+    protected final class FlatMapper<T, R> implements Initializable {
         private final int[] outputOrdinals;
         private final Function<? super T, ? extends Traverser<? extends R>> mapper;
         private Traverser<? extends R> outputTraverser;
@@ -576,6 +578,13 @@ public abstract class AbstractProcessor implements Processor {
             return outputOrdinals != null
                     ? emitFromTraverser(outputOrdinals, outputTraverser)
                     : emitFromTraverser(outputTraverser);
+        }
+
+        @Override
+        public void init(@NotNull Processor.Context context) {
+            if (mapper instanceof Initializable) {
+                ((Initializable) mapper).init(context);
+            }
         }
     }
 

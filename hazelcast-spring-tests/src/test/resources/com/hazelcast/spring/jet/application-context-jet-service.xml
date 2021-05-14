@@ -48,4 +48,9 @@
     <hz:jet id="jet" instance-ref="instance"/>
 
     <bean name="calculator" class="com.hazelcast.spring.jet.SillyCalculator" />
+    <bean name="managedFunction" class="com.hazelcast.spring.jet.SpringManagedFunction" />
+
+    <bean name="dataSourceBean" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
+        <property name="url" value="jdbc:h2:mem:springtest;DB_CLOSE_DELAY=-1" />
+    </bean>
 </beans>
