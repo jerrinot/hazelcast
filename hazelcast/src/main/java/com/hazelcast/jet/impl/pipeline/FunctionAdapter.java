@@ -40,7 +40,6 @@ import com.hazelcast.jet.pipeline.JoinClause;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
@@ -290,30 +289,113 @@ public class FunctionAdapter {
 
     public static <I, O> FunctionEx<? super I, ? extends O> wrapInitializable(FunctionEx<?, ?> original, FunctionEx<? super I, ? extends O> wrapped) {
         if (original instanceof Initializable) {
-            return new InitilizableAwareWrapperFunction<I, O>((Initializable) original, wrapped);
+            return new InitializableDelegatingFunction<>((Initializable) original, wrapped);
+        }
+        return wrapped;
+    }
+
+    public static <T, T1, R> BiFunctionEx<? super T, ? super T1, ? extends R > wrapInitializable(BiFunctionEx<?, ?, ?> original, BiFunctionEx<? super T, ? super T1, ? extends R> wrapped) {
+        if (original instanceof Initializable) {
+            return new InitializableDelegatingBiFunction<>((Initializable) original, wrapped);
+        }
+        return wrapped;
+    }
+
+    public static <T, T1, T2, R> TriFunction<? super T, ? super T1, ? super T2, ? extends R > wrapInitializable(TriFunction<?, ?, ?, ?> original, TriFunction<? super T, ? super T1, ? super T2, ? extends R> wrapped) {
+        if (original instanceof Initializable) {
+            return new InitializableDelegatingTriFunction<>((Initializable) original, wrapped);
+        }
+        return wrapped;
+    }
+
+    public static <T> PredicateEx<? super T> wrapInitializable(PredicateEx<?> original, PredicateEx<? super T> wrapped) {
+        if (original instanceof Initializable) {
+            return new InitializableDelegatingPredicate<>((Initializable) original, wrapped);
         }
         return wrapped;
     }
 }
 
-final class InitilizableAwareWrapperFunction<I, O> implements FunctionEx<I, O>, Initializable {
+final class InitializableDelegatingFunction<I, O> implements FunctionEx<I, O>, Initializable {
 
-    private final Initializable original;
-    private final FunctionEx<? super I, ? extends O> wrapped;
+    private final Initializable initializable;
+    private final FunctionEx<? super I, ? extends O> function;
 
-    InitilizableAwareWrapperFunction(Initializable original, FunctionEx<? super I, ? extends O> wrapped) {
-        this.original = original;
-        this.wrapped = wrapped;
+    InitializableDelegatingFunction(Initializable initializable, FunctionEx<? super I, ? extends O> function) {
+        this.initializable = initializable;
+        this.function = function;
     }
 
     @Override
     public O applyEx(I i) throws Exception {
-        return wrapped.apply(i);
+        return function.apply(i);
     }
 
     @Override
     public void init(Processor.@NotNull Context context) {
-        original.init(context);
+        initializable.init(context);
+    }
+}
+
+final class InitializableDelegatingBiFunction<T, T1, R> implements BiFunctionEx<T, T1, R>, Initializable {
+
+    private final Initializable initializable;
+    private final BiFunctionEx<? super T, ? super T1, ? extends R> function;
+
+    InitializableDelegatingBiFunction(Initializable initializable, BiFunctionEx<? super T, ? super T1, ? extends R> function) {
+        this.initializable = initializable;
+        this.function = function;
+    }
+
+    @Override
+    public void init(Processor.@NotNull Context context) {
+        initializable.init(context);
+    }
+
+    @Override
+    public R applyEx(T t, T1 t1) throws Exception {
+        return function.apply(t, t1);
+    }
+}
+
+final class InitializableDelegatingTriFunction<T, T1, T2, R> implements TriFunction<T, T1, T2, R>, Initializable {
+
+    private final Initializable initializable;
+    private final TriFunction<? super T, ? super T1, ? super T2, ? extends R> function;
+
+    InitializableDelegatingTriFunction(Initializable initializable, TriFunction<? super T, ? super T1, ? super T2, ? extends R> function) {
+        this.initializable = initializable;
+        this.function = function;
+    }
+
+    @Override
+    public void init(Processor.@NotNull Context context) {
+        initializable.init(context);
+    }
+
+    @Override
+    public R applyEx(T t, T1 t1, T2 t2) throws Exception {
+        return function.applyEx(t, t1, t2);
+    }
+}
+
+final class InitializableDelegatingPredicate<T> implements PredicateEx<T>, Initializable {
+    private final Initializable initializable;
+    private final PredicateEx<? super T> predicate;
+
+    InitializableDelegatingPredicate(Initializable initializable, PredicateEx<? super T> predicate) {
+        this.initializable = initializable;
+        this.predicate = predicate;
+    }
+
+    @Override
+    public boolean testEx(T t) throws Exception {
+        return predicate.testEx(t);
+    }
+
+    @Override
+    public void init(@NotNull Processor.Context context) {
+        initializable.init(context);
     }
 }
 
@@ -322,7 +404,7 @@ class JetEventFunctionAdapter extends FunctionAdapter {
     public <T, K> FunctionEx<? super JetEvent<T>, ? extends K> adaptKeyFn(
             @Nonnull FunctionEx<? super T, ? extends K> keyFn
     ) {
-        return FunctionAdapter.wrapInitializable(keyFn, e -> keyFn.apply(e.payload()));
+        return wrapInitializable(keyFn, e -> keyFn.apply(e.payload()));
     }
 
     @Nonnull @Override
@@ -334,33 +416,33 @@ class JetEventFunctionAdapter extends FunctionAdapter {
     <T, R> FunctionEx<? super JetEvent<T>, ?> adaptMapFn(
             @Nonnull FunctionEx<? super T, ? extends R> mapFn
     ) {
-        return FunctionAdapter.wrapInitializable(mapFn, e -> jetEvent(e.timestamp(), mapFn.apply(e.payload())));
+        return wrapInitializable(mapFn, e -> jetEvent(e.timestamp(), mapFn.apply(e.payload())));
     }
 
     @Nonnull @Override
     <T> PredicateEx<? super JetEvent<T>> adaptFilterFn(@Nonnull PredicateEx<? super T> filterFn) {
-        return e -> filterFn.test(e.payload());
+        return wrapInitializable(filterFn, e -> filterFn.test(e.payload()));
     }
 
     @Nonnull @Override
     <T, R> FunctionEx<? super JetEvent<T>, ? extends Traverser<JetEvent<R>>> adaptFlatMapFn(
             @Nonnull FunctionEx<? super T, ? extends Traverser<R>> flatMapFn
     ) {
-        return e -> flatMapFn.apply(e.payload()).map(r -> jetEvent(e.timestamp(), r));
+        return wrapInitializable(flatMapFn, e -> flatMapFn.apply(e.payload()).map(r -> jetEvent(e.timestamp(), r)));
     }
 
     @Nonnull @Override
     <S, K, T, R> TriFunction<? super S, ? super K, ? super JetEvent<T>, ? extends JetEvent<R>> adaptStatefulMapFn(
             @Nonnull TriFunction<? super S, ? super K, ? super T, ? extends R> mapFn
     ) {
-        return (state, key, e) -> jetEvent(e.timestamp(), mapFn.apply(state, key, e.payload()));
+        return wrapInitializable(mapFn, (state, key, e) -> jetEvent(e.timestamp(), mapFn.apply(state, key, e.payload())));
     }
 
     @Nonnull
     <S, K, R> TriFunction<? super S, ? super K, ? super Long, ? extends JetEvent<R>> adaptOnEvictFn(
             @Nonnull TriFunction<? super S, ? super K, ? super Long, ? extends R> onEvictFn
     ) {
-        return (s, k, wm) -> jetEvent(wm, onEvictFn.apply(s, k, wm));
+        return wrapInitializable(onEvictFn, (s, k, wm) -> jetEvent(wm, onEvictFn.apply(s, k, wm)));
     }
 
     @Nonnull @Override
@@ -368,21 +450,21 @@ class JetEventFunctionAdapter extends FunctionAdapter {
     adaptStatefulFlatMapFn(
             @Nonnull TriFunction<? super S, ? super K, ? super T, ? extends Traverser<R>> flatMapFn
     ) {
-        return (state, key, e) -> flatMapFn.apply(state, key, e.payload()).map(r -> jetEvent(e.timestamp(), r));
+        return wrapInitializable(flatMapFn, (state, key, e) -> flatMapFn.apply(state, key, e.payload()).map(r -> jetEvent(e.timestamp(), r)));
     }
 
     @Nonnull
     <S, K, R> TriFunction<? super S, ? super K, ? super Long, ? extends Traverser<JetEvent<R>>> adaptOnEvictFlatMapFn(
             @Nonnull TriFunction<? super S, ? super K, ? super Long, ? extends Traverser<R>> onEvictFn
     ) {
-        return (s, k, wm) -> onEvictFn.apply(s, k, wm).map(r -> jetEvent(wm, r));
+        return wrapInitializable(onEvictFn, (s, k, wm) -> onEvictFn.apply(s, k, wm).map(r -> jetEvent(wm, r)));
     }
 
     @Nonnull @Override
     <S, T, R> BiFunctionEx<? super S, ? super JetEvent<T>, ? extends JetEvent<R>> adaptMapUsingServiceFn(
             @Nonnull BiFunctionEx<? super S, ? super T, ? extends R> mapFn
     ) {
-        return (s, e) -> jetEvent(e.timestamp(), mapFn.apply(s, e.payload()));
+        return wrapInitializable(mapFn, (s, e) -> jetEvent(e.timestamp(), mapFn.apply(s, e.payload())));
     }
 
     @Nonnull @Override
@@ -427,14 +509,14 @@ class JetEventFunctionAdapter extends FunctionAdapter {
                             }
                             return output;
                         });
-        return (BiFunctionEx) fn;
+        return wrapInitializable(flatMapAsyncBatchedFn, (BiFunctionEx)fn);
     }
 
     @Nonnull @Override
     <T, STR extends CharSequence> FunctionEx<? super JetEvent<T>, ? extends STR> adaptToStringFn(
             @Nonnull FunctionEx<? super T, ? extends STR> toStringFn
     ) {
-        return e -> toStringFn.apply(e.payload());
+        return wrapInitializable(toStringFn, e -> toStringFn.apply(e.payload()));
     }
 
     @Nonnull @Override
@@ -450,14 +532,14 @@ class JetEventFunctionAdapter extends FunctionAdapter {
     public <T, T1, R> BiFunctionEx<? super JetEvent<T>, ? super T1, ?> adaptHashJoinOutputFn(
             @Nonnull BiFunctionEx<? super T, ? super T1, ? extends R> mapToOutputFn
     ) {
-        return (e, t1) -> jetEvent(e.timestamp(), mapToOutputFn.apply(e.payload(), t1));
+        return wrapInitializable(mapToOutputFn, (e, t1) -> jetEvent(e.timestamp(), mapToOutputFn.apply(e.payload(), t1)));
     }
 
     @Nonnull @Override
     <T, T1, T2, R> TriFunction<? super JetEvent<T>, ? super T1, ? super T2, ?> adaptHashJoinOutputFn(
             @Nonnull TriFunction<? super T, ? super T1, ? super T2, ? extends R> mapToOutputFn
     ) {
-        return (e, t1, t2) -> jetEvent(e.timestamp(), mapToOutputFn.apply(e.payload(), t1, t2));
+        return wrapInitializable(mapToOutputFn, (e, t1, t2) -> jetEvent(e.timestamp(), mapToOutputFn.apply(e.payload(), t1, t2)));
     }
 
     @Nonnull @Override
