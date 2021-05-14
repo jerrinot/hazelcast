@@ -36,7 +36,7 @@ import static com.hazelcast.internal.util.Preconditions.checkNotNull;
  * @since 4.0
  */
 @FunctionalInterface
-public interface FunctionEx<T, R> extends Function<T, R>, Serializable, Initializable {
+public interface FunctionEx<T, R> extends Function<T, R>, Serializable {
 
     /**
      * Exception-declaring version of {@link Function#apply}.
@@ -82,10 +82,5 @@ public interface FunctionEx<T, R> extends Function<T, R>, Serializable, Initiali
     default <V> FunctionEx<T, V> andThen(FunctionEx<? super R, ? extends V> after) {
         checkNotNull(after, "after");
         return t -> after.apply(apply(t));
-    }
-
-    @Override
-    default void init(@NotNull Processor.Context context) {
-        
     }
 }

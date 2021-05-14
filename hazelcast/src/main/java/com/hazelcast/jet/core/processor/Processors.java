@@ -45,7 +45,6 @@ import com.hazelcast.jet.impl.processor.AggregateP;
 import com.hazelcast.jet.impl.processor.AsyncTransformUsingServiceOrderedP;
 import com.hazelcast.jet.impl.processor.AsyncTransformUsingServiceUnorderedP;
 import com.hazelcast.jet.impl.processor.GroupP;
-import com.hazelcast.jet.impl.processor.Initializable;
 import com.hazelcast.jet.impl.processor.InsertWatermarksP;
 import com.hazelcast.jet.impl.processor.SessionWindowP;
 import com.hazelcast.jet.impl.processor.SlidingWindowP;
@@ -54,7 +53,6 @@ import com.hazelcast.jet.impl.processor.TransformP;
 import com.hazelcast.jet.impl.processor.TransformStatefulP;
 import com.hazelcast.jet.impl.processor.TransformUsingServiceP;
 import com.hazelcast.jet.pipeline.ServiceFactory;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -67,6 +65,7 @@ import java.util.function.Supplier;
 
 import static com.hazelcast.function.FunctionEx.identity;
 import static com.hazelcast.jet.core.TimestampKind.EVENT;
+import static com.hazelcast.jet.impl.pipeline.FunctionAdapter.wrapInitializable;
 import static com.hazelcast.jet.impl.util.Util.toList;
 import static java.util.Collections.singletonList;
 
@@ -696,25 +695,10 @@ public final class Processors {
     public static <T, R> SupplierEx<Processor> mapP(@Nonnull FunctionEx<? super T, ? extends R> mapFn) {
         return () -> {
             final ResettableSingletonTraverser<R> trav = new ResettableSingletonTraverser<>();
-//            return new TransformP<T, R>(item -> {
-//                trav.accept(mapFn.apply(item));
-//                return trav;
-//            });
-
-            return new TransformP<T, R>(new FunctionEx<T, Traverser<? extends R>>() {
-                @Override
-                public Traverser<? extends R> applyEx(T item) throws Exception {
-                    trav.accept(mapFn.apply(item));
-                    return trav;
-                }
-
-                @Override
-                public void init(Processor.@NotNull Context context) {
-                    if (mapFn instanceof Initializable) {
-                        mapFn.init(context);
-                    }
-                }
-            });
+            return new TransformP<>(wrapInitializable(mapFn, (T item) -> {
+                trav.accept(mapFn.apply(item));
+                return trav;
+            }));
         };
     }
 

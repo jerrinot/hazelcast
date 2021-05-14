@@ -50,7 +50,7 @@ import java.util.concurrent.CompletableFuture;
 import static com.hazelcast.jet.impl.JetEvent.jetEvent;
 import static com.hazelcast.jet.impl.util.Util.toList;
 
-public class FunctionAdapter implements Serializable {
+public class FunctionAdapter {
 
     @Nonnull
     public <T, K> FunctionEx<?, ? extends K> adaptKeyFn(@Nonnull FunctionEx<? super T, ? extends K> keyFn) {
@@ -287,6 +287,34 @@ public class FunctionAdapter implements Serializable {
             return jetEvent != null ? ((JetEvent) jetEvent).payload() : null;
         }
     }
+
+    public static <I, O> FunctionEx<? super I, ? extends O> wrapInitializable(FunctionEx<?, ?> original, FunctionEx<? super I, ? extends O> wrapped) {
+        if (original instanceof Initializable) {
+            return new InitilizableAwareWrapperFunction<I, O>((Initializable) original, wrapped);
+        }
+        return wrapped;
+    }
+}
+
+final class InitilizableAwareWrapperFunction<I, O> implements FunctionEx<I, O>, Initializable {
+
+    private final Initializable original;
+    private final FunctionEx<? super I, ? extends O> wrapped;
+
+    InitilizableAwareWrapperFunction(Initializable original, FunctionEx<? super I, ? extends O> wrapped) {
+        this.original = original;
+        this.wrapped = wrapped;
+    }
+
+    @Override
+    public O applyEx(I i) throws Exception {
+        return wrapped.apply(i);
+    }
+
+    @Override
+    public void init(Processor.@NotNull Context context) {
+        original.init(context);
+    }
 }
 
 class JetEventFunctionAdapter extends FunctionAdapter {
@@ -294,21 +322,7 @@ class JetEventFunctionAdapter extends FunctionAdapter {
     public <T, K> FunctionEx<? super JetEvent<T>, ? extends K> adaptKeyFn(
             @Nonnull FunctionEx<? super T, ? extends K> keyFn
     ) {
-
-        return new FunctionEx<JetEvent<T>, K>() {
-            @Override
-            public K applyEx(JetEvent<T> tJetEvent) throws Exception {
-                return null;
-            }
-
-            @Override
-            public void init(Processor.@NotNull Context context) {
-                if (keyFn instanceof Initializable) {
-                    keyFn.init(context);
-                }
-            }
-        };
-//        return e -> keyFn.apply(e.payload());
+        return FunctionAdapter.wrapInitializable(keyFn, e -> keyFn.apply(e.payload()));
     }
 
     @Nonnull @Override
@@ -320,20 +334,7 @@ class JetEventFunctionAdapter extends FunctionAdapter {
     <T, R> FunctionEx<? super JetEvent<T>, ?> adaptMapFn(
             @Nonnull FunctionEx<? super T, ? extends R> mapFn
     ) {
-
-        return new FunctionEx<JetEvent<T>, Object>() {
-            @Override
-            public Object applyEx(JetEvent<T> e) {
-                return jetEvent(e.timestamp(), mapFn.apply(e.payload()));
-            }
-
-            @Override
-            public void init(Processor.@NotNull Context context) {
-                if (mapFn instanceof Initializable) {
-                    mapFn.init(context);
-                }
-            }
-        };
+        return FunctionAdapter.wrapInitializable(mapFn, e -> jetEvent(e.timestamp(), mapFn.apply(e.payload())));
     }
 
     @Nonnull @Override
