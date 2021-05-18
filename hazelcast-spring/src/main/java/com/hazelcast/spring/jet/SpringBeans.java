@@ -74,7 +74,7 @@ public final class SpringBeans {
         }
 
         @Override
-        public void init(Processor.Context context) {
+        public void init(@Nonnull Processor.Context context) {
             context.managedContext().initialize(this);
         }
     }

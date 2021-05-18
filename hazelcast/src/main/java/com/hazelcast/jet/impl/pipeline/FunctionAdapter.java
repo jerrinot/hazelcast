@@ -287,32 +287,27 @@ public class FunctionAdapter {
         }
     }
 
-    public static <I, O> FunctionEx<? super I, ? extends O> wrapInitializable(FunctionEx<?, ?> original, FunctionEx<? super I, ? extends O> wrapped) {
-        if (original instanceof Initializable) {
-            return new InitializableDelegatingFunction<>((Initializable) original, wrapped);
+    private static Initializable wrapOriginalInitializable(Object originalInitializable) {
+        if (originalInitializable instanceof Initializable) {
+            return (Initializable) originalInitializable;
         }
-        return wrapped;
+        else return context -> context.managedContext().initialize(originalInitializable);
+    }
+
+    public static <I, O> FunctionEx<? super I, ? extends O> wrapInitializable(FunctionEx<?, ?> original, FunctionEx<? super I, ? extends O> wrapped) {
+        return new InitializableDelegatingFunction<>(wrapOriginalInitializable(original), wrapped);
     }
 
     public static <T, T1, R> BiFunctionEx<? super T, ? super T1, ? extends R > wrapInitializable(BiFunctionEx<?, ?, ?> original, BiFunctionEx<? super T, ? super T1, ? extends R> wrapped) {
-        if (original instanceof Initializable) {
-            return new InitializableDelegatingBiFunction<>((Initializable) original, wrapped);
-        }
-        return wrapped;
+        return new InitializableDelegatingBiFunction<>(wrapOriginalInitializable(original), wrapped);
     }
 
     public static <T, T1, T2, R> TriFunction<? super T, ? super T1, ? super T2, ? extends R > wrapInitializable(TriFunction<?, ?, ?, ?> original, TriFunction<? super T, ? super T1, ? super T2, ? extends R> wrapped) {
-        if (original instanceof Initializable) {
-            return new InitializableDelegatingTriFunction<>((Initializable) original, wrapped);
-        }
-        return wrapped;
+        return new InitializableDelegatingTriFunction<>(wrapOriginalInitializable(original), wrapped);
     }
 
     public static <T> PredicateEx<? super T> wrapInitializable(PredicateEx<?> original, PredicateEx<? super T> wrapped) {
-        if (original instanceof Initializable) {
-            return new InitializableDelegatingPredicate<>((Initializable) original, wrapped);
-        }
-        return wrapped;
+        return new InitializableDelegatingPredicate<>(wrapOriginalInitializable(original), wrapped);
     }
 }
 
@@ -322,7 +317,7 @@ final class InitializableDelegatingFunction<I, O> implements FunctionEx<I, O>, I
     private final FunctionEx<? super I, ? extends O> function;
 
     InitializableDelegatingFunction(Initializable initializable, FunctionEx<? super I, ? extends O> function) {
-        this.initializable = initializable;
+        this.initializable = unwrap(initializable);
         this.function = function;
     }
 
@@ -333,8 +328,18 @@ final class InitializableDelegatingFunction<I, O> implements FunctionEx<I, O>, I
 
     @Override
     public void init(Processor.@NotNull Context context) {
+        context.managedContext().initialize(initializable);
         initializable.init(context);
     }
+
+    private static Initializable unwrap(Initializable initializable) {
+        if (initializable instanceof InitializableDelegatingFunction) {
+            Initializable innerInitializable = ((InitializableDelegatingFunction<?, ?>) initializable).initializable;
+            return InitializableDelegatingFunction.unwrap(innerInitializable);
+        }
+        return initializable;
+    }
+
 }
 
 final class InitializableDelegatingBiFunction<T, T1, R> implements BiFunctionEx<T, T1, R>, Initializable {

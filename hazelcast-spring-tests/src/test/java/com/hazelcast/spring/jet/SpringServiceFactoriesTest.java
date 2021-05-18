@@ -17,15 +17,23 @@
 package com.hazelcast.spring.jet;
 
 import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.HazelcastInstanceAware;
 import com.hazelcast.function.FunctionEx;
 import com.hazelcast.function.PredicateEx;
 import com.hazelcast.function.SupplierEx;
 import com.hazelcast.jet.JetInstance;
 import com.hazelcast.jet.Job;
+import com.hazelcast.jet.aggregate.AggregateOperations;
 import com.hazelcast.jet.core.Processor;
+import com.hazelcast.jet.core.test.TestSupport;
 import com.hazelcast.jet.impl.processor.Initializable;
 import com.hazelcast.jet.pipeline.Pipeline;
+import com.hazelcast.jet.pipeline.ServiceFactories;
+import com.hazelcast.jet.pipeline.Sinks;
 import com.hazelcast.jet.pipeline.Sources;
+import com.hazelcast.jet.pipeline.WindowDefinition;
+import com.hazelcast.jet.pipeline.test.Assertions;
 import com.hazelcast.jet.pipeline.test.SimpleEvent;
 import com.hazelcast.jet.pipeline.test.TestSources;
 import com.hazelcast.spring.CustomSpringJUnit4ClassRunner;
@@ -45,12 +53,16 @@ import javax.annotation.Resource;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.hazelcast.jet.pipeline.test.AssertionSinks.assertAnyOrder;
 import static com.hazelcast.jet.pipeline.test.AssertionSinks.assertCollected;
 import static com.hazelcast.jet.pipeline.test.AssertionSinks.assertCollectedEventually;
 import static com.hazelcast.spring.jet.JetSpringServiceFactories.bean;
+import static com.hazelcast.test.HazelcastTestSupport.assertTrueEventually;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -110,6 +122,17 @@ public class SpringServiceFactoriesTest {
     }
 
     @Test
+    public void foo() {
+        Pipeline pipeline = Pipeline.create();
+        pipeline.readFrom(TestSources.itemStream(1))
+                .withNativeTimestamps(5000)
+                .window(WindowDefinition.sliding(10_000, 1000))
+                .aggregate(AggregateOperations.pickAny())
+                .writeTo(Sinks.logger());
+        jetInstance.newJob(pipeline).join();
+    }
+
+    @Test
     @Sql("populate_h2.sql")
     public void testMapStreamUsingSpringBean_injectedToMapper() throws SQLException {
         Pipeline pipeline = Pipeline.create();
@@ -117,13 +140,37 @@ public class SpringServiceFactoriesTest {
                     SpringBeans.connectionSupplier("dataSourceBean"),
                     (conn, parallelism, index) -> conn.prepareStatement("select * from person").executeQuery(),
                     rs -> rs.getInt("item")))
+//                .map(new AuditingFunction<>("auditTopic"))
                 .filterStateful(new SpringAwareFilterSupplier(), PredicateEx::test)
                 .map(SpringBeans.<Integer, Long>beanFunction("managedFunction"))
                 .writeTo(assertCollected(c -> {
                     assertEquals(6, c.size());
                     c.forEach(l -> assertTrue(l < 0));
                 }));
+        pipeline.setPreserveOrder(true);
+
+        AtomicInteger counter = new AtomicInteger();
         jetInstance.newJob(pipeline).join();
+    }
+
+    public static class AuditingFunction<T> implements FunctionEx<T, T>, HazelcastInstanceAware {
+        private transient HazelcastInstance instance;
+        private final String topicName;
+
+        public AuditingFunction(String topicName) {
+            this.topicName = topicName;
+        }
+
+        @Override
+        public T applyEx(T t) {
+            instance.getTopic(topicName).publish(t);
+            return t;
+        }
+
+        @Override
+        public void setHazelcastInstance(HazelcastInstance instance) {
+            this.instance = instance;
+        }
     }
 
     @SpringAware
@@ -157,7 +204,7 @@ public class SpringServiceFactoriesTest {
     }
 
     @SpringAware
-    public static class MapperWithSpringDeps implements FunctionEx<Integer, Long>, Initializable {
+    public static class MapperWithSpringDeps implements FunctionEx<Integer, Long> {
         @Autowired
         private transient Calculator calculator;
 
@@ -166,10 +213,6 @@ public class SpringServiceFactoriesTest {
             return calculator.multiply(event);
         }
 
-        @Override
-        public void init(@Nonnull Processor.Context context) {
-            context.managedContext().initialize(this);
-        }
     }
 
     @Test

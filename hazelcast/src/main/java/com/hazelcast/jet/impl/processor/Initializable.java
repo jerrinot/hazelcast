@@ -4,6 +4,7 @@ import com.hazelcast.jet.core.Processor;
 
 import javax.annotation.Nonnull;
 
+@FunctionalInterface
 public interface Initializable {
     void init(@Nonnull Processor.Context context);
 }
