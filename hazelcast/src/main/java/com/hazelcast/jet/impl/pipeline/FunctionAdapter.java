@@ -35,6 +35,7 @@ import com.hazelcast.jet.function.TriFunction;
 import com.hazelcast.jet.impl.JetEvent;
 import com.hazelcast.jet.impl.processor.ProcessorWrapper;
 import com.hazelcast.jet.impl.util.WrappingProcessorMetaSupplier;
+import com.hazelcast.jet.pipeline.EventTimeAccessors;
 import com.hazelcast.jet.pipeline.JoinClause;
 
 import javax.annotation.Nonnull;
@@ -303,7 +304,12 @@ class JetEventFunctionAdapter extends FunctionAdapter {
     <T, R> FunctionEx<? super JetEvent<T>, ?> adaptMapFn(
             @Nonnull FunctionEx<? super T, ? extends R> mapFn
     ) {
-        return e -> jetEvent(e.timestamp(), mapFn.apply(e.payload()));
+        if (mapFn instanceof EventTimeAccessors) {
+            EventTimeAccessors<? super T, ? extends R> eventTimeFn = (EventTimeAccessors<? super T, ? extends R>) mapFn;
+            return e -> jetEvent(e.timestamp(), eventTimeFn.applyWithEventTimeEx(e.payload(), e.timestamp()));
+        } else {
+            return e -> jetEvent(e.timestamp(), mapFn.apply(e.payload()));
+        }
     }
 
     @Nonnull @Override

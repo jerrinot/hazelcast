@@ -135,6 +135,19 @@ public class StreamStageTest extends PipelineStreamTestSupport {
     }
 
     @Test
+    public void mapWithEventTime() {
+        p.readFrom(TestSources.itemStream(1))
+                .withNativeTimestamps(0)
+                .map(EventTimeAccessors.function((payload, ts) -> {
+                    System.out.println(ts);
+                    return ts;
+                }))
+                .writeTo(Sinks.logger());
+
+        execute();
+    }
+
+    @Test
     public void mapAsFilter() {
         // Given
         List<Integer> input = sequence(itemCount);
