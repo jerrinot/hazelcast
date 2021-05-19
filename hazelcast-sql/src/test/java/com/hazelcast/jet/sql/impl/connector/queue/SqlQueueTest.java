@@ -2,6 +2,7 @@ package com.hazelcast.jet.sql.impl.connector.queue;
 
 import com.hazelcast.jet.sql.SqlTestSupport;
 import com.hazelcast.sql.SqlResult;
+import com.hazelcast.sql.SqlRow;
 import com.hazelcast.sql.SqlService;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -27,7 +28,9 @@ public class SqlQueueTest extends SqlTestSupport {
                 + "OPTIONS (\n"
                 + "    'valueFormat' = 'json'\n"
                 + ")");
-        SqlResult execute = sqlService.execute("select * from my_queue");
-        System.out.println(execute);
+        SqlResult results = sqlService.execute("select * from my_queue");
+        for (SqlRow row : results) {
+            System.out.println(row);
+        }
     }
 }
