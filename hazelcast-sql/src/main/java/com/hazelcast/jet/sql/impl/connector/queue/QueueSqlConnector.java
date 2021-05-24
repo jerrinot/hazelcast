@@ -1,6 +1,7 @@
 package com.hazelcast.jet.sql.impl.connector.queue;
 
 import com.hazelcast.collection.IQueue;
+import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.jet.core.DAG;
 import com.hazelcast.jet.core.EventTimePolicy;
 import com.hazelcast.jet.core.Processor;
@@ -12,9 +13,11 @@ import com.hazelcast.jet.pipeline.StreamSource;
 import com.hazelcast.jet.sql.impl.SimpleExpressionEvalContext;
 import com.hazelcast.jet.sql.impl.connector.RowProjector;
 import com.hazelcast.jet.sql.impl.connector.SqlConnector;
+import com.hazelcast.jet.sql.impl.extract.HazelcastJsonQueryTargetDescriptor;
 import com.hazelcast.jet.sql.impl.extract.JsonQueryTarget;
 import com.hazelcast.jet.sql.impl.schema.JetTable;
 import com.hazelcast.jet.sql.impl.schema.MappingField;
+import com.hazelcast.query.impl.getters.Extractors;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.sql.impl.expression.Expression;
 import com.hazelcast.sql.impl.extract.QueryTarget;
@@ -26,6 +29,7 @@ import com.hazelcast.sql.impl.type.QueryDataType;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -90,13 +94,25 @@ public class QueueSqlConnector implements SqlConnector {
         }
 
         StreamSource<Object[]> items(Expression<Boolean> predicate, List<Expression<?>> projections) {
-            return SourceBuilder.stream("foo", c -> c.jetInstance().getHazelcastInstance().getQueue(queueName))
-                    .<Object[]>fillBufferFn((c, b) -> b.add(c.poll()))
+            QueryDataType[] types = types();
+            String[] paths = paths();
+            String localQueueName = this.queueName;
+            return SourceBuilder.stream("foo", c -> QueueContext.fromProcContext(c, localQueueName, types, paths, predicate, projections))
+                    .<Object[]>fillBufferFn((c, b) -> {
+                        Object[] row = c.pollAndProject();
+                        if (row != null) {
+                            b.add(row);
+                        }
+                    })
                     .build();
         }
 
         QueryDataType[] types() {
             return getFields().stream().map(TableField::getType).toArray(QueryDataType[]::new);
+        }
+
+        String[] paths() {
+            return getFields().stream().map(TableField::getName).toArray(String[]::new);
         }
     }
 
@@ -104,15 +120,16 @@ public class QueueSqlConnector implements SqlConnector {
         private IQueue queue;
         private RowProjector projector;
 
-        private static QueueContext fromProcContext(Processor.Context procContext, String queueName, QueueTable queueTable, Expression<Boolean> predicate, List<Expression<?>> projections) {
+        private static QueueContext fromProcContext(Processor.Context procContext, String queueName, QueryDataType[] types, String[] paths, Expression<Boolean> predicate, List<Expression<?>> projections) {
             QueueContext queueContext = new QueueContext();
             queueContext.queue = procContext.jetInstance().getHazelcastInstance().getQueue(queueName);
             SimpleExpressionEvalContext evalCtx = SimpleExpressionEvalContext.from(procContext);
 
-            String[] paths = {"id"};
-            QueryDataType[] types = queueTable.types();
-            QueryTarget queryTarget = null;
+            InternalSerializationService ss = evalCtx.getSerializationService();
+            Extractors extractors = Extractors.newBuilder(evalCtx.getSerializationService()).build();
+            QueryTarget queryTarget = HazelcastJsonQueryTargetDescriptor.INSTANCE.create(ss, extractors, false);
             queueContext.projector = new RowProjector(paths, types, queryTarget, predicate, projections, evalCtx);
+            return queueContext;
         }
 
         private Object[] pollAndProject() {

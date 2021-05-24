@@ -38,7 +38,7 @@ public class RowProjector implements Row {
     private final ExpressionEvalContext evalContext;
 
     @SuppressWarnings("unchecked")
-    RowProjector(
+    public RowProjector(
             String[] paths,
             QueryDataType[] types,
             QueryTarget target,
