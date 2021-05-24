@@ -1,17 +1,23 @@
 package com.hazelcast.jet.sql.impl.connector.queue;
 
+import com.hazelcast.collection.IQueue;
 import com.hazelcast.jet.core.DAG;
 import com.hazelcast.jet.core.EventTimePolicy;
+import com.hazelcast.jet.core.Processor;
 import com.hazelcast.jet.core.ProcessorMetaSupplier;
 import com.hazelcast.jet.core.Vertex;
 import com.hazelcast.jet.impl.pipeline.transform.StreamSourceTransform;
 import com.hazelcast.jet.pipeline.SourceBuilder;
 import com.hazelcast.jet.pipeline.StreamSource;
+import com.hazelcast.jet.sql.impl.SimpleExpressionEvalContext;
+import com.hazelcast.jet.sql.impl.connector.RowProjector;
 import com.hazelcast.jet.sql.impl.connector.SqlConnector;
+import com.hazelcast.jet.sql.impl.extract.JsonQueryTarget;
 import com.hazelcast.jet.sql.impl.schema.JetTable;
 import com.hazelcast.jet.sql.impl.schema.MappingField;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.sql.impl.expression.Expression;
+import com.hazelcast.sql.impl.extract.QueryTarget;
 import com.hazelcast.sql.impl.optimizer.PlanObjectKey;
 import com.hazelcast.sql.impl.schema.ConstantTableStatistics;
 import com.hazelcast.sql.impl.schema.Table;
@@ -54,9 +60,8 @@ public class QueueSqlConnector implements SqlConnector {
     }
 
     @Nonnull
-    @Override
     public Table createTable(@Nonnull NodeEngine nodeEngine, @Nonnull String schemaName, @Nonnull String mappingName, @Nonnull String externalName, @Nonnull Map<String, String> options, @Nonnull List<MappingField> resolvedFields) {
-        return new QueueTable(schemaName, mappingName);
+        return new QueueTable(schemaName, mappingName, externalName);
     }
 
     @Nonnull
@@ -69,10 +74,13 @@ public class QueueSqlConnector implements SqlConnector {
     }
 
     private class QueueTable extends JetTable {
-        public QueueTable(String schemaName, String mappingName) {
+        private final String queueName;
+
+        public QueueTable(String schemaName, String mappingName, String queueName) {
             super(QueueSqlConnector.this, Arrays.asList(new TableField("id", QueryDataType.INT, false),
                     new TableField("name", QueryDataType.VARCHAR, false)
             ), schemaName, mappingName, new ConstantTableStatistics(0));
+            this.queueName = queueName;
         }
 
         @Override
@@ -82,9 +90,37 @@ public class QueueSqlConnector implements SqlConnector {
         }
 
         StreamSource<Object[]> items(Expression<Boolean> predicate, List<Expression<?>> projections) {
-            return SourceBuilder.stream("foo", c -> new Object())
-                    .<Object[]>fillBufferFn((c, b) -> b.add(new Object[]{0, "foo"}))
+            return SourceBuilder.stream("foo", c -> c.jetInstance().getHazelcastInstance().getQueue(queueName))
+                    .<Object[]>fillBufferFn((c, b) -> b.add(c.poll()))
                     .build();
+        }
+
+        QueryDataType[] types() {
+            return getFields().stream().map(TableField::getType).toArray(QueryDataType[]::new);
+        }
+    }
+
+    private static final class QueueContext {
+        private IQueue queue;
+        private RowProjector projector;
+
+        private static QueueContext fromProcContext(Processor.Context procContext, String queueName, QueueTable queueTable, Expression<Boolean> predicate, List<Expression<?>> projections) {
+            QueueContext queueContext = new QueueContext();
+            queueContext.queue = procContext.jetInstance().getHazelcastInstance().getQueue(queueName);
+            SimpleExpressionEvalContext evalCtx = SimpleExpressionEvalContext.from(procContext);
+
+            String[] paths = {"id"};
+            QueryDataType[] types = queueTable.types();
+            QueryTarget queryTarget = null;
+            queueContext.projector = new RowProjector(paths, types, queryTarget, predicate, projections, evalCtx);
+        }
+
+        private Object[] pollAndProject() {
+            Object o = queue.poll();
+            if (o == null) {
+                return null;
+            }
+            return projector.project(o);
         }
     }
 }
