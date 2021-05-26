@@ -26,10 +26,10 @@ public class SqlQueueTest extends SqlTestSupport {
             @Override
             public void run() {
                 IQueue<Object> my_queue = instance().getHazelcastInstance().getQueue("my_queue");
-                for (;;) {
+                for (long l = 0;;l++) {
                     my_queue.offer(new HazelcastJsonValue("{\n"
-                            + "\t\"id\": 123,\n"
-                            + "\t\"name\": \"joe\"\n"
+                            + "\t\"id\": "+ l +",\n"
+                            + "\t\"name\": \"joe " + l +"\"\n"
                             + "}"));
                     try {
                         Thread.sleep(1000);
@@ -48,7 +48,7 @@ public class SqlQueueTest extends SqlTestSupport {
                 + "OPTIONS (\n"
                 + "    'valueFormat' = 'json'\n"
                 + ")");
-        SqlResult results = sqlService.execute("select name from my_queue");
+        SqlResult results = sqlService.execute("select * from my_queue");
         for (SqlRow row : results) {
             System.out.println(row);
         }
