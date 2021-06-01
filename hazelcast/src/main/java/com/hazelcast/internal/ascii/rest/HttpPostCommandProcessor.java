@@ -18,6 +18,7 @@ package com.hazelcast.internal.ascii.rest;
 
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.config.WanReplicationConfig;
+import com.hazelcast.core.HazelcastJsonValue;
 import com.hazelcast.cp.CPSubsystem;
 import com.hazelcast.cp.CPSubsystemManagementService;
 import com.hazelcast.internal.ascii.TextCommandService;
@@ -33,6 +34,7 @@ import com.hazelcast.wan.impl.AddWanConfigResult;
 import com.hazelcast.wan.impl.WanReplicationService;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.UUID;
 
 import static com.hazelcast.cp.CPGroup.METADATA_CP_GROUP_NAME;
@@ -48,6 +50,7 @@ import static com.hazelcast.internal.util.StringUtil.upperCaseInternal;
 @SuppressWarnings({"checkstyle:cyclomaticcomplexity", "checkstyle:methodcount", "checkstyle:methodlength"})
 public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostCommand> {
     private static final byte[] QUEUE_SIMPLE_VALUE_CONTENT_TYPE = stringToBytes("text/plain");
+    private static final byte[] JSON_MIME_TYPE = stringToBytes("application/json");
 
     public HttpPostCommandProcessor(TextCommandService textCommandService) {
         super(textCommandService, textCommandService.getNode().getLogger(HttpPostCommandProcessor.class));
@@ -244,7 +247,13 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
             data = stringToBytes(simpleValue);
             contentType = QUEUE_SIMPLE_VALUE_CONTENT_TYPE;
         }
-        boolean offerResult = textCommandService.offer(queueName, new RestValue(data, contentType));
+        Object value;
+        if (Arrays.equals(contentType, JSON_MIME_TYPE)) {
+            value = new HazelcastJsonValue(new String(data));
+        } else {
+            value = new RestValue(data, contentType);
+        }
+        boolean offerResult = textCommandService.offer(queueName, value);
         if (offerResult) {
             command.send200();
         } else {
@@ -261,7 +270,15 @@ public class HttpPostCommandProcessor extends HttpCommandProcessor<HttpPostComma
         String mapName = uri.substring(URI_MAPS.length(), indexEnd);
         String key = uri.substring(indexEnd + 1);
         byte[] data = command.getData();
-        textCommandService.put(mapName, key, new RestValue(data, command.getContentType()), -1);
+        String contentType = command.getContentTypeString();
+        // todo: there can be a charset, that's why we are using startWith()
+        // we should handle charsets too
+        if (contentType != null && contentType.startsWith("application/json")) {
+            HazelcastJsonValue value = new HazelcastJsonValue(new String(data));
+            textCommandService.put(mapName, key, value);
+        } else {
+            textCommandService.put(mapName, key, new RestValue(data, command.getContentType()), -1);
+        }
         command.send200();
     }
 

@@ -20,6 +20,7 @@ import com.hazelcast.jet.sql.impl.schema.MappingField;
 import com.hazelcast.query.impl.getters.Extractors;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.sql.impl.expression.Expression;
+import com.hazelcast.sql.impl.extract.GenericQueryTargetDescriptor;
 import com.hazelcast.sql.impl.extract.QueryTarget;
 import com.hazelcast.sql.impl.optimizer.PlanObjectKey;
 import com.hazelcast.sql.impl.schema.ConstantTableStatistics;
@@ -30,11 +31,14 @@ import com.hazelcast.sql.impl.type.QueryDataType;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toList;
 
 public class QueueSqlConnector implements SqlConnector {
     public static final String TYPE_NAME = "Queue";
@@ -52,10 +56,7 @@ public class QueueSqlConnector implements SqlConnector {
     @Nonnull
     @Override
     public List<MappingField> resolveAndValidateFields(@Nonnull NodeEngine nodeEngine, @Nonnull Map<String, String> options, @Nonnull List<MappingField> userFields) {
-        return asList(
-                new MappingField("id", QueryDataType.INT),
-                new MappingField("name", QueryDataType.VARCHAR)
-        );
+        return userFields;
     }
 
     @Override
@@ -65,7 +66,10 @@ public class QueueSqlConnector implements SqlConnector {
 
     @Nonnull
     public Table createTable(@Nonnull NodeEngine nodeEngine, @Nonnull String schemaName, @Nonnull String mappingName, @Nonnull String externalName, @Nonnull Map<String, String> options, @Nonnull List<MappingField> resolvedFields) {
-        return new QueueTable(schemaName, mappingName, externalName);
+        List<TableField> tableFields =  resolvedFields.stream()
+                .map(f -> new TableField(f.name(), f.type(), false))
+                .collect(toList());
+        return new QueueTable(schemaName, mappingName, externalName, tableFields);
     }
 
     @Nonnull
@@ -80,10 +84,8 @@ public class QueueSqlConnector implements SqlConnector {
     private class QueueTable extends JetTable {
         private final String queueName;
 
-        public QueueTable(String schemaName, String mappingName, String queueName) {
-            super(QueueSqlConnector.this, Arrays.asList(new TableField("id", QueryDataType.INT, false),
-                    new TableField("name", QueryDataType.VARCHAR, false)
-            ), schemaName, mappingName, new ConstantTableStatistics(0));
+        public QueueTable(String schemaName, String mappingName, String queueName, List<TableField> fields) {
+            super(QueueSqlConnector.this, fields, schemaName, mappingName, new ConstantTableStatistics(0));
             this.queueName = queueName;
         }
 
@@ -127,7 +129,7 @@ public class QueueSqlConnector implements SqlConnector {
 
             InternalSerializationService ss = evalCtx.getSerializationService();
             Extractors extractors = Extractors.newBuilder(evalCtx.getSerializationService()).build();
-            QueryTarget queryTarget = HazelcastJsonQueryTargetDescriptor.INSTANCE.create(ss, extractors, false);
+            QueryTarget queryTarget = GenericQueryTargetDescriptor.DEFAULT.create(ss, extractors, false);
             queueContext.projector = new RowProjector(paths, types, queryTarget, predicate, projections, evalCtx);
             return queueContext;
         }

@@ -20,6 +20,7 @@ import com.hazelcast.cluster.impl.MemberImpl;
 import com.hazelcast.config.AdvancedNetworkConfig;
 import com.hazelcast.config.SSLConfig;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.internal.ascii.rest.HttpCommand;
 import com.hazelcast.internal.ascii.rest.HttpCommandProcessor;
 import com.hazelcast.internal.nio.IOUtil;
 import org.apache.http.Consts;
@@ -60,7 +61,7 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 import static com.hazelcast.instance.EndpointQualifier.REST;
-import static com.hazelcast.internal.ascii.rest.HttpCommand.CONTENT_TYPE_PLAIN_TEXT;
+//import static com.hazelcast.internal.ascii.rest.HttpCommand.CONTENT_TYPE_PLAIN_TEXT;
 import static com.hazelcast.internal.util.StringUtil.bytesToString;
 import static com.hazelcast.test.Accessors.getNode;
 
@@ -484,7 +485,7 @@ public class HTTPCommunicator {
         String data = URLEncodedUtils.format(nameValuePairs, Consts.UTF_8);
 
         HttpEntity entity;
-        ContentType contentType = ContentType.create(bytesToString(CONTENT_TYPE_PLAIN_TEXT), Consts.UTF_8);
+        ContentType contentType = ContentType.create(bytesToString(HttpCommand.CONTENT_TYPE_JSON), Consts.UTF_8);
         if (enableChunkedStreaming) {
             ByteArrayInputStream stream = new ByteArrayInputStream(data.getBytes(Consts.UTF_8));
             InputStreamEntity streamEntity = new InputStreamEntity(stream, contentType);

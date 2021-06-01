@@ -142,6 +142,10 @@ public class HttpPostCommand extends HttpCommand {
         }
     }
 
+    String getContentTypeString() {
+        return contentType;
+    }
+
     private void readCRLFOrPositionChunkSize(ByteBuffer cb) {
         byte b = cb.get();
         if (b == CARRIAGE_RETURN) {
